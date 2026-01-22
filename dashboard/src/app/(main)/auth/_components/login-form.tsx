@@ -38,25 +38,47 @@ export function LoginForm() {
       if (error) throw error;
       if (!authData.user) throw new Error("Login failed");
 
-      // Check admins table
+      // Check admins table for role
       const { data: adminData, error: adminError } = await supabase
         .from("admins")
         .select("*")
         .eq("id", authData.user.id)
         .single();
 
-      if (adminError || !adminData || adminData.role !== "admin") {
-        toast.error("You are not authorized as admin.");
+      if (adminError || !adminData) {
+        toast.error("User profile not found. Please contact support.");
+        await supabase.auth.signOut();
         return;
       }
 
-      // Persist session if "remember" checked
-      if (data.remember && authData.session) {
-        await supabase.auth.setSession(authData.session);
-      }
+      // Check role and approval status
+      if (adminData.role === "admin") {
+        // Admin - full access
+        if (data.remember && authData.session) {
+          await supabase.auth.setSession(authData.session);
+        }
 
-      toast.success("Login successful!");
-      router.push("/dashboard");
+        toast.success("Welcome, Admin!");
+        router.push("/admin/dashboard");
+      } else if (adminData.role === "business_owner") {
+        // Business Owner - check approval status
+        if (!adminData.is_approved) {
+          toast.warning("Your business account is pending approval.");
+          router.push("/waiting-approval");
+          return;
+        }
+
+        if (data.remember && authData.session) {
+          await supabase.auth.setSession(authData.session);
+        }
+
+        toast.success(`Welcome back, ${adminData.business_name}!`);
+        router.push("/business/dashboard");
+      } else {
+        toast.error("Invalid account type.");
+        await supabase.auth.signOut();
+        return;
+      }
     } catch (err: any) {
       toast.error(err.message || "Login failed.");
     }
