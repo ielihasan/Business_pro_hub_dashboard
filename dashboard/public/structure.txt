@@ -1,0 +1,10 @@
+Folder PATH listing for volume New Volume
+Volume serial number is E20A-B1CA
+D:.
+³   next.svg
+³   structure.txt
+³   vercel.svg
+³   
+ÀÄÄÄavatars
+        arhamkhnz.png
+        
