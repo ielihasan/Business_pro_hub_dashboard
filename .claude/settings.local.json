@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(timeout 3 tail:*)",
+      "Bash(exit 0)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill /F /PID 22904)",
+      "Bash(taskkill //F //PID 22904)",
+      "Bash(timeout 5 cmd /c \"for /L %i in \\(1,1,10\\) do @\\(type C:\\\\Users\\\\X\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-X-FYP-Business-pro-hub\\\\tasks\\\\b62abe6.output 2>nul && timeout /t 1 /nobreak >nul\\)\")"
+    ]
+  }
+}
