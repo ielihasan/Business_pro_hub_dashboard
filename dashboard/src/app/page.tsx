@@ -118,7 +118,7 @@ export default function LandingPage() {
       : Math.floor(count);
 
     return (
-      <div ref={ref} className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+      <div ref={ref} className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 animate-fade-in-up stat-glitter" style={{ animationDelay: `${index * 100}ms` }}>
         {displayValue}{suffix}
       </div>
     );

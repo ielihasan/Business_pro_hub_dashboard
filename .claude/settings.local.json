@@ -11,7 +11,8 @@
       "Bash(timeout 5 cmd /c \"for /L %i in \\(1,1,10\\) do @\\(type C:\\\\Users\\\\X\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-X-FYP-Business-pro-hub\\\\tasks\\\\b62abe6.output 2>nul && timeout /t 1 /nobreak >nul\\)\")",
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
-      "Bash(timeout 3 cmd:*)"
+      "Bash(timeout 3 cmd:*)",
+      "Bash(dir:*)"
     ]
   }
 }
