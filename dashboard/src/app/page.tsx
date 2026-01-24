@@ -117,7 +117,7 @@ export default function LandingPage() {
       : Math.floor(count);
 
     return (
-      <div ref={ref} className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+      <div ref={ref} className="text-[36px] md:text-[48px] font-bold text-gray-900 mb-3 leading-[1.2]">
         {displayValue}{suffix}
       </div>
     );
@@ -241,21 +241,21 @@ export default function LandingPage() {
         transition={{ duration: 0.8, delay: 0.3 }}
       >
         <div className="absolute inset-0 bg-grid-gray-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
-        <div className="container relative mx-auto px-6 py-24 md:py-32 lg:py-40">
+        <div className="container relative mx-auto px-6 py-16 md:py-20 lg:py-24">
           <div className="text-center max-w-5xl mx-auto">
             <motion.div
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Badge className="mb-6 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
-                <Zap className="w-3 h-3 mr-1.5 inline" />
+              <Badge className="mb-6 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
+                <Zap className="w-4 h-4 mr-1.5 inline" />
                 Trusted by 10,000+ businesses worldwide
               </Badge>
             </motion.div>
 
             <motion.h1
-              className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight"
+              className="text-[32px] md:text-[48px] font-bold mb-6 leading-[1.2]"
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -269,27 +269,27 @@ export default function LandingPage() {
               </span>
             </motion.h1>
 
-            <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-[18px] md:text-[20px] text-gray-600 mb-10 max-w-3xl mx-auto leading-[1.6]">
               The most advanced queue management platform. Reduce wait times by <span className="font-semibold text-gray-900">40%</span>,
               increase customer satisfaction, and scale your operations effortlessly.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
               <Link href="/auth/v1/register">
-                <Button size="lg" className="text-lg px-10 py-7 bg-gray-900 hover:bg-gray-800 shadow-xl text-white h-auto">
+                <Button size="lg" className="text-[20px] px-10 py-6 bg-gray-900 hover:bg-gray-800 shadow-xl text-white h-auto">
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link href="/auth/v1/login">
-                <Button size="lg" variant="outline" className="text-lg px-10 py-7 border-2 h-auto hover:bg-gray-50">
+                <Button size="lg" variant="outline" className="text-[20px] px-10 py-6 border-2 h-auto hover:bg-gray-50">
                   <Globe className="mr-2 h-5 w-5" />
                   Watch Demo
                 </Button>
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center justify-center gap-8 text-[16px] text-gray-600">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-gray-700" />
                 <span>No credit card required</span>
@@ -328,7 +328,7 @@ export default function LandingPage() {
               >
                 <CountUpStat target={stat.target} suffix={stat.suffix} index={index} />
                 <motion.div
-                  className="text-gray-600 font-medium"
+                  className="text-gray-600 font-medium text-[16px] md:text-[18px]"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
@@ -346,10 +346,10 @@ export default function LandingPage() {
       <section id="features" className="py-24 bg-gradient-to-b from-white to-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <Badge className="mb-4 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
+            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
               Features
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <h2 className="text-[32px] md:text-[40px] font-bold mb-6 leading-[1.3]">
               <span className="text-gray-900">
                 Everything You Need
               </span>
@@ -358,21 +358,21 @@ export default function LandingPage() {
                 In One Platform
               </span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-[18px] md:text-[20px] text-gray-600 max-w-3xl mx-auto leading-[1.6]">
               Comprehensive tools designed to streamline operations and delight your customers
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-2xl bg-white group relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white opacity-0 group-hover:opacity-100"></div>
+              <Card key={index} className="border-0 shadow-lg hover:shadow-2xl bg-white group relative overflow-hidden transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <CardHeader className="relative">
                   <div className={`h-14 w-14 rounded-2xl ${feature.color} flex items-center justify-center mb-6 shadow-lg`}>
                     <feature.icon className="h-7 w-7 text-white" />
                   </div>
-                  <CardTitle className="text-xl mb-3 text-gray-900">{feature.title}</CardTitle>
-                  <CardDescription className="text-base leading-relaxed text-gray-600">
+                  <CardTitle className="text-[20px] md:text-[22px] mb-3 text-gray-900 leading-[1.3]">{feature.title}</CardTitle>
+                  <CardDescription className="text-[16px] md:text-[18px] leading-[1.6] text-gray-600">
                     {feature.description}
                   </CardDescription>
                 </CardHeader>
@@ -386,38 +386,38 @@ export default function LandingPage() {
       <section id="testimonials" className="py-24 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <Badge className="mb-4 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
+            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
               Testimonials
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <h2 className="text-[32px] md:text-[40px] font-bold mb-6 leading-[1.3]">
               <span className="text-gray-900">
                 Trusted by Industry Leaders
               </span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-[18px] md:text-[20px] text-gray-600 max-w-2xl mx-auto leading-[1.6]">
               Join thousands of businesses transforming their customer experience
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50">
+              <Card key={index} className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50 transition-shadow duration-300 hover:shadow-2xl">
                 <CardContent className="pt-8 pb-8">
                   <div className="flex gap-1 mb-6">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <Star key={i} className="h-5 w-5 text-gray-700 fill-gray-700" />
                     ))}
                   </div>
-                  <p className="text-gray-700 text-lg leading-relaxed mb-8 italic">
+                  <p className="text-gray-700 text-[16px] md:text-[18px] leading-[1.6] mb-8 italic">
                     "{testimonial.content}"
                   </p>
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center text-white font-bold text-[18px]">
                       {testimonial.name.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">{testimonial.name}</p>
-                      <p className="text-sm text-gray-600">{testimonial.role}</p>
+                      <p className="font-bold text-gray-900 text-[16px]">{testimonial.name}</p>
+                      <p className="text-[16px] text-gray-600">{testimonial.role}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -431,30 +431,30 @@ export default function LandingPage() {
       <section id="pricing" className="py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <Badge className="mb-4 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
+            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
               Pricing
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <h2 className="text-[32px] md:text-[40px] font-bold mb-6 leading-[1.3]">
               <span className="text-gray-900">
                 Simple, Transparent Pricing
               </span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-[18px] md:text-[20px] text-gray-600 max-w-2xl mx-auto leading-[1.6]">
               Start free, scale as you grow. No hidden fees or surprises.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Free Plan */}
-          <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white">
+          <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
             <CardHeader className="pb-8">
               <div className="space-y-4">
-                <CardTitle className="text-2xl">Starter</CardTitle>
+                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Starter</CardTitle>
                 <div>
-                  <span className="text-5xl font-bold text-gray-900">$0</span>
-                  <span className="text-gray-600 ml-2">/month</span>
+                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">$0</span>
+                  <span className="text-gray-600 ml-2 text-[18px]">/month</span>
                 </div>
-                <p className="text-gray-600">Perfect for small businesses starting out</p>
+                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">Perfect for small businesses starting out</p>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -464,12 +464,12 @@ export default function LandingPage() {
                     <div className="mt-0.5">
                       <CheckCircle className="h-5 w-5 text-gray-700" />
                     </div>
-                    <span className="text-gray-700">{feature}</span>
+                    <span className="text-gray-700 text-[16px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
               <Link href="/auth/v1/register">
-                <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50">
+                <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50 text-[18px]">
                   Start Free
                 </Button>
               </Link>
@@ -477,20 +477,20 @@ export default function LandingPage() {
           </Card>
 
           {/* Pro Plan */}
-          <Card className="border-2 border-gray-900 shadow-2xl scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-gray-200">
+          <Card className="border-2 border-gray-900 shadow-2xl scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-gray-200 transition-all duration-300">
             <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
-              <Badge className="px-6 py-2 bg-gray-900 text-white border-0 shadow-lg text-sm font-bold">
+              <Badge className="px-6 py-2 bg-gray-900 text-white border-0 shadow-lg text-[16px] font-bold">
                 ⭐ MOST POPULAR
               </Badge>
             </div>
             <CardHeader className="pb-8 pt-10">
               <div className="space-y-4">
-                <CardTitle className="text-2xl">Professional</CardTitle>
+                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Professional</CardTitle>
                 <div>
-                  <span className="text-5xl font-bold text-gray-900">$29</span>
-                  <span className="text-gray-600 ml-2">/month</span>
+                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">$29</span>
+                  <span className="text-gray-600 ml-2 text-[18px]">/month</span>
                 </div>
-                <p className="text-gray-600">Best for growing businesses</p>
+                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">Best for growing businesses</p>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -500,12 +500,12 @@ export default function LandingPage() {
                     <div className="mt-0.5">
                       <CheckCircle className="h-5 w-5 text-gray-900" />
                     </div>
-                    <span className="text-gray-700 font-medium">{feature}</span>
+                    <span className="text-gray-700 font-medium text-[16px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
               <Link href="/auth/v1/register">
-                <Button size="lg" className="w-full h-12 bg-gray-900 hover:bg-gray-800 shadow-lg font-semibold text-white">
+                <Button size="lg" className="w-full h-12 bg-gray-900 hover:bg-gray-800 shadow-lg font-semibold text-white text-[18px]">
                   Start Free Trial
                 </Button>
               </Link>
@@ -513,14 +513,14 @@ export default function LandingPage() {
           </Card>
 
           {/* Enterprise Plan */}
-          <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white">
+          <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
             <CardHeader className="pb-8">
               <div className="space-y-4">
-                <CardTitle className="text-2xl">Enterprise</CardTitle>
+                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Enterprise</CardTitle>
                 <div>
-                  <span className="text-5xl font-bold text-gray-900">Custom</span>
+                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">Custom</span>
                 </div>
-                <p className="text-gray-600">For large organizations with specific needs</p>
+                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">For large organizations with specific needs</p>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -530,11 +530,11 @@ export default function LandingPage() {
                     <div className="mt-0.5">
                       <CheckCircle className="h-5 w-5 text-gray-700" />
                     </div>
-                    <span className="text-gray-700">{feature}</span>
+                    <span className="text-gray-700 text-[16px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50">
+              <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50 text-[18px]">
                 <MessageSquare className="mr-2 h-5 w-5" />
                 Contact Sales
               </Button>
@@ -548,28 +548,28 @@ export default function LandingPage() {
       <section className="relative py-24 bg-gray-900 overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.1))]"></div>
         <div className="container relative mx-auto px-6 text-center">
-          <Badge className="mb-6 px-6 py-2 bg-white/10 text-white border-white/20 backdrop-blur-sm">
+          <Badge className="mb-6 px-6 py-2 bg-white/10 text-white border-white/20 backdrop-blur-sm text-[16px]">
             <Zap className="w-4 h-4 mr-2 inline" />
             Get Started in Minutes
           </Badge>
 
-          <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+          <h2 className="text-[32px] md:text-[48px] font-bold text-white mb-6 leading-[1.2]">
             Ready to Transform<br />Your Business?
           </h2>
 
-          <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-[18px] md:text-[20px] text-gray-300 mb-12 max-w-3xl mx-auto leading-[1.6]">
             Join 10,000+ businesses already optimizing their operations with Business Pro Hub
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/auth/v1/register">
-              <Button size="lg" variant="secondary" className="text-lg px-10 py-7 bg-white text-gray-900 hover:bg-gray-100 shadow-2xl font-semibold h-auto">
+              <Button size="lg" variant="secondary" className="text-[20px] px-10 py-6 bg-white text-gray-900 hover:bg-gray-100 shadow-2xl font-semibold h-auto">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link href="/auth/v1/login">
-              <Button size="lg" variant="outline" className="text-lg px-10 py-7 border-2 border-gray-300 text-gray-900 bg-white hover:bg-gray-100 h-auto font-semibold">
+              <Button size="lg" variant="outline" className="text-[20px] px-10 py-6 border-2 border-gray-300 text-gray-900 bg-white hover:bg-gray-100 h-auto font-semibold">
                 <Calendar className="mr-2 h-5 w-5" />
                 Schedule Demo
               </Button>
