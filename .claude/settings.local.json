@@ -23,7 +23,9 @@
       "Bash(npx supabase:*)",
       "Bash(npm view:*)",
       "Bash(find:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ]
   }
 }

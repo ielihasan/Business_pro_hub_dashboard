@@ -61,8 +61,15 @@ export function LoginForm() {
             return;
           }
 
-          toast.warning("Your business application is awaiting admin approval.");
-          router.push("/waiting-approval");
+          // Redirect to appropriate waiting page based on application type
+          const isAdminApplication = applicationData.business_type === "Admin";
+          const waitingPage = isAdminApplication ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business";
+          const message = isAdminApplication
+            ? "Your admin registration is awaiting approval."
+            : "Your business application is awaiting admin approval.";
+
+          toast.warning(message);
+          router.push(waitingPage);
           return;
         }
 
@@ -85,7 +92,7 @@ export function LoginForm() {
         // Business Owner - check approval status
         if (!adminData.is_approved) {
           toast.warning("Your business account is pending approval.");
-          router.push("/waiting-approval");
+          router.push("/auth/waiting-approval");
           return;
         }
 

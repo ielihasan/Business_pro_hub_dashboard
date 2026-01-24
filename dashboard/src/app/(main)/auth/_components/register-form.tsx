@@ -46,8 +46,8 @@ export function RegisterForm() {
         throw new Error(result.error);
       }
 
-      toast.success("Registration successful!");
-      router.push("/auth/v1/login");
+      toast.success("Registration submitted! Awaiting approval from existing admin.");
+      router.push("/auth/waiting-approval-admin");
     } catch (err: any) {
       toast.error(err.message || "Registration failed.");
     } finally {

@@ -84,20 +84,22 @@ export default function PendingBusinessesPage() {
         // For now, we'll still create the admin record without FK constraint
       }
 
-      // Create admin record for the approved business owner
-      // Note: The admins table should NOT have FK constraint on id
+      // Determine if this is an admin or business owner application
+      const isAdminApplication = selectedBusiness.business_type === "Admin";
+
+      // Create admin record for the approved user
       const { data: adminData, error: adminError } = await supabase
         .from("admins")
         .insert({
           id: selectedBusiness.user_id,
           full_name: selectedBusiness.full_name,
           email: selectedBusiness.email,
-          role: "business_owner",
-          business_name: selectedBusiness.business_name,
-          business_type: selectedBusiness.business_type,
-          business_address: selectedBusiness.business_address,
-          business_phone: selectedBusiness.business_phone,
-          business_description: selectedBusiness.business_description,
+          role: isAdminApplication ? "admin" : "business_owner",
+          business_name: isAdminApplication ? null : selectedBusiness.business_name,
+          business_type: isAdminApplication ? null : selectedBusiness.business_type,
+          business_address: isAdminApplication ? null : selectedBusiness.business_address,
+          business_phone: isAdminApplication ? null : selectedBusiness.business_phone,
+          business_description: isAdminApplication ? null : selectedBusiness.business_description,
           is_approved: true,
           approved_at: new Date().toISOString(),
           approved_by: user?.id,
@@ -131,7 +133,11 @@ export default function PendingBusinessesPage() {
         throw new Error(appError.message || "Failed to update application");
       }
 
-      toast.success(`${selectedBusiness.business_name} has been approved!`);
+      const approvalMessage = isAdminApplication
+        ? `Admin ${selectedBusiness.full_name} has been approved!`
+        : `${selectedBusiness.business_name} has been approved!`;
+
+      toast.success(approvalMessage);
       setSelectedBusiness(null);
       setActionType(null);
       fetchPendingBusinesses();
@@ -202,9 +208,9 @@ export default function PendingBusinessesPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pending Business Approvals</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Pending Approvals</h1>
           <p className="mt-2 text-gray-600">
-            Review and approve business registrations waiting for your approval
+            Review and approve business and admin registrations waiting for your approval
           </p>
         </div>
         <Badge variant="secondary" className="text-lg px-4 py-2">
@@ -231,8 +237,11 @@ export default function PendingBusinessesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-xl">{business.business_name}</CardTitle>
-                    <CardDescription className="mt-1">
+                    <CardDescription className="mt-1 flex gap-2">
                       <Badge variant="outline">{business.business_type}</Badge>
+                      {business.business_type === "Admin" && (
+                        <Badge variant="default">Admin Registration</Badge>
+                      )}
                     </CardDescription>
                   </div>
                   <Badge variant="secondary" className="flex items-center gap-1">

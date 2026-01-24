@@ -53,18 +53,24 @@ export async function registerUser(data: {
 
     // Create role-specific record
     if (role === "admin") {
-      const { error: adminError } = await supabaseAdmin
-        .from("admins")
+      // Admin registrations also need approval from existing admins
+      const { error: applicationError } = await supabaseAdmin
+        .from("business_applications")
         .insert({
-          id: userId,
+          user_id: userId,
           full_name: fullName,
           email,
-          role: "admin",
-          is_approved: true,
+          business_name: "Platform Admin", // Placeholder for admin role
+          business_type: "Admin",
+          business_address: "N/A",
+          business_phone: "N/A",
+          business_description: "Platform Administrator",
+          is_approved: false,
+          is_rejected: false,
         });
 
-      if (adminError) {
-        return { error: adminError.message };
+      if (applicationError) {
+        return { error: applicationError.message };
       }
     } else if (role === "business_owner") {
       if (!businessData) {

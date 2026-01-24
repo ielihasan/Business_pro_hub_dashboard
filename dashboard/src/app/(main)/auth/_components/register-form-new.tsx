@@ -107,14 +107,14 @@ export function RegisterFormNew() {
         throw new Error(result.error);
       }
 
-      toast.success("Admin registration successful!");
+      toast.success("Admin registration submitted! Awaiting approval from existing admin.");
 
       // Store email for login page
       if (typeof window !== "undefined") {
         sessionStorage.setItem("lastRegisteredEmail", data.email);
       }
 
-      router.push("/auth/v1/login");
+      router.push("/auth/waiting-approval-admin");
     } catch (err: any) {
       toast.error(err.message || "Admin registration failed.");
     } finally {
@@ -151,7 +151,7 @@ export function RegisterFormNew() {
         sessionStorage.setItem("lastRegisteredEmail", data.email);
       }
 
-      router.push("/waiting-approval");
+      router.push("/auth/waiting-approval-business");
     } catch (err: any) {
       toast.error(err.message || "Business registration failed.");
     } finally {
