@@ -1,16 +1,15 @@
 @echo off
-echo Starting Business Pro Hub Development Servers...
+echo Starting Business Pro Hub Development Server...
 echo.
-echo Landing Page will run on: http://localhost:3000
-echo Dashboard will run on: http://localhost:3001
+echo Application will run on: http://localhost:3001
+echo   - Landing Page: http://localhost:3001/
+echo   - Login: http://localhost:3001/auth/v1/login
+echo   - Register: http://localhost:3001/auth/v1/register
 echo.
-echo Press Ctrl+C to stop all servers
+echo Press Ctrl+C in the server window to stop
 echo.
 
-start "Landing Page" cmd /k "cd landing-page && npm run dev"
-start "Dashboard" cmd /k "cd dashboard && npm run dev"
+cd dashboard
+npm run dev
 
-echo.
-echo Both servers are starting in separate windows...
-echo Close those windows or press Ctrl+C to stop the servers.
 pause

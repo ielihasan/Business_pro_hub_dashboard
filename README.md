@@ -1,6 +1,6 @@
 # Business Pro Hub
 
-A comprehensive business management platform combining a modern landing page and a powerful dashboard with real-time queue optimization.
+A comprehensive business management platform with an integrated landing page and powerful dashboard featuring real-time queue optimization.
 
 ## 🚀 Quick Start
 
@@ -11,7 +11,7 @@ A comprehensive business management platform combining a modern landing page and
 
 ### Initial Setup
 
-1. **Install all dependencies:**
+1. **Install dependencies:**
    ```bash
    npm run install:all
    ```
@@ -20,70 +20,77 @@ A comprehensive business management platform combining a modern landing page and
    - Follow the detailed guide in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
    - Create `.env.local` in the `dashboard/` directory with your Supabase keys
 
-3. **Run both applications:**
+3. **Run the application:**
    ```bash
-   # Terminal 1 - Landing Page (port 3000)
-   npm run dev:landing
-
-   # Terminal 2 - Dashboard (port 3001)
-   npm run dev:dashboard
+   npm run dev
    ```
 
-4. **Access the applications:**
-   - Landing Page: http://localhost:3000
-   - Dashboard Login: http://localhost:3001/auth/v1/login
-   - Click "Get Started" button on landing page → redirects to dashboard login
+   Or use the batch file on Windows:
+   ```bash
+   start-dev.bat
+   ```
+
+4. **Access the application:**
+   - **Landing Page**: http://localhost:3001/
+   - **Login**: http://localhost:3001/auth/v1/login
+   - **Register**: http://localhost:3001/auth/v1/register
+   - **Admin Dashboard**: http://localhost:3001/admin/dashboard
+   - **Business Dashboard**: http://localhost:3001/business/dashboard
 
 ## Project Structure
 
 ```
 Business_pro_hub/
-├── landing-page/         # Landing page for Business Pro Hub
-├── dashboard/            # Dashboard application
+├── dashboard/            # Main application (landing + dashboard)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx              # Landing page (/)
+│   │   │   ├── (main)/auth/          # Authentication pages
+│   │   │   ├── admin/                # Admin dashboard
+│   │   │   ├── business/             # Business owner dashboard
+│   │   │   └── waiting-approval/     # Approval pending page
+│   │   ├── components/               # Reusable UI components
+│   │   └── lib/                      # Utilities and helpers
 ├── SUPABASE_SETUP.md     # Database setup guide
+├── package.json          # Root package manager
+├── start-dev.bat         # Windows quick start script
 └── README.md             # This file
 ```
 
-## Components
+## Application Features
 
-### Landing Page
-Located in `landing-page/` directory. A modern, responsive landing page built with Next.js and Tailwind CSS.
+### Landing Page (/)
+- Modern, responsive design
+- Features showcase
+- Customer testimonials
+- Pricing plans
+- Smooth scroll navigation
+- Call-to-action buttons linking to registration
 
-**Features:**
-- Responsive design
-- Modern UI components
-- SEO optimized
+### Authentication
+- **Login**: Email/password + Google OAuth
+- **Registration**:
+  - Business Owner registration (requires admin approval)
+  - Platform Admin registration (auto-approved)
+- **Role-based access control**
 
-**Setup:**
-```bash
-cd landing-page
-npm install
-npm run dev
-```
+### Dashboards
 
-The landing page will be available at `http://localhost:3000`
-
-### Dashboard
-Located in `dashboard/` directory. A comprehensive dashboard application for business management.
-
-**Features:**
-- Business analytics
-- Data visualization
+**Admin Dashboard** (`/admin/dashboard`)
+- Platform analytics
+- Business approval management
 - User management
-- Responsive layout
+- System settings
 
-**Setup:**
-```bash
-cd dashboard
-npm install
-npm run dev
-```
-
-The dashboard will be available at `http://localhost:3001` (or next available port)
+**Business Owner Dashboard** (`/business/dashboard`)
+- Queue management
+- Order tracking
+- Customer database
+- Business analytics
 
 ## 📋 Supabase Configuration Required
 
-**IMPORTANT:** Before running the dashboard, you need to:
+**IMPORTANT:** Before running the application, you need to:
 
 1. **Set up Supabase tables** - See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for complete SQL scripts
 2. **Add environment variables** - Create `dashboard/.env.local`:
@@ -94,11 +101,12 @@ The dashboard will be available at `http://localhost:3001` (or next available po
    ```
 
 ### Required Tables:
-- `admins` - Admin user profiles
+- `admins` - Admin and business owner profiles with roles
 - `User` - Customer/end-user profiles
 - `profiles` - Additional user profiles
 - `conversations` - Support chat conversations
 - `messages` - Chat messages
+- `business_types` - Business type categories
 - `queues` (optional) - Queue management
 - `queue_entries` (optional) - Queue entries
 
@@ -106,35 +114,64 @@ All SQL scripts with Row Level Security policies are provided in SUPABASE_SETUP.
 
 ## Development
 
-Each component (landing-page and dashboard) is a standalone Next.js application with its own dependencies and configuration.
-
-### Landing Page Development
+### Run Development Server
 ```bash
-cd landing-page
 npm run dev
 ```
 
-### Dashboard Development
+The application will be available at http://localhost:3001
+
+### Build for Production
 ```bash
-cd dashboard
-npm run dev
+npm run build
 ```
 
-## Building for Production
-
-### Landing Page
+### Start Production Server
 ```bash
-cd landing-page
-npm run build
 npm start
 ```
 
-### Dashboard
-```bash
-cd dashboard
-npm run build
-npm start
-```
+## User Roles & Access
+
+### 1. Platform Admin
+- **Access**: Full platform access
+- **Dashboard**: `/admin/dashboard`
+- **Approval**: Auto-approved on registration
+- **Features**:
+  - Manage all businesses
+  - Approve/reject business registrations
+  - View platform analytics
+  - User management
+
+### 2. Business Owner
+- **Access**: Business-specific features
+- **Dashboard**: `/business/dashboard`
+- **Approval**: Requires admin approval
+- **Features**:
+  - Queue management
+  - Customer analytics
+  - Order tracking
+  - Business settings
+
+### 3. Regular User/Customer
+- **Access**: Customer-facing features
+- **Dashboard**: `/dashboard`
+- **Features**:
+  - Join queues
+  - Track orders
+  - View wait times
+
+## Tech Stack
+
+- **Framework**: Next.js 15.5.2 with App Router
+- **UI**: React 19 + Tailwind CSS + Shadcn/UI
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **State Management**: Zustand
+- **Forms**: React Hook Form + Zod
+- **Data Fetching**: TanStack React Query + Axios
+- **Charts**: Recharts
+- **Icons**: Lucide React
 
 ## License
 

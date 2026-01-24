@@ -12,7 +12,12 @@
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
       "Bash(timeout 3 cmd:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(timeout 5 tail:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(timeout 2 sleep:*)",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

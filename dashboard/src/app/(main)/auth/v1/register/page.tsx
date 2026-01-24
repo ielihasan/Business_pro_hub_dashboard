@@ -4,37 +4,36 @@ import { RegisterFormNew } from "../../_components/register-form-new";
 
 export default function RegisterV1() {
   return (
-    <div className="flex h-dvh">
-      {/* Left Section */}
-      <div className="bg-background flex w-full justify-center p-6 lg:w-2/3 overflow-y-auto">
-        <div className="w-full max-w-2xl space-y-5 py-6 my-auto">
-          {/* Header */}
-          <div className="space-y-3 text-center">
-            {/* Welcome Section */}
-            <div className="space-y-1.5">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-                Welcome to BusinessHub Pro
-              </h2>
-              <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto px-4">
-                Register to access real-time queue management, customer activity insights,
-                and smart business operations dashboard.
-              </p>
-            </div>
-
-            {/* Create Account Header */}
-            <div className="space-y-1 pt-1">
-              <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Create Account</h1>
-              <p className="text-muted-foreground text-xs md:text-sm">
-                Fill in your details below to get started
-              </p>
-            </div>
+    <div className="flex h-screen overflow-hidden">
+      {/* Left Section - Form Area */}
+      <div className="bg-background flex w-full flex-col lg:w-2/3 h-full">
+        {/* Compact Fixed Header */}
+        <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b">
+          <div className="w-full max-w-2xl mx-auto text-center">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight">
+              Welcome to BusinessHub Pro
+            </h2>
+            <p className="text-muted-foreground text-xs mt-1">
+              Real-time queue management & business operations dashboard
+            </p>
           </div>
+        </div>
 
-          {/* Registration Form */}
-          <div className="space-y-4">
+        {/* Scrollable Form Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full max-w-2xl mx-auto px-4 py-6">
+            <div className="mb-4 text-center">
+              <h1 className="text-base md:text-lg font-semibold">Create Your Account</h1>
+              <p className="text-muted-foreground text-xs mt-1">
+                Choose your account type and fill in the details
+              </p>
+            </div>
+
+            {/* Registration Form */}
             <RegisterFormNew />
 
-            <p className="text-muted-foreground text-center text-xs pt-4">
+            {/* Login Link */}
+            <p className="text-muted-foreground text-center text-xs mt-6">
               Already have an account?{" "}
               <Link href="/auth/v1/login" className="text-primary font-medium hover:underline">
                 Login here
@@ -44,18 +43,16 @@ export default function RegisterV1() {
         </div>
       </div>
 
-      {/* Right Section */}
-      <div className="bg-primary hidden lg:block lg:w-1/3">
-        <div className="flex h-full flex-col items-center justify-center p-12 text-center">
-          <div className="space-y-6">
-            <BookOpenText className="text-primary-foreground mx-auto size-12" />
-            <div className="space-y-2">
-              <h1 className="text-primary-foreground text-4xl font-light">Welcome!</h1>
-              <p className="text-primary-foreground/80 text-lg">
-                Smart Business Support Platform with Real-Time Queue Optimization
-              </p>
-            </div>
-          </div>
+      {/* Right Section - Fixed Branding */}
+      <div className="bg-primary hidden lg:flex lg:w-1/3 h-full flex-shrink-0 overflow-hidden">
+        <div className="flex flex-col items-center justify-center p-8 text-center w-full overflow-hidden">
+          <BookOpenText className="text-primary-foreground size-16 mb-6 flex-shrink-0" />
+          <h1 className="text-primary-foreground text-3xl font-light mb-3">
+            Welcome!
+          </h1>
+          <p className="text-primary-foreground/90 text-base max-w-sm">
+            Smart Business Support Platform with Real-Time Queue Optimization
+          </p>
         </div>
       </div>
     </div>
