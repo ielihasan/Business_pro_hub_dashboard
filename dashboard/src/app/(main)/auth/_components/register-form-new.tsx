@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { registerUser } from "@/actions/auth/register";
 
 // Admin Registration Schema
 const AdminFormSchema = z
@@ -95,35 +96,18 @@ export function RegisterFormNew() {
   const onAdminSubmit = async (data: z.infer<typeof AdminFormSchema>) => {
     setIsLoading(true);
     try {
-      // Create auth user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const result = await registerUser({
         email: data.email,
         password: data.password,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/v1/login",
-          data: { name: data.fullName, role: "admin" },
-        },
+        fullName: data.fullName,
+        role: "admin",
       });
 
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Registration failed");
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      const userId = signUpData.user.id;
-
-      // Create admin record directly
-      const { error: adminError } = await supabase
-        .from("admins")
-        .insert({
-          id: userId,
-          full_name: data.fullName,
-          email: data.email,
-          role: "admin",
-          is_approved: true, // Admins are auto-approved
-        });
-
-      if (adminError) throw adminError;
-
-      toast.success("Admin registration successful! Please confirm your email.");
+      toast.success("Admin registration successful!");
 
       // Store email for login page
       if (typeof window !== "undefined") {
@@ -142,43 +126,22 @@ export function RegisterFormNew() {
   const onBusinessSubmit = async (data: z.infer<typeof BusinessOwnerFormSchema>) => {
     setIsLoading(true);
     try {
-      // Create auth user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const result = await registerUser({
         email: data.email,
         password: data.password,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/v1/login",
-          data: { name: data.fullName, role: "business_owner" },
+        fullName: data.fullName,
+        role: "business_owner",
+        businessData: {
+          businessName: data.businessName,
+          businessType: data.businessType,
+          businessAddress: data.businessAddress,
+          businessPhone: data.businessPhone,
+          businessDescription: data.businessDescription || "",
         },
       });
 
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Registration failed");
-
-      const userId = signUpData.user.id;
-
-      // Wait briefly to ensure auth user is fully created
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Create business application record
-      const { error: applicationError } = await supabase
-        .from("business_applications")
-        .insert({
-          user_id: userId,
-          full_name: data.fullName,
-          email: data.email,
-          business_name: data.businessName,
-          business_type: data.businessType,
-          business_address: data.businessAddress,
-          business_phone: data.businessPhone,
-          business_description: data.businessDescription || "",
-          is_approved: false,
-          is_rejected: false,
-        });
-
-      if (applicationError) {
-        console.error("Application insert error:", applicationError);
-        throw applicationError;
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       toast.success("Business registration submitted! Awaiting admin approval.");

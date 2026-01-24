@@ -46,6 +46,27 @@ export function LoginForm() {
         .single();
 
       if (adminError || !adminData) {
+        // Check if user is in business_applications (pending approval)
+        const { data: applicationData, error: appError } = await supabase
+          .from("business_applications")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .single();
+
+        if (applicationData) {
+          // User has a pending application
+          if (applicationData.is_rejected) {
+            toast.error(`Your application was rejected. Reason: ${applicationData.rejection_reason || 'Not specified'}`);
+            await supabase.auth.signOut();
+            return;
+          }
+
+          toast.warning("Your business application is awaiting admin approval.");
+          router.push("/waiting-approval");
+          return;
+        }
+
+        // User not found in either table
         toast.error("User profile not found. Please contact support.");
         await supabase.auth.signOut();
         return;

@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { registerUser } from "@/actions/auth/register";
 
 const FormSchema = z
   .object({
@@ -34,30 +35,18 @@ export function RegisterForm() {
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
     try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const result = await registerUser({
         email: data.email,
         password: data.password,
-        options: {
-          emailRedirectTo: window.location.origin + "/auth/v1/login",
-          data: { name: data.fullName, role: "admin" },
-        },
-      });
-
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Registration failed");
-
-      const userId = signUpData.user.id;
-
-      const { error: adminError } = await supabase.from("admins").insert({
-        id: userId,
-        full_name: data.fullName,
-        email: data.email,
+        fullName: data.fullName,
         role: "admin",
       });
 
-      if (adminError) throw adminError;
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      toast.success("Registration successful! Please confirm your email before logging in.");
+      toast.success("Registration successful!");
       router.push("/auth/v1/login");
     } catch (err: any) {
       toast.error(err.message || "Registration failed.");

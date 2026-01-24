@@ -21,7 +21,9 @@
       "Bash(npm install:*)",
       "Bash(head:*)",
       "Bash(npx supabase:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)"
     ]
   }
 }
