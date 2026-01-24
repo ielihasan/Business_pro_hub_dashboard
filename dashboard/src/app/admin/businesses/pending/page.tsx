@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 interface PendingBusiness {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   business_name: string;
@@ -43,13 +44,13 @@ export default function PendingBusinessesPage() {
   const fetchPendingBusinesses = async () => {
     try {
       const { data, error } = await supabase
-        .from("admins")
+        .from("business_applications")
         .select("*")
-        .eq("role", "business_owner")
         .eq("is_approved", false)
-        .is("rejection_reason", null)
+        .eq("is_rejected", false)
         .order("created_at", { ascending: false });
 
+      console.log("Pending businesses query result:", { data, error, count: data?.length });
       if (error) throw error;
       setBusinesses(data || []);
       setLoading(false);
@@ -67,8 +68,57 @@ export default function PendingBusinessesPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase
+      console.log("Approving business:", selectedBusiness.business_name);
+      console.log("User ID from application:", selectedBusiness.user_id);
+
+      // First, verify if the auth user still exists
+      const { data: authUser, error: authCheckError } = await supabase.auth.admin.getUserById(
+        selectedBusiness.user_id
+      );
+
+      console.log("Auth user check:", { authUser, authCheckError });
+
+      // If the auth user doesn't exist, we need to create a new one or handle differently
+      if (authCheckError || !authUser.user) {
+        console.warn("Auth user not found, this might be because email confirmation is required");
+        // For now, we'll still create the admin record without FK constraint
+      }
+
+      // Create admin record for the approved business owner
+      // Note: The admins table should NOT have FK constraint on id
+      const { data: adminData, error: adminError } = await supabase
         .from("admins")
+        .insert({
+          id: selectedBusiness.user_id,
+          full_name: selectedBusiness.full_name,
+          email: selectedBusiness.email,
+          role: "business_owner",
+          business_name: selectedBusiness.business_name,
+          business_type: selectedBusiness.business_type,
+          business_address: selectedBusiness.business_address,
+          business_phone: selectedBusiness.business_phone,
+          business_description: selectedBusiness.business_description,
+          is_approved: true,
+          approved_at: new Date().toISOString(),
+          approved_by: user?.id,
+        })
+        .select();
+
+      console.log("Admin insert result:", { adminData, adminError });
+
+      if (adminError) {
+        console.error("Admin insert error details:", {
+          message: adminError.message,
+          details: adminError.details,
+          hint: adminError.hint,
+          code: adminError.code,
+        });
+        throw new Error(adminError.message || "Failed to create admin record");
+      }
+
+      // Update application status
+      const { error: appError } = await supabase
+        .from("business_applications")
         .update({
           is_approved: true,
           approved_at: new Date().toISOString(),
@@ -76,15 +126,18 @@ export default function PendingBusinessesPage() {
         })
         .eq("id", selectedBusiness.id);
 
-      if (error) throw error;
+      if (appError) {
+        console.error("Application update error:", appError);
+        throw new Error(appError.message || "Failed to update application");
+      }
 
       toast.success(`${selectedBusiness.business_name} has been approved!`);
       setSelectedBusiness(null);
       setActionType(null);
       fetchPendingBusinesses();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving business:", error);
-      toast.error("Failed to approve business");
+      toast.error(error.message || "Failed to approve business");
     } finally {
       setProcessing(false);
     }
@@ -98,10 +151,15 @@ export default function PendingBusinessesPage() {
     setProcessing(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
-        .from("admins")
+        .from("business_applications")
         .update({
+          is_rejected: true,
           rejection_reason: rejectionReason,
+          rejected_at: new Date().toISOString(),
+          rejected_by: user?.id,
         })
         .eq("id", selectedBusiness.id);
 

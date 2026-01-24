@@ -19,7 +19,9 @@
       "Bash(timeout 2 sleep:*)",
       "Bash(powershell -Command:*)",
       "Bash(npm install:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npm view:*)"
     ]
   }
 }

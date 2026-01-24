@@ -110,14 +110,16 @@ export function RegisterFormNew() {
 
       const userId = signUpData.user.id;
 
-      // Create admin record
-      const { error: adminError } = await supabase.from("admins").insert({
-        id: userId,
-        full_name: data.fullName,
-        email: data.email,
-        role: "admin",
-        is_approved: true, // Admins are auto-approved
-      });
+      // Create admin record directly
+      const { error: adminError } = await supabase
+        .from("admins")
+        .insert({
+          id: userId,
+          full_name: data.fullName,
+          email: data.email,
+          role: "admin",
+          is_approved: true, // Admins are auto-approved
+        });
 
       if (adminError) throw adminError;
 
@@ -155,21 +157,29 @@ export function RegisterFormNew() {
 
       const userId = signUpData.user.id;
 
-      // Create business owner record
-      const { error: businessError } = await supabase.from("admins").insert({
-        id: userId,
-        full_name: data.fullName,
-        email: data.email,
-        role: "business_owner",
-        business_name: data.businessName,
-        business_type: data.businessType,
-        business_address: data.businessAddress,
-        business_phone: data.businessPhone,
-        business_description: data.businessDescription || "",
-        is_approved: false, // Business owners need approval
-      });
+      // Wait briefly to ensure auth user is fully created
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (businessError) throw businessError;
+      // Create business application record
+      const { error: applicationError } = await supabase
+        .from("business_applications")
+        .insert({
+          user_id: userId,
+          full_name: data.fullName,
+          email: data.email,
+          business_name: data.businessName,
+          business_type: data.businessType,
+          business_address: data.businessAddress,
+          business_phone: data.businessPhone,
+          business_description: data.businessDescription || "",
+          is_approved: false,
+          is_rejected: false,
+        });
+
+      if (applicationError) {
+        console.error("Application insert error:", applicationError);
+        throw applicationError;
+      }
 
       toast.success("Business registration submitted! Awaiting admin approval.");
 
