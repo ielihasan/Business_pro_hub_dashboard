@@ -6,14 +6,28 @@ export default function RegisterV1() {
   return (
     <div className="flex h-dvh">
       {/* Left Section */}
-      <div className="bg-background flex w-full items-center justify-center p-8 lg:w-2/3">
-        <div className="w-full max-w-2xl space-y-6 py-12">
+      <div className="bg-background flex w-full justify-center p-6 lg:w-2/3 overflow-y-auto">
+        <div className="w-full max-w-2xl space-y-5 py-6 my-auto">
           {/* Header */}
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Create Account</h1>
-            <p className="text-muted-foreground text-sm">
-              Join BusinessHub Pro to manage your business operations
-            </p>
+          <div className="space-y-3 text-center">
+            {/* Welcome Section */}
+            <div className="space-y-1.5">
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+                Welcome to BusinessHub Pro
+              </h2>
+              <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto px-4">
+                Register to access real-time queue management, customer activity insights,
+                and smart business operations dashboard.
+              </p>
+            </div>
+
+            {/* Create Account Header */}
+            <div className="space-y-1 pt-1">
+              <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Create Account</h1>
+              <p className="text-muted-foreground text-xs md:text-sm">
+                Fill in your details below to get started
+              </p>
+            </div>
           </div>
 
           {/* Registration Form */}
