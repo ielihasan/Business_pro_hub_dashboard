@@ -30,26 +30,59 @@ export async function registerUser(data: {
   try {
     const { email, password, fullName, role, businessData } = data;
 
-    // Create user with admin API (bypasses rate limits)
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        name: fullName,
-        role,
-      },
-    });
+    // Check if user already exists
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users.find((u) => u.email === email);
 
-    if (authError) {
-      return { error: authError.message };
+    let userId: string;
+
+    if (existingUser) {
+      // User already exists, use their ID
+      userId = existingUser.id;
+
+      // Check if they already have an application for this role
+      const { data: existingApplication } = await supabaseAdmin
+        .from("business_applications")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("business_type", role === "admin" ? "Admin" : businessData?.businessType || "");
+
+      if (existingApplication && existingApplication.length > 0) {
+        return { error: "You already have a pending application for this role" };
+      }
+
+      // Check if they're already approved for this role
+      const { data: existingAdmin } = await supabaseAdmin
+        .from("admins")
+        .select("*")
+        .eq("id", userId)
+        .eq("role", role === "admin" ? "admin" : "business_owner");
+
+      if (existingAdmin && existingAdmin.length > 0) {
+        return { error: "You already have an approved account for this role" };
+      }
+    } else {
+      // Create new user with admin API (bypasses rate limits)
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          name: fullName,
+          role,
+        },
+      });
+
+      if (authError) {
+        return { error: authError.message };
+      }
+
+      if (!authData.user) {
+        return { error: "User creation failed" };
+      }
+
+      userId = authData.user.id;
     }
-
-    if (!authData.user) {
-      return { error: "User creation failed" };
-    }
-
-    const userId = authData.user.id;
 
     // Create role-specific record
     if (role === "admin") {

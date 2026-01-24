@@ -48,27 +48,24 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
         return;
       }
 
-      const { data: businessData, error } = await supabase
+      const { data: adminRecords, error } = await supabase
         .from("admins")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .eq("role", "business_owner");
 
-      if (error || !businessData) {
-        toast.error("Business profile not found");
+      if (error || !adminRecords || adminRecords.length === 0) {
+        toast.error("Business profile not found, come back to login page");
         router.push("/auth/v1/login");
         return;
       }
 
-      if (businessData.role !== "business_owner") {
-        toast.error("Access denied. Business owners only.");
-        router.push("/auth/v1/login");
-        return;
-      }
+      // Get the first business_owner record (should only be one per user)
+      const businessData = adminRecords[0];
 
       if (!businessData.is_approved) {
         toast.warning("Your business is pending approval");
-        router.push("/waiting-approval");
+        router.push("/auth/waiting-approval-business");
         return;
       }
 

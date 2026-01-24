@@ -47,16 +47,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      const { data: adminData } = await supabase
+      const { data: adminRecords } = await supabase
         .from("admins")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .eq("role", "admin");
 
-      if (!adminData || adminData.role !== "admin") {
+      if (!adminRecords || adminRecords.length === 0) {
         router.push("/auth/v1/login");
         return;
       }
+
+      // Get the first admin record (should only be one per user)
+      const adminData = adminRecords[0];
 
       setAdmin(adminData);
       setLoading(false);

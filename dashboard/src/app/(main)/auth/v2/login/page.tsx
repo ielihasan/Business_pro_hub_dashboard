@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import { Globe } from "lucide-react";
@@ -6,8 +8,17 @@ import { APP_CONFIG } from "@/config/app-config";
 
 import { LoginForm } from "../../_components/login-form";
 import { GoogleButton } from "../../_components/social-auth/google-button";
+import { supabase } from "@/lib/supabase-client";
 
 export default function LoginV2() {
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/auth/login-callback" },
+    });
+    if (error) console.error(error.message);
+  };
+
   return (
     <>
       <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[350px]">
@@ -16,7 +27,7 @@ export default function LoginV2() {
           <p className="text-muted-foreground text-sm">Please enter your details to login.</p>
         </div>
         <div className="space-y-4">
-          <GoogleButton className="w-full" />
+          <GoogleButton className="w-full" onClick={handleGoogleLogin} />
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
             <span className="bg-background text-muted-foreground relative z-10 px-2">Or continue with</span>
           </div>

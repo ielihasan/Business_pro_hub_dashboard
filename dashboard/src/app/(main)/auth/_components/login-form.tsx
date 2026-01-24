@@ -38,14 +38,13 @@ export function LoginForm() {
       if (error) throw error;
       if (!authData.user) throw new Error("Login failed");
 
-      // Check admins table for role
+      // Check admins table for all roles
       const { data: adminData, error: adminError } = await supabase
         .from("admins")
         .select("*")
-        .eq("id", authData.user.id)
-        .single();
+        .eq("id", authData.user.id);
 
-      if (adminError || !adminData) {
+      if (adminError || !adminData || adminData.length === 0) {
         // Check if user is in business_applications (pending approval)
         const { data: applicationData, error: appError } = await supabase
           .from("business_applications")
@@ -79,8 +78,18 @@ export function LoginForm() {
         return;
       }
 
-      // Check role and approval status
-      if (adminData.role === "admin") {
+      // Check if user has multiple roles
+      if (adminData.length > 1) {
+        // User has multiple roles - store in session and redirect to role selection
+        sessionStorage.setItem("multipleRoles", JSON.stringify(adminData));
+        router.push("/auth/select-role");
+        return;
+      }
+
+      // Single role - proceed with normal login
+      const userRole = adminData[0];
+
+      if (userRole.role === "admin") {
         // Admin - full access
         if (data.remember && authData.session) {
           await supabase.auth.setSession(authData.session);
@@ -88,11 +97,11 @@ export function LoginForm() {
 
         toast.success("Welcome, Admin!");
         router.push("/admin/dashboard");
-      } else if (adminData.role === "business_owner") {
+      } else if (userRole.role === "business_owner") {
         // Business Owner - check approval status
-        if (!adminData.is_approved) {
+        if (!userRole.is_approved) {
           toast.warning("Your business account is pending approval.");
-          router.push("/auth/waiting-approval");
+          router.push("/auth/waiting-approval-business");
           return;
         }
 
@@ -100,7 +109,7 @@ export function LoginForm() {
           await supabase.auth.setSession(authData.session);
         }
 
-        toast.success(`Welcome back, ${adminData.business_name}!`);
+        toast.success(`Welcome back, ${userRole.business_name}!`);
         router.push("/business/dashboard");
       } else {
         toast.error("Invalid account type.");
