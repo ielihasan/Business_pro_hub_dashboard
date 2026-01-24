@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef, useState } from "react";
+import { motion, useInView } from "framer-motion";
 import {
   Clock,
   Users,
@@ -23,6 +24,21 @@ import {
 } from "lucide-react";
 
 export default function LandingPage() {
+  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const element = document.getElementById(targetId);
+    if (element) {
+      const headerOffset = 80; // Height of sticky header
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   const features = [
     {
       icon: Clock,
@@ -71,28 +87,11 @@ export default function LandingPage() {
 
   const CountUpStat = ({ target, suffix, index }: { target: number; suffix: string; index: number }) => {
     const [count, setCount] = useState(0);
-    const [hasStarted, setHasStarted] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const isInView = useInView(ref, { once: true, amount: 0.5 });
 
     useEffect(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && !hasStarted) {
-            setHasStarted(true);
-          }
-        },
-        { threshold: 0.5 }
-      );
-
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-
-      return () => observer.disconnect();
-    }, [hasStarted]);
-
-    useEffect(() => {
-      if (!hasStarted) return;
+      if (!isInView) return;
 
       const duration = 2000; // 2 seconds
       const steps = 60;
@@ -111,14 +110,14 @@ export default function LandingPage() {
       }, stepDuration);
 
       return () => clearInterval(timer);
-    }, [hasStarted, target]);
+    }, [isInView, target]);
 
     const displayValue = suffix === "%" || suffix === "/5"
       ? count.toFixed(1)
       : Math.floor(count);
 
     return (
-      <div ref={ref} className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 animate-fade-in-up stat-glitter" style={{ animationDelay: `${index * 100}ms` }}>
+      <div ref={ref} className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
         {displayValue}{suffix}
       </div>
     );
@@ -146,58 +145,121 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <motion.div
+      className="min-h-screen bg-white"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       {/* Header */}
-      <header className="border-b border-gray-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+      <motion.header
+        className="border-b border-gray-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center shadow-lg">
+            <motion.div
+              className="flex items-center space-x-3"
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <motion.div
+                className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center shadow-lg"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <Store className="h-6 w-6 text-white" />
-              </div>
+              </motion.div>
               <div>
                 <span className="text-xl font-bold text-gray-900">
                   Business Pro Hub
                 </span>
                 <p className="text-xs text-gray-500 hidden sm:block">Smart Queue Management</p>
               </div>
-            </div>
-            <nav className="hidden md:flex items-center space-x-1">
-              <a href="#features" className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg">
+            </motion.div>
+            <motion.nav
+              className="hidden md:flex items-center space-x-1"
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <motion.a
+                href="#features"
+                onClick={(e) => handleSmoothScroll(e, 'features')}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 Features
-              </a>
-              <a href="#testimonials" className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg">
+              </motion.a>
+              <motion.a
+                href="#testimonials"
+                onClick={(e) => handleSmoothScroll(e, 'testimonials')}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 Testimonials
-              </a>
-              <a href="#pricing" className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg">
+              </motion.a>
+              <motion.a
+                href="#pricing"
+                onClick={(e) => handleSmoothScroll(e, 'pricing')}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 Pricing
-              </a>
+              </motion.a>
               <div className="ml-4 flex items-center space-x-3">
                 <Link href="/auth/v1/login">
-                  <Button variant="ghost" className="font-medium">Sign In</Button>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button variant="ghost" className="font-medium">Sign In</Button>
+                  </motion.div>
                 </Link>
                 <Link href="/auth/v1/register">
-                  <Button className="bg-gray-900 hover:bg-gray-800 shadow-lg text-white">
-                    Get Started Free
-                  </Button>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button className="bg-gray-900 hover:bg-gray-800 shadow-lg text-white">
+                      Get Started Free
+                    </Button>
+                  </motion.div>
                 </Link>
               </div>
-            </nav>
+            </motion.nav>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-gray-50 via-white to-gray-50">
+      <motion.section
+        className="relative overflow-hidden bg-gradient-to-b from-gray-50 via-white to-gray-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+      >
         <div className="absolute inset-0 bg-grid-gray-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]"></div>
         <div className="container relative mx-auto px-6 py-24 md:py-32 lg:py-40">
           <div className="text-center max-w-5xl mx-auto">
-            <Badge className="mb-6 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
-              <Zap className="w-3 h-3 mr-1.5 inline" />
-              Trusted by 10,000+ businesses worldwide
-            </Badge>
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <Badge className="mb-6 px-4 py-1.5 bg-gray-100 text-gray-700 border-gray-200">
+                <Zap className="w-3 h-3 mr-1.5 inline" />
+                Trusted by 10,000+ businesses worldwide
+              </Badge>
+            </motion.div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight">
+            <motion.h1
+              className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight"
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
               <span className="text-gray-900">
                 Transform Your
               </span>
@@ -205,7 +267,7 @@ export default function LandingPage() {
               <span className="text-gray-600">
                 Customer Experience
               </span>
-            </h1>
+            </motion.h1>
 
             <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
               The most advanced queue management platform. Reduce wait times by <span className="font-semibold text-gray-900">40%</span>,
@@ -243,21 +305,42 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-white border-y border-gray-100">
+      <motion.section
+        className="py-16 bg-white border-y border-gray-100"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center group">
+              <motion.div
+                key={index}
+                className="text-center group"
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <CountUpStat target={stat.target} suffix={stat.suffix} index={index} />
-                <div className="text-gray-600 font-medium animate-fade-in-up" style={{ animationDelay: `${index * 100 + 200}ms` }}>{stat.label}</div>
-              </div>
+                <motion.div
+                  className="text-gray-600 font-medium"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.1 + 0.2 }}
+                >
+                  {stat.label}
+                </motion.div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Features Section */}
       <section id="features" className="py-24 bg-gradient-to-b from-white to-gray-50">
@@ -582,6 +665,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </motion.div>
   );
 }

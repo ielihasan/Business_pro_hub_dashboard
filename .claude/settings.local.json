@@ -17,7 +17,9 @@
       "Bash(taskkill:*)",
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(timeout 2 sleep:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(npm install:*)",
+      "Bash(head:*)"
     ]
   }
 }
