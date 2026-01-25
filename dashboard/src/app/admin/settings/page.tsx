@@ -1,26 +1,982 @@
 "use client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Settings, Construction } from "lucide-react";
+
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  User,
+  Lock,
+  Bell,
+  Settings,
+  Shield,
+  Save,
+  Loader2,
+  Eye,
+  EyeOff,
+  Mail,
+  Building2,
+  CreditCard,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase-client";
+
+interface AdminProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  is_approved: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SystemSettings {
+  auto_approve_businesses: boolean;
+  require_email_verification: boolean;
+  maintenance_mode: boolean;
+  allow_new_registrations: boolean;
+  default_subscription_plan: string;
+  notification_email: string;
+  support_email: string;
+  max_businesses_per_plan: {
+    free: number;
+    basic: number;
+    standard: number;
+    premium: number;
+  };
+}
+
+const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
+  auto_approve_businesses: false,
+  require_email_verification: true,
+  maintenance_mode: false,
+  allow_new_registrations: true,
+  default_subscription_plan: "free",
+  notification_email: "",
+  support_email: "",
+  max_businesses_per_plan: {
+    free: 1,
+    basic: 3,
+    standard: 10,
+    premium: -1,
+  },
+};
 
 export default function AdminSettingsPage() {
+  // Profile state
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    full_name: "",
+    email: "",
+  });
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  // Password state
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // System settings state
+  const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
+  const [systemLoading, setSystemLoading] = useState(true);
+  const [systemSaving, setSystemSaving] = useState(false);
+
+  // Confirmation dialogs
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
+
+  // Get auth token
+  const getAuthToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token;
+  };
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+    fetchSystemSettings();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setProfileLoading(true);
+      const token = await getAuthToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const res = await fetch("/API/settings/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setProfile(data.data);
+      setProfileForm({
+        full_name: data.data.full_name || "",
+        email: data.data.email || "",
+      });
+    } catch (error: any) {
+      toast.error(error.message || "Failed to fetch profile");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const fetchSystemSettings = async () => {
+    try {
+      setSystemLoading(true);
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const res = await fetch("/API/settings/system", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (res.ok && data.data) {
+        setSystemSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...data.data });
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch system settings:", error);
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleProfileSave = async () => {
+    try {
+      setProfileSaving(true);
+      const token = await getAuthToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const res = await fetch("/API/settings/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setProfile(data.data);
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    // Validation
+    if (!passwordForm.current_password) {
+      toast.error("Current password is required");
+      return;
+    }
+    if (!passwordForm.new_password) {
+      toast.error("New password is required");
+      return;
+    }
+    if (passwordForm.new_password.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      setPasswordSaving(true);
+      const token = await getAuthToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const res = await fetch("/API/settings/password", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: passwordForm.current_password,
+          new_password: passwordForm.new_password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Clear password form
+      setPasswordForm({
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+      toast.success("Password changed successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to change password");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleSystemSettingsSave = async () => {
+    try {
+      setSystemSaving(true);
+      const token = await getAuthToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const res = await fetch("/API/settings/system", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(systemSettings),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      toast.success("System settings updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update system settings");
+    } finally {
+      setSystemSaving(false);
+    }
+  };
+
+  const toggleMaintenanceMode = (checked: boolean) => {
+    if (checked) {
+      setMaintenanceDialogOpen(true);
+    } else {
+      setSystemSettings({ ...systemSettings, maintenance_mode: false });
+    }
+  };
+
+  const toggleRegistrations = (checked: boolean) => {
+    if (!checked) {
+      setRegistrationDialogOpen(true);
+    } else {
+      setSystemSettings({ ...systemSettings, allow_new_registrations: true });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Platform Settings</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="mt-2 text-gray-600">
-          Configure platform-wide settings and preferences
+          Manage your account and platform settings
         </p>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-16">
-          <Construction className="h-16 w-16 text-gray-300 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Coming Soon</h3>
-          <p className="text-gray-600 text-center max-w-md">
-            Platform settings and configuration options will be available in the next phase.
-          </p>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            System
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                Profile Information
+              </CardTitle>
+              <CardDescription>
+                Update your account details and personal information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {profileLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <>
+                  {/* Account Info Banner */}
+                  {profile && (
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {profile.role}
+                        </Badge>
+                        {profile.is_approved ? (
+                          <Badge className="bg-green-100 text-green-700">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Approved
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-700">
+                            Pending Approval
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        Account created: {formatDate(profile.created_at)}
+                      </p>
+                      {profile.updated_at && (
+                        <p className="text-sm text-gray-500">
+                          Last updated: {formatDate(profile.updated_at)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Profile Form */}
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="full_name">Full Name</Label>
+                      <Input
+                        id="full_name"
+                        placeholder="Enter your full name"
+                        value={profileForm.full_name}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, full_name: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={profileForm.email}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, email: e.target.value })
+                        }
+                      />
+                      <p className="text-sm text-gray-500">
+                        Changing your email will require re-verification
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleProfileSave} disabled={profileSaving}>
+                      {profileSaving ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Save Changes
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-blue-600" />
+                Change Password
+              </CardTitle>
+              <CardDescription>
+                Update your password to keep your account secure
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="current_password">Current Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="current_password"
+                      type={showCurrentPassword ? "text" : "password"}
+                      placeholder="Enter current password"
+                      value={passwordForm.current_password}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          current_password: e.target.value,
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    >
+                      {showCurrentPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="new_password">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="new_password"
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="Enter new password"
+                      value={passwordForm.new_password}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          new_password: e.target.value,
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Password must be at least 6 characters
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="confirm_password">Confirm New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirm_password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm new password"
+                      value={passwordForm.confirm_password}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          confirm_password: e.target.value,
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={handlePasswordChange} disabled={passwordSaving}>
+                  {passwordSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Lock className="h-4 w-4 mr-2" />
+                  )}
+                  Change Password
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security Tips */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-600" />
+                Security Tips
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  Use a strong password with a mix of letters, numbers, and symbols
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  Never share your password with anyone
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  Change your password regularly (every 90 days recommended)
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  Don't use the same password across multiple accounts
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* System Tab */}
+        <TabsContent value="system" className="space-y-6">
+          {/* Business Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-600" />
+                Business Settings
+              </CardTitle>
+              <CardDescription>
+                Configure how businesses interact with the platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {systemLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Auto-approve Businesses</Label>
+                      <p className="text-sm text-gray-500">
+                        Automatically approve new business registrations
+                      </p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.auto_approve_businesses}
+                      onCheckedChange={(checked) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          auto_approve_businesses: checked,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Require Email Verification</Label>
+                      <p className="text-sm text-gray-500">
+                        Users must verify their email before accessing features
+                      </p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.require_email_verification}
+                      onCheckedChange={(checked) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          require_email_verification: checked,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid gap-2">
+                    <Label>Default Subscription Plan</Label>
+                    <Select
+                      value={systemSettings.default_subscription_plan}
+                      onValueChange={(value) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          default_subscription_plan: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-full sm:w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free</SelectItem>
+                        <SelectItem value="basic">Basic</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500">
+                      Default plan assigned to new businesses
+                    </p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Plan Limits */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-blue-600" />
+                Plan Limits
+              </CardTitle>
+              <CardDescription>
+                Set maximum businesses allowed per subscription plan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {systemLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Free Plan</Label>
+                    <Input
+                      type="number"
+                      min="-1"
+                      value={systemSettings.max_businesses_per_plan.free}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          max_businesses_per_plan: {
+                            ...systemSettings.max_businesses_per_plan,
+                            free: parseInt(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-xs text-gray-500">-1 = unlimited</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Basic Plan</Label>
+                    <Input
+                      type="number"
+                      min="-1"
+                      value={systemSettings.max_businesses_per_plan.basic}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          max_businesses_per_plan: {
+                            ...systemSettings.max_businesses_per_plan,
+                            basic: parseInt(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-xs text-gray-500">-1 = unlimited</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Standard Plan</Label>
+                    <Input
+                      type="number"
+                      min="-1"
+                      value={systemSettings.max_businesses_per_plan.standard}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          max_businesses_per_plan: {
+                            ...systemSettings.max_businesses_per_plan,
+                            standard: parseInt(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-xs text-gray-500">-1 = unlimited</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Premium Plan</Label>
+                    <Input
+                      type="number"
+                      min="-1"
+                      value={systemSettings.max_businesses_per_plan.premium}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          max_businesses_per_plan: {
+                            ...systemSettings.max_businesses_per_plan,
+                            premium: parseInt(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-xs text-gray-500">-1 = unlimited</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Contact Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-blue-600" />
+                Contact Settings
+              </CardTitle>
+              <CardDescription>
+                Configure notification and support email addresses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {systemLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="notification_email">Notification Email</Label>
+                    <Input
+                      id="notification_email"
+                      type="email"
+                      placeholder="notifications@example.com"
+                      value={systemSettings.notification_email}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          notification_email: e.target.value,
+                        })
+                      }
+                    />
+                    <p className="text-sm text-gray-500">
+                      Receive system notifications at this email
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="support_email">Support Email</Label>
+                    <Input
+                      id="support_email"
+                      type="email"
+                      placeholder="support@example.com"
+                      value={systemSettings.support_email}
+                      onChange={(e) =>
+                        setSystemSettings({
+                          ...systemSettings,
+                          support_email: e.target.value,
+                        })
+                      }
+                    />
+                    <p className="text-sm text-gray-500">
+                      Displayed to users for support inquiries
+                    </p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription>
+                These settings can significantly affect platform operation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {systemLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="space-y-0.5">
+                      <Label>Maintenance Mode</Label>
+                      <p className="text-sm text-gray-500">
+                        Temporarily disable access for all non-admin users
+                      </p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.maintenance_mode}
+                      onCheckedChange={toggleMaintenanceMode}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div className="space-y-0.5">
+                      <Label>Allow New Registrations</Label>
+                      <p className="text-sm text-gray-500">
+                        Enable or disable new user registrations
+                      </p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.allow_new_registrations}
+                      onCheckedChange={toggleRegistrations}
+                    />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Save System Settings Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSystemSettingsSave}
+              disabled={systemSaving || systemLoading}
+              size="lg"
+            >
+              {systemSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save System Settings
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Maintenance Mode Confirmation Dialog */}
+      <AlertDialog open={maintenanceDialogOpen} onOpenChange={setMaintenanceDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              Enable Maintenance Mode?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will temporarily disable access to the platform for all non-admin users.
+              Users will see a maintenance page until you disable this mode.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-yellow-600 hover:bg-yellow-700"
+              onClick={() => {
+                setSystemSettings({ ...systemSettings, maintenance_mode: true });
+                setMaintenanceDialogOpen(false);
+              }}
+            >
+              Enable Maintenance Mode
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disable Registrations Confirmation Dialog */}
+      <AlertDialog open={registrationDialogOpen} onOpenChange={setRegistrationDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Disable New Registrations?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will prevent any new users from registering on the platform.
+              Existing users will still be able to log in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                setSystemSettings({ ...systemSettings, allow_new_registrations: false });
+                setRegistrationDialogOpen(false);
+              }}
+            >
+              Disable Registrations
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
