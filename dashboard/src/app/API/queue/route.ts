@@ -53,6 +53,13 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error("Queue fetch error:", error);
+      // If table doesn't exist, return empty data (will trigger demo mode on frontend)
+      if (error.message?.includes("schema cache") || error.code === "42P01") {
+        return NextResponse.json({
+          data: [],
+          stats: { total: 0, waiting: 0, serving: 0, completed: 0, cancelled: 0, avgWaitTime: 0 },
+        });
+      }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 

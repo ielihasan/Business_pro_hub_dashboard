@@ -44,6 +44,19 @@ export async function GET(req: Request) {
     const { data: allEntries, error: entriesError } = await query;
 
     if (entriesError) {
+      // If table doesn't exist, return empty data (will trigger demo mode on frontend)
+      if (entriesError.message?.includes("schema cache") || entriesError.code === "42P01") {
+        return NextResponse.json({
+          data: [],
+          stats: {
+            total_customers: 0,
+            new_customers_today: 0,
+            repeat_customers: 0,
+            total_visits: 0,
+          },
+          pagination: { page: 1, limit: 20, total: 0, total_pages: 0 },
+        });
+      }
       throw entriesError;
     }
 

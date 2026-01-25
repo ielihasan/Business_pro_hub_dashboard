@@ -59,6 +59,14 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error("Orders fetch error:", error);
+      // If table doesn't exist, return empty data (will trigger demo mode on frontend)
+      if (error.message?.includes("schema cache") || error.code === "42P01") {
+        return NextResponse.json({
+          data: [],
+          stats: { total: 0, pending: 0, processing: 0, completed: 0, cancelled: 0, totalRevenue: 0 },
+          pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+        });
+      }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
