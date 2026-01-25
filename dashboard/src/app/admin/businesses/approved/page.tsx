@@ -1,10 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,9 +25,36 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Building2,
   Mail,
@@ -30,7 +66,17 @@ import {
   Filter,
   CheckCircle,
   BarChart3,
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  EyeOff,
+  Store,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ApprovedBusiness {
   id: string;
@@ -46,43 +92,69 @@ interface ApprovedBusiness {
   subscription_plan: string;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export default function ApprovedBusinessesPage() {
   const [businesses, setBusinesses] = useState<ApprovedBusiness[]>([]);
-  const [filteredBusinesses, setFilteredBusinesses] = useState<ApprovedBusiness[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
+
+  // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [businessTypes, setBusinessTypes] = useState<string[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<ApprovedBusiness | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<ApprovedBusiness | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    business_name: "",
+    business_type: "",
+    business_address: "",
+    business_phone: "",
+    business_description: "",
+    subscription_plan: "free",
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Debounce search
   useEffect(() => {
-    fetchApprovedBusinesses();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch data on mount and when filters change
+  useEffect(() => {
     fetchBusinessTypes();
   }, []);
 
   useEffect(() => {
-    filterBusinesses();
-  }, [searchQuery, typeFilter, businesses]);
-
-  const fetchApprovedBusinesses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("admins")
-        .select("*")
-        .eq("role", "business_owner")
-        .eq("is_approved", true)
-        .order("approved_at", { ascending: false });
-
-      if (error) throw error;
-      setBusinesses(data || []);
-      setFilteredBusinesses(data || []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching approved businesses:", error);
-      setLoading(false);
-    }
-  };
+    fetchBusinesses();
+  }, [pagination.page, debouncedSearch, typeFilter]);
 
   const fetchBusinessTypes = async () => {
     try {
@@ -93,85 +165,301 @@ export default function ApprovedBusinessesPage() {
         .order("name");
 
       if (data) {
-        setBusinessTypes(data.map(t => t.name));
+        setBusinessTypes(data.map((t) => t.name));
       }
     } catch (error) {
       console.error("Error fetching business types:", error);
     }
   };
 
-  const filterBusinesses = () => {
-    let filtered = businesses;
+  const fetchBusinesses = useCallback(
+    async (showRefreshing = false) => {
+      if (showRefreshing) setRefreshing(true);
+      else setLoading(true);
 
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (b) =>
-          b.business_name.toLowerCase().includes(query) ||
-          b.full_name.toLowerCase().includes(query) ||
-          b.email.toLowerCase().includes(query) ||
-          b.business_type.toLowerCase().includes(query)
-      );
-    }
+      try {
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+        });
 
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((b) => b.business_type === typeFilter);
-    }
+        if (debouncedSearch) params.append("search", debouncedSearch);
+        if (typeFilter !== "all") params.append("business_type", typeFilter);
 
-    setFilteredBusinesses(filtered);
+        const response = await fetch(`/API/businesses?${params.toString()}`);
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error);
+
+        setBusinesses(result.data || []);
+        setPagination((prev) => ({
+          ...prev,
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages,
+        }));
+      } catch (error: any) {
+        console.error("Error fetching businesses:", error);
+        toast.error(error.message || "Failed to load businesses");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [pagination.page, pagination.limit, debouncedSearch, typeFilter]
+  );
+
+  const handleRefresh = () => {
+    fetchBusinesses(true);
   };
 
-  const openDetails = (business: ApprovedBusiness) => {
+  const resetForm = () => {
+    setFormData({
+      full_name: "",
+      email: "",
+      password: "",
+      business_name: "",
+      business_type: "",
+      business_address: "",
+      business_phone: "",
+      business_description: "",
+      subscription_plan: "free",
+    });
+    setFormErrors({});
+    setShowPassword(false);
+  };
+
+  const validateForm = (isEdit = false) => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.full_name.trim()) {
+      errors.full_name = "Owner name is required";
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+
+    if (!isEdit && !formData.password) {
+      errors.password = "Password is required";
+    } else if (formData.password && formData.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    if (!formData.business_name.trim()) {
+      errors.business_name = "Business name is required";
+    }
+
+    if (!formData.business_type) {
+      errors.business_type = "Business type is required";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCreate = async () => {
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/API/businesses/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success("Business created successfully");
+      setCreateDialogOpen(false);
+      resetForm();
+      fetchBusinesses(true);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create business");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!selectedBusiness || !validateForm(true)) return;
+
+    setSubmitting(true);
+    try {
+      const updateData: Record<string, any> = {
+        id: selectedBusiness.id,
+        full_name: formData.full_name,
+        email: formData.email,
+        business_name: formData.business_name,
+        business_type: formData.business_type,
+        business_address: formData.business_address,
+        business_phone: formData.business_phone,
+        business_description: formData.business_description,
+        subscription_plan: formData.subscription_plan,
+      };
+
+      if (formData.password) {
+        updateData.password = formData.password;
+      }
+
+      const response = await fetch("/API/businesses/update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success("Business updated successfully");
+      setEditDialogOpen(false);
+      setSelectedBusiness(null);
+      resetForm();
+      fetchBusinesses(true);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update business");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedBusiness) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/API/businesses/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedBusiness.id }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast.success("Business deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedBusiness(null);
+      fetchBusinesses(true);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete business");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditDialog = (business: ApprovedBusiness) => {
     setSelectedBusiness(business);
-    setDetailsOpen(true);
+    setFormData({
+      full_name: business.full_name || "",
+      email: business.email || "",
+      password: "",
+      business_name: business.business_name || "",
+      business_type: business.business_type || "",
+      business_address: business.business_address || "",
+      business_phone: business.business_phone || "",
+      business_description: business.business_description || "",
+      subscription_plan: business.subscription_plan || "free",
+    });
+    setEditDialogOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const openDeleteDialog = (business: ApprovedBusiness) => {
+    setSelectedBusiness(business);
+    setDeleteDialogOpen(true);
+  };
+
+  const openViewDialog = (business: ApprovedBusiness) => {
+    setSelectedBusiness(business);
+    setViewDialogOpen(true);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Approved Businesses</h1>
           <p className="mt-2 text-gray-600">
             View and manage all approved businesses on the platform
           </p>
         </div>
-        <Badge className="text-lg px-4 py-2">
-          {businesses.length} Active
-        </Badge>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Business
+        </Button>
       </div>
 
-      {/* Filters */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Store className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Businesses</p>
+                <p className="text-2xl font-bold">{pagination.total}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Active</p>
+                <p className="text-2xl font-bold">{businesses.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Building2 className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Business Types</p>
+                <p className="text-2xl font-bold">{businessTypes.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, owner, or email..."
+                placeholder="Search by business name, owner, or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-10"
               />
             </div>
-
-            {/* Business Type Filter */}
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-gray-400" />
                   <SelectValue placeholder="Filter by type" />
@@ -186,114 +474,549 @@ export default function ApprovedBusinessesPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Results count */}
-          <div className="mt-4 text-sm text-gray-600">
-            Showing {filteredBusinesses.length} of {businesses.length} businesses
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Businesses Grid */}
-      {filteredBusinesses.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Building2 className="h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {searchQuery || typeFilter !== "all" ? "No Results Found" : "No Approved Businesses"}
-            </h3>
-            <p className="text-gray-600 text-center max-w-md">
-              {searchQuery || typeFilter !== "all"
-                ? "Try adjusting your search or filter criteria"
-                : "Approved businesses will appear here once you approve them"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredBusinesses.map((business) => (
-            <Card key={business.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{business.business_name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      <Badge variant="outline">{business.business_type}</Badge>
-                    </CardDescription>
-                  </div>
-                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Business Info */}
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Building2 className="h-4 w-4 flex-shrink-0" />
-                    <span className="font-medium truncate">{business.full_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Mail className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{business.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Phone className="h-4 w-4 flex-shrink-0" />
-                    <span>{business.business_phone}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-gray-600">
-                    <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{business.business_address}</span>
-                  </div>
-                </div>
-
-                {/* Subscription */}
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Plan:</span>
-                    <Badge variant="secondary" className="capitalize">
-                      {business.subscription_plan || "Free"}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Dates */}
-                <div className="space-y-1 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      Approved on{" "}
-                      {new Date(business.approved_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Button */}
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => openDetails(business)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Details
+      {/* Businesses Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Businesses</CardTitle>
+          <CardDescription>
+            A list of all approved businesses on the platform
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : businesses.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="mx-auto h-12 w-12 text-gray-300" />
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                No businesses found
+              </h3>
+              <p className="mt-2 text-gray-500">
+                {searchQuery || typeFilter !== "all"
+                  ? "Try adjusting your search or filter"
+                  : "Get started by adding your first business"}
+              </p>
+              {!searchQuery && typeFilter === "all" && (
+                <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Business
                 </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Approved</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {businesses.map((business) => (
+                      <TableRow key={business.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-semibold">
+                              {business.business_name?.charAt(0)?.toUpperCase() || "B"}
+                            </div>
+                            <div>
+                              <p className="font-medium">{business.business_name}</p>
+                              <p className="text-sm text-gray-500">{business.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{business.full_name}</p>
+                          <p className="text-sm text-gray-500">{business.business_phone}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{business.business_type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={
+                              business.subscription_plan === "premium"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-gray-100 text-gray-700"
+                            }
+                          >
+                            {business.subscription_plan || "Free"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-gray-500">
+                          {formatDate(business.approved_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => openViewDialog(business)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(business)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => openDeleteDialog(business)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-      {/* Business Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-sm text-gray-500">
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                    {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+                    {pagination.total} businesses
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+                      disabled={pagination.page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (pagination.page <= 3) {
+                          pageNum = i + 1;
+                        } else if (pagination.page >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = pagination.page - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pagination.page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPagination((p) => ({ ...p, page: pageNum }))}
+                            className="w-9"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+                      disabled={pagination.page === pagination.totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Business Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-green-600" />
+              Add New Business
+            </DialogTitle>
+            <DialogDescription>
+              Create a new business account. The owner will have access to the business dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Owner Name *</Label>
+                <Input
+                  id="full_name"
+                  placeholder="John Doe"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  className={formErrors.full_name ? "border-red-500" : ""}
+                />
+                {formErrors.full_name && (
+                  <p className="text-sm text-red-500">{formErrors.full_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@business.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={formErrors.email ? "border-red-500" : ""}
+                />
+                {formErrors.email && (
+                  <p className="text-sm text-red-500">{formErrors.email}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className={formErrors.password ? "border-red-500 pr-10" : "pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {formErrors.password && (
+                <p className="text-sm text-red-500">{formErrors.password}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="business_name">Business Name *</Label>
+                <Input
+                  id="business_name"
+                  placeholder="My Business LLC"
+                  value={formData.business_name}
+                  onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                  className={formErrors.business_name ? "border-red-500" : ""}
+                />
+                {formErrors.business_name && (
+                  <p className="text-sm text-red-500">{formErrors.business_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="business_type">Business Type *</Label>
+                <Select
+                  value={formData.business_type}
+                  onValueChange={(value) => setFormData({ ...formData, business_type: value })}
+                >
+                  <SelectTrigger className={formErrors.business_type ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.business_type && (
+                  <p className="text-sm text-red-500">{formErrors.business_type}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="business_phone">Phone</Label>
+                <Input
+                  id="business_phone"
+                  placeholder="+1 234 567 8900"
+                  value={formData.business_phone}
+                  onChange={(e) => setFormData({ ...formData, business_phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subscription_plan">Subscription Plan</Label>
+                <Select
+                  value={formData.subscription_plan}
+                  onValueChange={(value) => setFormData({ ...formData, subscription_plan: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="business_address">Address</Label>
+              <Input
+                id="business_address"
+                placeholder="123 Business St, City, Country"
+                value={formData.business_address}
+                onChange={(e) => setFormData({ ...formData, business_address: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="business_description">Description</Label>
+              <Textarea
+                id="business_description"
+                placeholder="Brief description of the business..."
+                value={formData.business_description}
+                onChange={(e) =>
+                  setFormData({ ...formData, business_description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateDialogOpen(false);
+                resetForm();
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={submitting}>
+              {submitting ? "Creating..." : "Create Business"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Business Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-600" />
+              Edit Business
+            </DialogTitle>
+            <DialogDescription>
+              Update business details. Leave password blank to keep it unchanged.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_full_name">Owner Name *</Label>
+                <Input
+                  id="edit_full_name"
+                  placeholder="John Doe"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  className={formErrors.full_name ? "border-red-500" : ""}
+                />
+                {formErrors.full_name && (
+                  <p className="text-sm text-red-500">{formErrors.full_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_email">Email *</Label>
+                <Input
+                  id="edit_email"
+                  type="email"
+                  placeholder="john@business.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={formErrors.email ? "border-red-500" : ""}
+                />
+                {formErrors.email && (
+                  <p className="text-sm text-red-500">{formErrors.email}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_password">
+                New Password <span className="text-gray-400 font-normal">(optional)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="edit_password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Leave blank to keep current"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className={formErrors.password ? "border-red-500 pr-10" : "pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {formErrors.password && (
+                <p className="text-sm text-red-500">{formErrors.password}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_business_name">Business Name *</Label>
+                <Input
+                  id="edit_business_name"
+                  placeholder="My Business LLC"
+                  value={formData.business_name}
+                  onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                  className={formErrors.business_name ? "border-red-500" : ""}
+                />
+                {formErrors.business_name && (
+                  <p className="text-sm text-red-500">{formErrors.business_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_business_type">Business Type *</Label>
+                <Select
+                  value={formData.business_type}
+                  onValueChange={(value) => setFormData({ ...formData, business_type: value })}
+                >
+                  <SelectTrigger className={formErrors.business_type ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.business_type && (
+                  <p className="text-sm text-red-500">{formErrors.business_type}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_business_phone">Phone</Label>
+                <Input
+                  id="edit_business_phone"
+                  placeholder="+1 234 567 8900"
+                  value={formData.business_phone}
+                  onChange={(e) => setFormData({ ...formData, business_phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_subscription_plan">Subscription Plan</Label>
+                <Select
+                  value={formData.subscription_plan}
+                  onValueChange={(value) => setFormData({ ...formData, subscription_plan: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_business_address">Address</Label>
+              <Input
+                id="edit_business_address"
+                placeholder="123 Business St, City, Country"
+                value={formData.business_address}
+                onChange={(e) => setFormData({ ...formData, business_address: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_business_description">Description</Label>
+              <Textarea
+                id="edit_business_description"
+                placeholder="Brief description of the business..."
+                value={formData.business_description}
+                onChange={(e) =>
+                  setFormData({ ...formData, business_description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setSelectedBusiness(null);
+                resetForm();
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEdit} disabled={submitting}>
+              {submitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Business Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">{selectedBusiness?.business_name}</DialogTitle>
-            <DialogDescription>
-              Complete business information and statistics
-            </DialogDescription>
+            <DialogDescription>Complete business information and details</DialogDescription>
           </DialogHeader>
           {selectedBusiness && (
             <div className="space-y-6 py-4">
@@ -313,7 +1036,7 @@ export default function ApprovedBusinessesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{selectedBusiness.business_phone}</span>
+                    <span>{selectedBusiness.business_phone || "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -332,7 +1055,9 @@ export default function ApprovedBusinessesPage() {
                   </div>
                   <div>
                     <span className="text-gray-500">Address:</span>
-                    <p className="mt-1 text-gray-900">{selectedBusiness.business_address}</p>
+                    <p className="mt-1 text-gray-900">
+                      {selectedBusiness.business_address || "N/A"}
+                    </p>
                   </div>
                   {selectedBusiness.business_description && (
                     <div>
@@ -345,7 +1070,7 @@ export default function ApprovedBusinessesPage() {
                 </div>
               </div>
 
-              {/* Subscription & Status */}
+              {/* Account Status */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
                   Account Status
@@ -353,7 +1078,7 @@ export default function ApprovedBusinessesPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">Status:</span>
-                    <Badge className="flex items-center gap-1">
+                    <Badge className="flex items-center gap-1 bg-green-100 text-green-700">
                       <CheckCircle className="h-3 w-3" />
                       Approved
                     </Badge>
@@ -366,23 +1091,11 @@ export default function ApprovedBusinessesPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">Registered:</span>
-                    <span className="text-gray-900">
-                      {new Date(selectedBusiness.created_at).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                    <span className="text-gray-900">{formatDate(selectedBusiness.created_at)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">Approved:</span>
-                    <span className="text-gray-900">
-                      {new Date(selectedBusiness.approved_at).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                    <span className="text-gray-900">{formatDate(selectedBusiness.approved_at)}</span>
                   </div>
                 </div>
               </div>
@@ -393,15 +1106,57 @@ export default function ApprovedBusinessesPage() {
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Analytics
                 </Button>
-                <Button variant="outline" className="flex-1">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contact Owner
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    setViewDialogOpen(false);
+                    openEditDialog(selectedBusiness);
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Business
                 </Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Delete Business
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">{selectedBusiness?.business_name}</span>? This
+              action cannot be undone. The business owner will lose all access to their account
+              and data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setSelectedBusiness(null);
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={submitting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {submitting ? "Deleting..." : "Delete Business"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
