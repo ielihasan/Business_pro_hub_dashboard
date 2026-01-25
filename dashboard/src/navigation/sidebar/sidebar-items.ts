@@ -22,6 +22,7 @@ import {
   Home,
   Gauge,
   GraduationCap,
+  ListOrdered,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -58,7 +59,7 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "Home",
-        url: "/dashboard/default",
+        url: "/dashboard",
         icon: Home,
       },
       {
