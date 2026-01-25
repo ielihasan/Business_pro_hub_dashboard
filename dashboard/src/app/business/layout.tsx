@@ -15,7 +15,7 @@ import {
   Menu,
   X,
   Store,
-  BarChart3,
+  CreditCard,
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -99,7 +99,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
     { name: "Staff", href: "/business/staff", icon: UserCog },
     { name: "Services", href: "/business/services", icon: Store },
     { name: "Business Hours", href: "/business/hours", icon: Calendar },
-    { name: "Analytics", href: "/business/analytics", icon: BarChart3 },
+    { name: "Pricing & Plans", href: "/business/pricing", icon: CreditCard },
     { name: "Settings", href: "/business/settings", icon: Settings },
   ];
 
