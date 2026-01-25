@@ -25,7 +25,8 @@
       "Bash(find:*)",
       "Bash(curl:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout:*)"
     ]
   }
 }

@@ -22,7 +22,7 @@ const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Pending Businesses", href: "/admin/businesses/pending", icon: Clock },
   { name: "Approved Businesses", href: "/admin/businesses/approved", icon: CheckCircle },
-  { name: "All Users", href: "/admin/users", icon: Users },
+  { name: "Admin Management", href: "/admin/users", icon: Users },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
