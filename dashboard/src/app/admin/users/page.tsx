@@ -342,8 +342,8 @@ export default function AdminManagementPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Shield className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <Shield className="h-6 w-6 text-black" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total Admins</p>
@@ -355,8 +355,8 @@ export default function AdminManagementPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-gray-700" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Active</p>
@@ -370,8 +370,8 @@ export default function AdminManagementPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <XCircle className="h-6 w-6 text-yellow-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <XCircle className="h-6 w-6 text-gray-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Pending</p>
@@ -475,8 +475,8 @@ export default function AdminManagementPage() {
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                               admin.email === "admin@test.com"
-                                ? "bg-purple-100 text-purple-600"
-                                : "bg-blue-100 text-blue-600"
+                                ? "bg-black text-white"
+                                : "bg-gray-100 text-black"
                             }`}>
                               {admin.full_name?.charAt(0)?.toUpperCase() || "A"}
                             </div>
@@ -484,7 +484,7 @@ export default function AdminManagementPage() {
                               <div className="flex items-center gap-2">
                                 <p className="font-medium">{admin.full_name}</p>
                                 {admin.email === "admin@test.com" && (
-                                  <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-xs">
+                                  <Badge className="bg-black text-white hover:bg-black text-xs">
                                     Default
                                   </Badge>
                                 )}
@@ -503,14 +503,14 @@ export default function AdminManagementPage() {
                         </TableCell>
                         <TableCell>
                           {admin.is_approved ? (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                            <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Active
                             </Badge>
                           ) : (
                             <Badge
                               variant="secondary"
-                              className="bg-yellow-100 text-yellow-700"
+                              className="bg-gray-200 text-gray-600"
                             >
                               <XCircle className="h-3 w-3 mr-1" />
                               Pending
@@ -648,7 +648,7 @@ export default function AdminManagementPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-black" />
               Add New Admin
             </DialogTitle>
             <DialogDescription>
@@ -741,7 +741,7 @@ export default function AdminManagementPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-blue-600" />
+              <Pencil className="h-5 w-5 text-black" />
               Edit Admin
             </DialogTitle>
             <DialogDescription>
@@ -837,14 +837,14 @@ export default function AdminManagementPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
+              <User className="h-5 w-5 text-black" />
               Admin Details
             </DialogTitle>
           </DialogHeader>
           {selectedAdmin && (
             <div className="space-y-4 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-black text-2xl font-semibold">
                   {selectedAdmin.full_name?.charAt(0)?.toUpperCase() || "A"}
                 </div>
                 <div>
@@ -863,13 +863,13 @@ export default function AdminManagementPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Status</span>
                   {selectedAdmin.is_approved ? (
-                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                    <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
                       Active
                     </Badge>
                   ) : (
                     <Badge
                       variant="secondary"
-                      className="bg-yellow-100 text-yellow-700"
+                      className="bg-gray-200 text-gray-600"
                     >
                       Pending
                     </Badge>

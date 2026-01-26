@@ -218,24 +218,24 @@ const mockPayments = [
 ];
 
 const planDistribution = [
-  { name: "Free", value: 45, color: "#94a3b8" },
-  { name: "Basic", value: 30, color: "#3b82f6" },
-  { name: "Standard", value: 15, color: "#8b5cf6" },
-  { name: "Premium", value: 10, color: "#f59e0b" },
+  { name: "Free", value: 45, color: "#e5e7eb" },
+  { name: "Basic", value: 30, color: "#9ca3af" },
+  { name: "Standard", value: 15, color: "#4b5563" },
+  { name: "Premium", value: 10, color: "#000000" },
 ];
 
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "#3b82f6",
+    color: "#000000",
   },
   subscriptions: {
     label: "Subscriptions",
-    color: "#8b5cf6",
+    color: "#6b7280",
   },
   transactions: {
     label: "Transactions",
-    color: "#10b981",
+    color: "#374151",
   },
 };
 
@@ -327,28 +327,28 @@ export default function AnalyticsPage() {
     switch (status) {
       case "completed":
         return (
-          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+          <Badge className="bg-gray-200 text-gray-600 hover:bg-gray-200">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         );
       case "failed":
         return (
-          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+          <Badge className="bg-gray-300 text-gray-800 hover:bg-gray-300">
             <XCircle className="h-3 w-3 mr-1" />
             Failed
           </Badge>
         );
       case "refunded":
         return (
-          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
+          <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
             <AlertCircle className="h-3 w-3 mr-1" />
             Refunded
           </Badge>
@@ -396,13 +396,13 @@ export default function AnalyticsPage() {
               <div>
                 <p className="text-sm text-gray-500">Total Revenue</p>
                 <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
-                <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
                   <ArrowUpRight className="h-4 w-4" />
                   <span>+12.5% from last month</span>
                 </div>
               </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-green-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <DollarSign className="h-6 w-6 text-black" />
               </div>
             </div>
           </CardContent>
@@ -414,13 +414,13 @@ export default function AnalyticsPage() {
               <div>
                 <p className="text-sm text-gray-500">Total Transactions</p>
                 <p className="text-2xl font-bold">{totalTransactions}</p>
-                <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
                   <ArrowUpRight className="h-4 w-4" />
                   <span>+8.2% from last month</span>
                 </div>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <CreditCard className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <CreditCard className="h-6 w-6 text-gray-700" />
               </div>
             </div>
           </CardContent>
@@ -436,8 +436,8 @@ export default function AnalyticsPage() {
                   {((completedTransactions / totalTransactions) * 100).toFixed(1)}% success rate
                 </p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-gray-700" />
               </div>
             </div>
           </CardContent>
@@ -453,8 +453,8 @@ export default function AnalyticsPage() {
                 </p>
                 <p className="text-sm text-gray-500 mt-1">Requires attention</p>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <AlertCircle className="h-6 w-6 text-yellow-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <AlertCircle className="h-6 w-6 text-gray-600" />
               </div>
             </div>
           </CardContent>
@@ -474,8 +474,8 @@ export default function AnalyticsPage() {
               <AreaChart data={mockRevenueData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#000000" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#000000" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -501,7 +501,7 @@ export default function AnalyticsPage() {
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#3b82f6"
+                  stroke="#000000"
                   strokeWidth={2}
                   fill="url(#colorRevenue)"
                 />
@@ -571,8 +571,8 @@ export default function AnalyticsPage() {
               />
               <YAxis tickLine={false} axisLine={false} className="text-xs" />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="transactions" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="subscriptions" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="transactions" fill="#374151" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="subscriptions" fill="#9ca3af" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ChartContainer>
         </CardContent>
@@ -756,7 +756,7 @@ export default function AnalyticsPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-blue-600" />
+              <Receipt className="h-5 w-5 text-black" />
               Payment Details
             </DialogTitle>
             <DialogDescription>

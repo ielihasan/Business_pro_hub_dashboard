@@ -365,7 +365,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-blue-600" />
+                <User className="h-5 w-5 text-black" />
                 Profile Information
               </CardTitle>
               <CardDescription>
@@ -387,12 +387,12 @@ export default function AdminSettingsPage() {
                           {profile.role}
                         </Badge>
                         {profile.is_approved ? (
-                          <Badge className="bg-green-100 text-green-700">
+                          <Badge className="bg-gray-100 text-gray-700">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Approved
                           </Badge>
                         ) : (
-                          <Badge className="bg-yellow-100 text-yellow-700">
+                          <Badge className="bg-gray-200 text-gray-600">
                             Pending Approval
                           </Badge>
                         )}
@@ -461,7 +461,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-blue-600" />
+                <Lock className="h-5 w-5 text-black" />
                 Change Password
               </CardTitle>
               <CardDescription>
@@ -584,26 +584,26 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-600" />
+                <Shield className="h-5 w-5 text-black" />
                 Security Tips
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
                   Use a strong password with a mix of letters, numbers, and symbols
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
                   Never share your password with anyone
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
                   Change your password regularly (every 90 days recommended)
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
                   Don't use the same password across multiple accounts
                 </li>
               </ul>
@@ -617,7 +617,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
+                <Building2 className="h-5 w-5 text-black" />
                 Business Settings
               </CardTitle>
               <CardDescription>
@@ -705,7 +705,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-blue-600" />
+                <CreditCard className="h-5 w-5 text-black" />
                 Plan Limits
               </CardTitle>
               <CardDescription>
@@ -800,7 +800,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-blue-600" />
+                <Mail className="h-5 w-5 text-black" />
                 Contact Settings
               </CardTitle>
               <CardDescription>
@@ -857,9 +857,9 @@ export default function AdminSettingsPage() {
           </Card>
 
           {/* Danger Zone */}
-          <Card className="border-red-200">
+          <Card className="border-gray-300">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
+              <CardTitle className="flex items-center gap-2 text-gray-800">
                 <AlertTriangle className="h-5 w-5" />
                 Danger Zone
               </CardTitle>
@@ -874,7 +874,7 @@ export default function AdminSettingsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="space-y-0.5">
                       <Label>Maintenance Mode</Label>
                       <p className="text-sm text-gray-500">
@@ -887,7 +887,7 @@ export default function AdminSettingsPage() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="space-y-0.5">
                       <Label>Allow New Registrations</Label>
                       <p className="text-sm text-gray-500">
@@ -927,7 +927,7 @@ export default function AdminSettingsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <AlertTriangle className="h-5 w-5 text-gray-600" />
               Enable Maintenance Mode?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -938,7 +938,7 @@ export default function AdminSettingsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-yellow-600 hover:bg-yellow-700"
+              className="bg-black hover:bg-gray-800"
               onClick={() => {
                 setSystemSettings({ ...systemSettings, maintenance_mode: true });
                 setMaintenanceDialogOpen(false);
@@ -955,7 +955,7 @@ export default function AdminSettingsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTriangle className="h-5 w-5 text-gray-600" />
               Disable New Registrations?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -966,7 +966,7 @@ export default function AdminSettingsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-black hover:bg-gray-800"
               onClick={() => {
                 setSystemSettings({ ...systemSettings, allow_new_registrations: false });
                 setRegistrationDialogOpen(false);

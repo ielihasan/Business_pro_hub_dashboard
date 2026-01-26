@@ -99,10 +99,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 bg-black">
+            <h1 className="text-xl font-bold text-white">Admin Panel</h1>
             <button
-              className="lg:hidden"
+              className="lg:hidden text-white"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-6 h-6" />
@@ -112,7 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Admin info */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold">
                 {admin?.full_name?.charAt(0) || "A"}
               </div>
               <div className="flex-1 min-w-0">
@@ -137,14 +137,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-black text-white"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon className={cn(
                     "mr-3 h-5 w-5 flex-shrink-0",
-                    isActive ? "text-blue-700" : "text-gray-400"
+                    isActive ? "text-white" : "text-gray-500"
                   )} />
                   {item.name}
                 </Link>
@@ -156,7 +156,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="p-4 border-t border-gray-200">
             <Button
               variant="outline"
-              className="w-full justify-start"
+              className="w-full justify-start hover:bg-black hover:text-white transition-colors"
               onClick={handleLogout}
             >
               <LogOut className="mr-3 h-5 w-5" />

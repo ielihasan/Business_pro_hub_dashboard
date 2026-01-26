@@ -407,8 +407,8 @@ export default function ApprovedBusinessesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Store className="h-6 w-6 text-green-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <Store className="h-6 w-6 text-black" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total Businesses</p>
@@ -420,8 +420,8 @@ export default function ApprovedBusinessesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-gray-700" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Active</p>
@@ -433,8 +433,8 @@ export default function ApprovedBusinessesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Building2 className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <Building2 className="h-6 w-6 text-gray-700" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Business Types</p>
@@ -536,7 +536,7 @@ export default function ApprovedBusinessesPage() {
                       <TableRow key={business.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-semibold">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-black font-semibold">
                               {business.business_name?.charAt(0)?.toUpperCase() || "B"}
                             </div>
                             <div>
@@ -555,11 +555,7 @@ export default function ApprovedBusinessesPage() {
                         <TableCell>
                           <Badge
                             variant="secondary"
-                            className={
-                              business.subscription_plan === "premium"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-700"
-                            }
+                            className="bg-gray-100 text-gray-700"
                           >
                             {business.subscription_plan || "Free"}
                           </Badge>
@@ -667,7 +663,7 @@ export default function ApprovedBusinessesPage() {
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-green-600" />
+              <Store className="h-5 w-5 text-black" />
               Add New Business
             </DialogTitle>
             <DialogDescription>
@@ -840,7 +836,7 @@ export default function ApprovedBusinessesPage() {
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-blue-600" />
+              <Pencil className="h-5 w-5 text-black" />
               Edit Business
             </DialogTitle>
             <DialogDescription>
@@ -1078,7 +1074,7 @@ export default function ApprovedBusinessesPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">Status:</span>
-                    <Badge className="flex items-center gap-1 bg-green-100 text-green-700">
+                    <Badge className="flex items-center gap-1 bg-gray-100 text-gray-700">
                       <CheckCircle className="h-3 w-3" />
                       Approved
                     </Badge>

@@ -222,7 +222,7 @@ export default function PendingBusinessesPage() {
       {businesses.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+            <CheckCircle className="h-16 w-16 text-gray-700 mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">All Caught Up!</h3>
             <p className="text-gray-600 text-center max-w-md">
               There are no pending business registrations at the moment. You'll see new applications here as they come in.
@@ -324,7 +324,7 @@ export default function PendingBusinessesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CheckCircle className="h-5 w-5 text-black" />
               Approve Business Registration
             </DialogTitle>
             <DialogDescription>
@@ -362,7 +362,7 @@ export default function PendingBusinessesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
+              <AlertCircle className="h-5 w-5 text-gray-700" />
               Reject Business Registration
             </DialogTitle>
             <DialogDescription>

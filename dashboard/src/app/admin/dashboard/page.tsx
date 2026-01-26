@@ -132,12 +132,12 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Total Businesses
             </CardTitle>
-            <Building2 className="h-5 w-5 text-blue-600" />
+            <Building2 className="h-5 w-5 text-black" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.totalBusinesses}</div>
             <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600 font-medium">+{stats.approvedBusinesses}</span> approved
+              <span className="text-gray-700 font-medium">+{stats.approvedBusinesses}</span> approved
             </p>
           </CardContent>
         </Card>
@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Pending Approvals
             </CardTitle>
-            <Clock className="h-5 w-5 text-yellow-600" />
+            <Clock className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.pendingBusinesses}</div>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Total Customers
             </CardTitle>
-            <Users className="h-5 w-5 text-purple-600" />
+            <Users className="h-5 w-5 text-black" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</div>
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Active Queues
             </CardTitle>
-            <TrendingUp className="h-5 w-5 text-green-600" />
+            <TrendingUp className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.activeQueues}</div>
@@ -289,11 +289,11 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Pending</span>
-              <span className="font-semibold text-yellow-600">{stats.pendingOrders}</span>
+              <span className="font-semibold text-gray-600">{stats.pendingOrders}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Completed</span>
-              <span className="font-semibold text-green-600">{stats.completedOrders}</span>
+              <span className="font-semibold text-gray-700">{stats.completedOrders}</span>
             </div>
           </CardContent>
         </Card>
@@ -305,11 +305,11 @@ export default function AdminDashboardPage() {
           <CardContent className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Approved</span>
-              <span className="font-semibold text-green-600">{stats.approvedBusinesses}</span>
+              <span className="font-semibold text-gray-700">{stats.approvedBusinesses}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Pending</span>
-              <span className="font-semibold text-yellow-600">{stats.pendingBusinesses}</span>
+              <span className="font-semibold text-gray-600">{stats.pendingBusinesses}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Approval Rate</span>
@@ -329,7 +329,7 @@ export default function AdminDashboardPage() {
           <CardContent className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Active Queues</span>
-              <span className="font-semibold text-blue-600">{stats.activeQueues}</span>
+              <span className="font-semibold text-black">{stats.activeQueues}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Total Customers</span>
