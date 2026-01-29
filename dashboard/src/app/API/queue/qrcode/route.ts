@@ -41,10 +41,10 @@ export async function GET(req: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
     const queueJoinUrl = `${baseUrl}/join-queue/${businessId}`;
 
-    // QR Code options
-    const qrOptions = {
+    // QR Code options for data URL
+    const qrDataUrlOptions = {
       errorCorrectionLevel: "H" as const,
-      type: format === "svg" ? ("svg" as const) : ("image/png" as const),
+      type: "image/png" as const,
       quality: 0.92,
       margin: 2,
       color: {
@@ -58,11 +58,17 @@ export async function GET(req: Request) {
 
     if (format === "svg") {
       qrCodeData = await QRCode.toString(queueJoinUrl, {
-        ...qrOptions,
         type: "svg",
+        errorCorrectionLevel: "H",
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+        width: 400,
       });
     } else {
-      qrCodeData = await QRCode.toDataURL(queueJoinUrl, qrOptions);
+      qrCodeData = await QRCode.toDataURL(queueJoinUrl, qrDataUrlOptions);
     }
 
     return NextResponse.json({

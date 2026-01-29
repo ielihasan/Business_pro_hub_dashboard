@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -29,18 +29,36 @@ import {
   User,
   Ticket,
   AlertCircle,
+  RefreshCw,
+  Bell,
+  MapPin,
+  Calendar,
+  Hash,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase-client";
 
 interface QueueTicket {
   id: string;
   ticket_number: string;
   customer_name: string;
+  customer_phone?: string;
   position: number;
   status: string;
   business_name: string;
   estimated_wait_minutes: number;
   people_ahead: number;
+  service_type?: string;
+  created_at?: string;
+}
+
+interface QueueInfo {
+  current_serving: string | null;
+  current_serving_number: string | null;
+  total_waiting: number;
+  avg_wait_time: number;
+  business_name: string;
+  is_open: boolean;
 }
 
 export default function JoinQueuePage({
@@ -51,10 +69,13 @@ export default function JoinQueuePage({
   const { businessId } = use(params);
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [joined, setJoined] = useState(false);
   const [ticket, setTicket] = useState<QueueTicket | null>(null);
+  const [queueInfo, setQueueInfo] = useState<QueueInfo | null>(null);
   const [businessName, setBusinessName] = useState("Business");
   const [queueClosed, setQueueClosed] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -63,15 +84,58 @@ export default function JoinQueuePage({
     service_type: "",
   });
 
+  // Fetch initial queue info
+  const fetchQueueInfo = useCallback(async () => {
+    try {
+      const res = await fetch(`/API/queue/info?business_id=${businessId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setQueueInfo(data.data);
+        setBusinessName(data.data.business_name || "Business");
+        setQueueClosed(!data.data.is_open);
+      }
+    } catch (error) {
+      console.error("Error fetching queue info:", error);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [businessId]);
+
+  // Refresh ticket status
+  const refreshTicketStatus = useCallback(async (ticketNumber: string) => {
+    try {
+      const res = await fetch(`/API/queue/status?ticket=${ticketNumber}`);
+      const data = await res.json();
+      if (res.ok && data.data) {
+        setTicket(data.data);
+        setQueueInfo(prev => prev ? {
+          ...prev,
+          current_serving: data.queue_info?.current_serving || prev.current_serving,
+          current_serving_number: data.queue_info?.current_serving_number || prev.current_serving_number,
+          total_waiting: data.queue_info?.total_waiting ?? prev.total_waiting,
+        } : null);
+        localStorage.setItem(
+          `queue_ticket_${businessId}`,
+          JSON.stringify(data.data)
+        );
+        setLastRefresh(new Date());
+      }
+    } catch (error) {
+      console.error("Status refresh error:", error);
+    }
+  }, [businessId]);
+
   // Check if user already has a ticket (using localStorage)
   useEffect(() => {
+    fetchQueueInfo();
+
     const savedTicket = localStorage.getItem(`queue_ticket_${businessId}`);
     if (savedTicket) {
       const ticketData = JSON.parse(savedTicket);
       // Check if ticket is still valid (same day)
       const ticketDate = ticketData.ticket_number?.split("-")[0]?.replace("Q", "");
       const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
-      if (ticketDate === today) {
+      if (ticketDate === today && ticketData.status !== "completed" && ticketData.status !== "cancelled") {
         setTicket(ticketData);
         setJoined(true);
         // Refresh status
@@ -80,23 +144,44 @@ export default function JoinQueuePage({
         localStorage.removeItem(`queue_ticket_${businessId}`);
       }
     }
-  }, [businessId]);
+  }, [businessId, fetchQueueInfo, refreshTicketStatus]);
 
-  const refreshTicketStatus = async (ticketNumber: string) => {
-    try {
-      const res = await fetch(`/API/queue/status?ticket=${ticketNumber}`);
-      const data = await res.json();
-      if (res.ok && data.data) {
-        setTicket(data.data);
-        localStorage.setItem(
-          `queue_ticket_${businessId}`,
-          JSON.stringify(data.data)
-        );
+  // Set up real-time subscription for queue updates
+  useEffect(() => {
+    if (!joined || !ticket) return;
+
+    // Subscribe to queue_entries table changes
+    const channel = supabase
+      .channel(`queue-updates-${businessId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "queue_entries",
+          filter: `business_id=eq.${businessId}`,
+        },
+        () => {
+          // Refresh ticket status when any queue entry changes
+          if (ticket?.ticket_number) {
+            refreshTicketStatus(ticket.ticket_number);
+          }
+        }
+      )
+      .subscribe();
+
+    // Also set up auto-refresh every 15 seconds
+    const refreshInterval = setInterval(() => {
+      if (ticket?.ticket_number) {
+        refreshTicketStatus(ticket.ticket_number);
       }
-    } catch (error) {
-      console.error("Status refresh error:", error);
-    }
-  };
+    }, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(refreshInterval);
+    };
+  }, [joined, ticket?.ticket_number, businessId, refreshTicketStatus]);
 
   const handleJoinQueue = async () => {
     if (!formData.customer_name || !formData.customer_phone) {
@@ -137,6 +222,9 @@ export default function JoinQueuePage({
         JSON.stringify(data.data)
       );
       toast.success("Successfully joined the queue!");
+
+      // Refresh queue info
+      fetchQueueInfo();
     } catch (error: any) {
       if (error.message.includes("closed")) {
         setQueueClosed(true);
@@ -147,7 +235,18 @@ export default function JoinQueuePage({
     }
   };
 
-  const handleLeaveQueue = () => {
+  const handleLeaveQueue = async () => {
+    if (ticket?.id) {
+      try {
+        await fetch(`/API/queue/${ticket.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "cancelled" }),
+        });
+      } catch (error) {
+        console.error("Error leaving queue:", error);
+      }
+    }
     localStorage.removeItem(`queue_ticket_${businessId}`);
     setJoined(false);
     setTicket(null);
@@ -157,7 +256,26 @@ export default function JoinQueuePage({
       customer_email: "",
       service_type: "",
     });
+    toast.success("You have left the queue");
   };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading queue information...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (queueClosed) {
     return (
@@ -181,7 +299,7 @@ export default function JoinQueuePage({
   if (joined && ticket) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
             <div className="flex justify-center mb-4">
               <div className="bg-white/20 rounded-full p-4">
@@ -194,13 +312,13 @@ export default function JoinQueuePage({
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
-            {/* Ticket Number */}
-            <div className="text-center">
-              <p className="text-sm text-gray-500 mb-1">Ticket Number</p>
-              <div className="text-5xl font-bold text-blue-600 font-mono">
+            {/* Ticket Number - Large Display */}
+            <div className="text-center bg-gray-50 rounded-xl p-6">
+              <p className="text-sm text-gray-500 mb-1">Your Ticket Number</p>
+              <div className="text-6xl font-bold text-blue-600 font-mono">
                 {ticket.ticket_number.split("-")[1]}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-2">
                 {ticket.ticket_number}
               </p>
             </div>
@@ -208,38 +326,54 @@ export default function JoinQueuePage({
             {/* Status Badge */}
             <div className="flex justify-center">
               {ticket.status === "waiting" && (
-                <Badge className="bg-yellow-100 text-yellow-700 text-lg px-4 py-2">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Waiting
+                <Badge className="bg-yellow-100 text-yellow-700 text-lg px-6 py-3">
+                  <Clock className="h-5 w-5 mr-2" />
+                  Waiting in Queue
                 </Badge>
               )}
               {ticket.status === "serving" && (
-                <Badge className="bg-green-100 text-green-700 text-lg px-4 py-2 animate-pulse">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Your Turn!
+                <Badge className="bg-green-100 text-green-700 text-lg px-6 py-3 animate-pulse">
+                  <Bell className="h-5 w-5 mr-2" />
+                  It's Your Turn!
                 </Badge>
               )}
               {ticket.status === "completed" && (
-                <Badge className="bg-gray-100 text-gray-700 text-lg px-4 py-2">
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                <Badge className="bg-gray-100 text-gray-700 text-lg px-6 py-3">
+                  <CheckCircle className="h-5 w-5 mr-2" />
                   Completed
+                </Badge>
+              )}
+              {ticket.status === "cancelled" && (
+                <Badge className="bg-red-100 text-red-700 text-lg px-6 py-3">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  Cancelled
                 </Badge>
               )}
             </div>
 
-            {/* Queue Info */}
+            {/* Current Serving Info */}
+            {queueInfo?.current_serving_number && ticket.status === "waiting" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                <p className="text-sm text-blue-600 mb-1">Now Serving</p>
+                <p className="text-3xl font-bold text-blue-700 font-mono">
+                  {queueInfo.current_serving_number.split("-")[1] || queueInfo.current_serving_number}
+                </p>
+              </div>
+            )}
+
+            {/* Queue Info Grid */}
             {ticket.status === "waiting" && (
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <Users className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <Users className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                  <p className="text-3xl font-bold text-gray-900">
                     {ticket.people_ahead}
                   </p>
                   <p className="text-sm text-gray-500">People Ahead</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <Clock className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <Clock className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                  <p className="text-3xl font-bold text-gray-900">
                     ~{ticket.estimated_wait_minutes}
                   </p>
                   <p className="text-sm text-gray-500">Minutes Wait</p>
@@ -247,28 +381,43 @@ export default function JoinQueuePage({
               </div>
             )}
 
-            {/* Customer Info */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm">
+            {/* Customer & Ticket Info */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3 text-sm">
                 <User className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">{ticket.customer_name}</span>
               </div>
+              {ticket.service_type && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Hash className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">{ticket.service_type}</span>
+                </div>
+              )}
+              {ticket.created_at && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">Joined at {formatTime(ticket.created_at)}</span>
+                </div>
+              )}
             </div>
 
             {/* Instructions */}
             {ticket.status === "waiting" && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                 <p className="text-sm text-blue-700 text-center">
-                  Please wait nearby. We'll notify you when it's almost your
-                  turn!
+                  <MapPin className="h-4 w-4 inline mr-1" />
+                  Please wait nearby. This page updates automatically!
+                </p>
+                <p className="text-xs text-blue-500 text-center mt-2">
+                  Last updated: {lastRefresh.toLocaleTimeString()}
                 </p>
               </div>
             )}
 
             {ticket.status === "serving" && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 animate-pulse">
-                <p className="text-sm text-green-700 text-center font-semibold">
-                  It's your turn! Please proceed to the counter.
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-lg text-green-700 text-center font-bold animate-pulse">
+                  Please proceed to the counter now!
                 </p>
               </div>
             )}
@@ -277,13 +426,13 @@ export default function JoinQueuePage({
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
-                onClick={() => refreshTicketStatus(ticket.ticket_number)}
+                onClick={() => ticket?.ticket_number && refreshTicketStatus(ticket.ticket_number)}
                 className="w-full"
               >
-                <Clock className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh Status
               </Button>
-              {ticket.status === "waiting" && (
+              {(ticket.status === "waiting") && (
                 <Button
                   variant="ghost"
                   onClick={handleLeaveQueue}
@@ -299,20 +448,48 @@ export default function JoinQueuePage({
     );
   }
 
+  // Join Queue Form
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-100 rounded-full p-4">
               <Store className="h-10 w-10 text-blue-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Join the Queue</CardTitle>
+          <CardTitle className="text-2xl">{businessName}</CardTitle>
           <CardDescription>
-            Enter your details to join the queue and skip the wait!
+            Join the queue and skip the wait!
           </CardDescription>
         </CardHeader>
+
+        {/* Queue Status Info */}
+        {queueInfo && (
+          <div className="px-6 pb-4">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{queueInfo.total_waiting}</p>
+                  <p className="text-xs text-gray-500">People Waiting</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">~{queueInfo.avg_wait_time}</p>
+                  <p className="text-xs text-gray-500">Min Avg Wait</p>
+                </div>
+              </div>
+              {queueInfo.current_serving_number && (
+                <div className="mt-3 pt-3 border-t border-gray-200 text-center">
+                  <p className="text-xs text-gray-500">Now Serving</p>
+                  <p className="text-xl font-bold text-green-600 font-mono">
+                    #{queueInfo.current_serving_number.split("-")[1] || queueInfo.current_serving_number}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">
@@ -350,7 +527,7 @@ export default function JoinQueuePage({
               />
             </div>
             <p className="text-xs text-gray-500">
-              We'll send you updates about your queue position
+              We'll use this to identify your position in queue
             </p>
           </div>
 
@@ -370,6 +547,8 @@ export default function JoinQueuePage({
                 <SelectItem value="Beard Trim">Beard Trim</SelectItem>
                 <SelectItem value="Hair Color">Hair Color</SelectItem>
                 <SelectItem value="Full Service">Full Service</SelectItem>
+                <SelectItem value="Printing">Printing</SelectItem>
+                <SelectItem value="Consultation">Consultation</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
@@ -378,21 +557,20 @@ export default function JoinQueuePage({
           <Button
             onClick={handleJoinQueue}
             disabled={loading}
-            className="w-full h-12 text-lg"
+            className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700"
           >
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
                 <Ticket className="h-5 w-5 mr-2" />
-                Join Queue
+                Join Queue Now
               </>
             )}
           </Button>
 
           <p className="text-xs text-gray-500 text-center">
-            By joining, you agree to receive notifications about your queue
-            status
+            Your data is only used to manage your queue position
           </p>
         </CardContent>
       </Card>

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     // 3️⃣ If email already exists
     if (authError && authError.message.includes("already been registered")) {
       const { data: listData, error: listError } =
-        await supabase.auth.admin.listUsers({ limit: 1000 });
+        await supabase.auth.admin.listUsers({ perPage: 1000 });
 
       if (listError)
         return NextResponse.json({ error: listError.message }, { status: 400 });
@@ -98,6 +98,12 @@ export async function POST(req: Request) {
     }
 
     // 4️⃣ New user → insert in "User" table
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: "Failed to create auth user" },
+        { status: 400 }
+      );
+    }
     userId = authData.user.id;
 
     const { data: createdUser, error: insertError } =

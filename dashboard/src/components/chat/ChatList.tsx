@@ -3,8 +3,19 @@
 import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
 
-export default function ChatList({ onSelect }) {
-  const [conversations, setConversations] = useState([]);
+interface Conversation {
+  id: string;
+  student_id: string;
+  last_message: string;
+  updated_at: string;
+}
+
+interface ChatListProps {
+  onSelect: (id: string) => void;
+}
+
+export default function ChatList({ onSelect }: ChatListProps) {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   async function loadChats() {
     const { data } = await supabase
@@ -23,11 +34,13 @@ export default function ChatList({ onSelect }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        loadChats
+        () => { loadChats(); }
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

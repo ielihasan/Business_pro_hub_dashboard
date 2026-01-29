@@ -3,7 +3,11 @@
 import { supabase } from "@/lib/supabase-client";
 import { useState } from "react";
 
-export default function MessageInput({ chatId }) {
+interface MessageInputProps {
+  chatId: string;
+}
+
+export default function MessageInput({ chatId }: MessageInputProps) {
   const [text, setText] = useState("");
 
   const sendMessage = async () => {

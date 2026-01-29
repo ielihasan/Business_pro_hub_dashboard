@@ -4,8 +4,20 @@ import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
 import MessageInput from "./MessageInput";
 
-export default function ChatWindow({ chatId }) {
-  const [messages, setMessages] = useState([]);
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  text: string;
+  created_at: string;
+}
+
+interface ChatWindowProps {
+  chatId: string | null;
+}
+
+export default function ChatWindow({ chatId }: ChatWindowProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
 
   async function loadMessages() {
     if (!chatId) return;
@@ -34,11 +46,13 @@ export default function ChatWindow({ chatId }) {
           table: "messages",
           filter: `conversation_id=eq.${chatId}`,
         },
-        loadMessages
+        () => { loadMessages(); }
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [chatId]);
 
   if (!chatId)

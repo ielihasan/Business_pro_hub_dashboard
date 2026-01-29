@@ -27,7 +27,10 @@
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(timeout:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(pkill:*)"
     ]
   }
 }
