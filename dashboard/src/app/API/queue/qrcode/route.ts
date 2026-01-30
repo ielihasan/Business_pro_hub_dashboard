@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get("business_id");
+    const queueTypeId = searchParams.get("queue_type_id");
     const format = searchParams.get("format") || "dataurl"; // dataurl, svg, or png
 
     if (!businessId) {
@@ -36,10 +37,29 @@ export async function GET(req: Request) {
       );
     }
 
+    // Get queue type info if provided
+    let queueTypeName: string | null = null;
+    if (queueTypeId && queueTypeId !== "all" && queueTypeId !== "default") {
+      const { data: queueType } = await supabase
+        .from("queue_types")
+        .select("name")
+        .eq("id", queueTypeId)
+        .single();
+
+      if (queueType) {
+        queueTypeName = queueType.name;
+      }
+    }
+
     // Generate the queue join URL
     // This URL will open the mobile app or web page for joining queue
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-    const queueJoinUrl = `${baseUrl}/join-queue/${businessId}`;
+    let queueJoinUrl = `${baseUrl}/join-queue/${businessId}`;
+
+    // Add queue_type parameter if specified
+    if (queueTypeId && queueTypeId !== "all" && queueTypeId !== "default") {
+      queueJoinUrl += `?queue_type=${queueTypeId}`;
+    }
 
     // QR Code options for data URL
     const qrDataUrlOptions = {
@@ -77,6 +97,8 @@ export async function GET(req: Request) {
         join_url: queueJoinUrl,
         business_id: businessId,
         business_name: business.business_name,
+        queue_type_id: queueTypeId || null,
+        queue_type_name: queueTypeName,
         format,
       },
     });

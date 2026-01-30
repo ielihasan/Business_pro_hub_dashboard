@@ -2,21 +2,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, Package, CheckCircle, TrendingUp, AlertCircle, DollarSign, Star, QrCode, Download, Copy, ExternalLink, Loader2, Share2 } from "lucide-react";
+import { Users, Clock, Package, CheckCircle, Star, QrCode, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
 import Link from "next/link";
-import QRCodeLib from "qrcode";
 
 interface BusinessStats {
   activeQueues: number;
@@ -38,6 +27,7 @@ interface RecentQueue {
   status: string;
   position: number;
   joined_at: string;
+  queue_type_name?: string;
 }
 
 export default function BusinessDashboardPage() {
@@ -55,14 +45,6 @@ export default function BusinessDashboardPage() {
   });
   const [recentQueues, setRecentQueues] = useState<RecentQueue[]>([]);
   const [loading, setLoading] = useState(true);
-  const [businessId, setBusinessId] = useState<string>("");
-
-  // QR Code state
-  const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [qrJoinUrl, setQrJoinUrl] = useState<string>("");
-  const [loadingQr, setLoadingQr] = useState(false);
-  const [businessName, setBusinessName] = useState<string>("");
 
   useEffect(() => {
     fetchDashboardData();
@@ -73,8 +55,6 @@ export default function BusinessDashboardPage() {
       // Get current business user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      setBusinessId(user.id);
 
       // Fetch queue statistics
       const { data: queues } = await supabase
@@ -145,98 +125,6 @@ export default function BusinessDashboardPage() {
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setLoading(false);
-    }
-  };
-
-  // Generate QR code client-side
-  const generateQrCodeClientSide = async (url: string): Promise<string | null> => {
-    try {
-      const qrDataUrl = await QRCodeLib.toDataURL(url, {
-        errorCorrectionLevel: "H" as const,
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-        width: 400,
-      });
-      return qrDataUrl;
-    } catch (error) {
-      console.error("Client-side QR generation error:", error);
-      return null;
-    }
-  };
-
-  // QR Code generation function
-  const handleGenerateQrCode = async () => {
-    try {
-      setLoadingQr(true);
-
-      const currentBusinessId = businessId || "demo-business";
-      const baseUrl = window.location.origin;
-      const joinUrl = `${baseUrl}/join-queue/${currentBusinessId}`;
-
-      // Try API first
-      const res = await fetch(`/API/queue/qrcode?business_id=${currentBusinessId}`);
-
-      if (res.ok) {
-        const data = await res.json();
-        setQrCode(data.data.qr_code);
-        setQrJoinUrl(data.data.join_url);
-        setBusinessName(data.data.business_name || "Your Business");
-      } else {
-        // Fallback - generate QR code client-side
-        setQrJoinUrl(joinUrl);
-        const clientQr = await generateQrCodeClientSide(joinUrl);
-        setQrCode(clientQr);
-        setBusinessName("Your Business");
-      }
-      setQrDialogOpen(true);
-    } catch (error) {
-      console.error("QR code error:", error);
-      const baseUrl = window.location.origin;
-      const joinUrl = `${baseUrl}/join-queue/${businessId || "demo-business"}`;
-      setQrJoinUrl(joinUrl);
-      // Generate QR code client-side as fallback
-      const clientQr = await generateQrCodeClientSide(joinUrl);
-      setQrCode(clientQr);
-      setQrDialogOpen(true);
-    } finally {
-      setLoadingQr(false);
-    }
-  };
-
-  const copyJoinUrl = () => {
-    navigator.clipboard.writeText(qrJoinUrl);
-    toast.success("Queue link copied to clipboard!");
-  };
-
-  const downloadQrCode = () => {
-    if (!qrCode) {
-      toast.error("QR code not available");
-      return;
-    }
-    const link = document.createElement("a");
-    link.download = `queue-qr-${businessId || "business"}.png`;
-    link.href = qrCode;
-    link.click();
-    toast.success("QR code downloaded!");
-  };
-
-  const shareQrCode = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Join My Queue",
-          text: `Join the queue at ${businessName || "our business"}`,
-          url: qrJoinUrl,
-        });
-      } catch (err) {
-        // User cancelled or share failed, fallback to copy
-        copyJoinUrl();
-      }
-    } else {
-      copyJoinUrl();
     }
   };
 
@@ -337,7 +225,7 @@ export default function BusinessDashboardPage() {
         </Card>
       </div>
 
-      {/* QR Code Start Queue Section */}
+      {/* Queue Management CTA */}
       <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -346,25 +234,18 @@ export default function BusinessDashboardPage() {
                 <QrCode className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl">Start Your Queue</CardTitle>
+                <CardTitle className="text-xl">Queue Management</CardTitle>
                 <CardDescription className="text-base">
-                  Generate QR code for customers to join your queue instantly
+                  Manage your queues, generate QR codes, and create queue types
                 </CardDescription>
               </div>
             </div>
-            <Button
-              size="lg"
-              onClick={handleGenerateQrCode}
-              disabled={loadingQr}
-              className="hidden sm:flex"
-            >
-              {loadingQr ? (
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              ) : (
-                <QrCode className="h-5 w-5 mr-2" />
-              )}
-              Generate QR Code
-            </Button>
+            <Link href="/business/queue">
+              <Button size="lg" className="hidden sm:flex">
+                Go to Queue Management
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
@@ -374,43 +255,36 @@ export default function BusinessDashboardPage() {
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Easy Join</p>
-                <p className="text-sm text-gray-500">Customers scan & join instantly</p>
+                <p className="font-semibold text-gray-900">{stats.activeQueues} Active</p>
+                <p className="text-sm text-gray-500">Customers waiting</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
               <div className="p-2 bg-green-100 rounded-lg">
-                <Clock className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Real-time Updates</p>
-                <p className="text-sm text-gray-500">Live queue position tracking</p>
+                <p className="font-semibold text-gray-900">{stats.completedToday} Completed</p>
+                <p className="text-sm text-gray-500">Served today</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Share2 className="h-5 w-5 text-purple-600" />
+                <QrCode className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Share Anywhere</p>
-                <p className="text-sm text-gray-500">Print, display, or share online</p>
+                <p className="font-semibold text-gray-900">QR Codes</p>
+                <p className="text-sm text-gray-500">Generate & share</p>
               </div>
             </div>
           </div>
           {/* Mobile button */}
-          <Button
-            size="lg"
-            onClick={handleGenerateQrCode}
-            disabled={loadingQr}
-            className="w-full mt-4 sm:hidden"
-          >
-            {loadingQr ? (
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <QrCode className="h-5 w-5 mr-2" />
-            )}
-            Generate QR Code
-          </Button>
+          <Link href="/business/queue">
+            <Button size="lg" className="w-full mt-4 sm:hidden">
+              Go to Queue Management
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 
@@ -423,23 +297,10 @@ export default function BusinessDashboardPage() {
             <CardDescription>Common business tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button
-              variant="outline"
-              className="w-full justify-start text-primary border-primary/50 hover:bg-primary/5"
-              onClick={handleGenerateQrCode}
-              disabled={loadingQr}
-            >
-              {loadingQr ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <QrCode className="mr-2 h-4 w-4" />
-              )}
-              Generate Queue QR Code
-            </Button>
             <Link href="/business/queue">
-              <Button variant="outline" className="w-full justify-start">
-                <Clock className="mr-2 h-4 w-4" />
-                Manage Queue
+              <Button variant="outline" className="w-full justify-start text-primary border-primary/50 hover:bg-primary/5">
+                <QrCode className="mr-2 h-4 w-4" />
+                Manage Queue & QR Codes
                 {stats.activeQueues > 0 && (
                   <Badge variant="default" className="ml-auto">
                     {stats.activeQueues}
@@ -476,8 +337,18 @@ export default function BusinessDashboardPage() {
         {/* Recent Queue Activity */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Recent Queue Activity</CardTitle>
-            <CardDescription>Latest customers in your queue</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Queue Activity</CardTitle>
+                <CardDescription>Latest customers in your queue</CardDescription>
+              </div>
+              <Link href="/business/queue">
+                <Button variant="outline" size="sm">
+                  View All
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             {recentQueues.length === 0 ? (
@@ -485,6 +356,12 @@ export default function BusinessDashboardPage() {
                 <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p>No queue activity yet</p>
                 <p className="text-sm mt-1">Customers will appear here when they join your queue</p>
+                <Link href="/business/queue">
+                  <Button className="mt-4">
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Set Up Your Queue
+                  </Button>
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">
@@ -586,108 +463,6 @@ export default function BusinessDashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* QR Code Dialog */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <QrCode className="h-6 w-6 text-primary" />
-              Queue QR Code
-            </DialogTitle>
-            <DialogDescription>
-              Customers can scan this QR code to join your queue instantly
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            {/* Current Queue Stats */}
-            <div className="w-full grid grid-cols-3 gap-3 bg-gray-50 rounded-xl p-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats.activeQueues}</p>
-                <p className="text-xs text-gray-500">In Queue</p>
-              </div>
-              <div className="text-center border-x border-gray-200">
-                <p className="text-2xl font-bold text-green-600">{stats.completedToday}</p>
-                <p className="text-xs text-gray-500">Served Today</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">~5 min</p>
-                <p className="text-xs text-gray-500">Avg Wait</p>
-              </div>
-            </div>
-
-            {/* QR Code */}
-            {qrCode ? (
-              <div className="border-4 border-gray-100 rounded-2xl p-4 bg-white shadow-sm">
-                <img
-                  src={qrCode}
-                  alt="Queue QR Code"
-                  className="w-56 h-56 object-contain"
-                />
-              </div>
-            ) : (
-              <div className="border-4 border-dashed border-gray-200 rounded-2xl p-8 bg-gray-50 w-64 h-64 flex flex-col items-center justify-center">
-                {loadingQr ? (
-                  <>
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <p className="text-sm text-gray-500 text-center">
-                      Generating QR code...
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <QrCode className="h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-sm text-gray-500 text-center">
-                      Click Generate to create QR
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Join URL */}
-            <div className="w-full space-y-2">
-              <label className="text-sm font-medium text-gray-700">Queue Join Link</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={qrJoinUrl}
-                  readOnly
-                  className="text-sm bg-gray-50"
-                />
-                <Button variant="outline" size="icon" onClick={copyJoinUrl} title="Copy link">
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Info box */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 w-full">
-              <p className="text-sm text-blue-700 text-center">
-                <span className="font-semibold">How it works:</span> Customers scan → Enter details → Get ticket number → Track their position in real-time
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={shareQrCode} className="w-full sm:w-auto">
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-            {qrCode && (
-              <Button variant="outline" onClick={downloadQrCode} className="w-full sm:w-auto">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR
-              </Button>
-            )}
-            <Button
-              onClick={() => window.open(qrJoinUrl, "_blank")}
-              className="w-full sm:w-auto"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Preview Join Page
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

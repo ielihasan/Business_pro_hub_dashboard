@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface BusinessData {
 
 export default function BusinessLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [business, setBusiness] = useState<BusinessData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -86,7 +87,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -122,52 +123,66 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Business Info */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Store className="h-6 w-6 text-primary" />
-                <h1 className="text-lg font-bold text-gray-900">Business Hub</h1>
-              </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          {/* Business Info - B/W Theme */}
+          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 bg-black">
+            <div className="flex items-center space-x-2">
+              <Store className="h-6 w-6 text-white" />
+              <h1 className="text-lg font-bold text-white">Business Hub</h1>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">
-                {business?.business_name}
-              </p>
-              <p className="text-xs text-gray-500 truncate">{business?.business_type}</p>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-gray-300 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Business Details */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold">
+                {business?.business_name?.charAt(0).toUpperCase() || "B"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {business?.business_name}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{business?.business_type}</p>
+              </div>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation - B/W Theme */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-1">
-              {navigation.map((item) => (
-                <li key={item.name}>
-                  <Link href={item.href}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-gray-700 hover:text-primary hover:bg-primary/10"
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.name}
-                    </Button>
-                  </Link>
-                </li>
-              ))}
+              {navigation.map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                return (
+                  <li key={item.name}>
+                    <Link href={item.href}>
+                      <Button
+                        variant="ghost"
+                        className={`w-full justify-start transition-colors ${
+                          isActive
+                            ? "bg-black text-white hover:bg-black hover:text-white"
+                            : "text-gray-700 hover:bg-black hover:text-white"
+                        }`}
+                      >
+                        <item.icon className="mr-3 h-5 w-5" />
+                        {item.name}
+                      </Button>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
-          {/* Logout */}
+          {/* Logout - B/W Theme */}
           <div className="p-4 border-t border-gray-200">
             <Button
-              variant="outline"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              variant="ghost"
+              className="w-full justify-start hover:bg-black hover:text-white transition-colors"
               onClick={handleLogout}
             >
               <LogOut className="mr-3 h-5 w-5" />
@@ -179,19 +194,23 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
 
       {/* Main content */}
       <div className="lg:pl-64">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+        {/* Top bar - B/W Theme */}
+        <header className="sticky top-0 z-30 h-16 bg-black border-b border-gray-800">
+          <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-500 hover:text-gray-700"
+              className="lg:hidden text-gray-300 hover:text-white"
             >
               <Menu className="h-6 w-6" />
             </button>
+            <div className="flex-1" />
             <div className="flex items-center space-x-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{business?.business_name}</p>
-                <p className="text-xs text-gray-500">{business?.email}</p>
+                <p className="text-sm font-medium text-white">{business?.business_name}</p>
+                <p className="text-xs text-gray-400">{business?.email}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold">
+                {business?.business_name?.charAt(0).toUpperCase() || "B"}
               </div>
             </div>
           </div>

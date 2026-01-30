@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get("business_id");
+    const queueTypeId = searchParams.get("queue_type_id");
 
     if (!businessId) {
       return NextResponse.json(
@@ -42,33 +43,46 @@ export async function GET(req: NextRequest) {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Get current serving entry
-    const { data: currentServing } = await supabase
+    // Build query with optional queue_type_id filter
+    let servingQuery = supabase
       .from("queue_entries")
-      .select("id, ticket_number, customer_name")
+      .select("id, ticket_number, customer_name, queue_type_id, queue_type_name")
       .eq("business_id", businessId)
       .eq("status", "serving")
       .order("served_at", { ascending: true })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    // Get waiting count
-    const { count: waitingCount } = await supabase
+    let waitingQuery = supabase
       .from("queue_entries")
       .select("*", { count: "exact", head: true })
       .eq("business_id", businessId)
       .eq("status", "waiting")
-      .gte("created_at", today);
+      .gte("created_at", `${today}T00:00:00.000Z`);
 
-    // Get completed entries for average wait time calculation
-    const { data: completedEntries } = await supabase
+    let completedQuery = supabase
       .from("queue_entries")
       .select("created_at, served_at")
       .eq("business_id", businessId)
       .eq("status", "completed")
       .not("served_at", "is", null)
-      .gte("created_at", today)
+      .gte("created_at", `${today}T00:00:00.000Z`)
       .limit(20);
+
+    // Apply queue_type_id filter if provided
+    if (queueTypeId && queueTypeId !== "default" && queueTypeId !== "all") {
+      servingQuery = servingQuery.eq("queue_type_id", queueTypeId);
+      waitingQuery = waitingQuery.eq("queue_type_id", queueTypeId);
+      completedQuery = completedQuery.eq("queue_type_id", queueTypeId);
+    }
+
+    // Get current serving entry
+    const { data: currentServing } = await servingQuery.single();
+
+    // Get waiting count
+    const { count: waitingCount } = await waitingQuery;
+
+    // Get completed entries for average wait time calculation
+    const { data: completedEntries } = await completedQuery;
 
     // Calculate average wait time
     let avgWaitTime = 5; // Default 5 minutes
@@ -90,6 +104,8 @@ export async function GET(req: NextRequest) {
         current_serving: currentServing?.id || null,
         current_serving_number: currentServing?.ticket_number || null,
         current_serving_name: currentServing?.customer_name || null,
+        queue_type_id: currentServing?.queue_type_id || null,
+        queue_type_name: currentServing?.queue_type_name || null,
         total_waiting: waitingCount || 0,
         avg_wait_time: avgWaitTime,
       },

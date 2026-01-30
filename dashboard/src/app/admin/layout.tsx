@@ -77,7 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     );
   }
@@ -126,10 +126,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation - B/W Theme */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.name}
@@ -138,13 +138,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
                       ? "bg-black text-white"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-700 hover:bg-black hover:text-white"
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon className={cn(
                     "mr-3 h-5 w-5 flex-shrink-0",
-                    isActive ? "text-white" : "text-gray-500"
+                    isActive ? "text-white" : ""
                   )} />
                   {item.name}
                 </Link>
@@ -152,10 +152,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
 
-          {/* Logout */}
+          {/* Logout - B/W Theme */}
           <div className="p-4 border-t border-gray-200">
             <Button
-              variant="outline"
+              variant="ghost"
               className="w-full justify-start hover:bg-black hover:text-white transition-colors"
               onClick={handleLogout}
             >
@@ -168,17 +168,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-8">
-          <button
-            className="lg:hidden mr-4"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <h2 className="text-lg font-semibold text-gray-900">
-            {navigation.find(item => item.href === pathname)?.name || "Admin Dashboard"}
-          </h2>
+        {/* Top bar - B/W Theme */}
+        <header className="sticky top-0 z-30 h-16 bg-black border-b border-gray-800">
+          <div className="flex items-center justify-between h-full px-4 lg:px-8">
+            <div className="flex items-center">
+              <button
+                className="lg:hidden mr-4 text-gray-300 hover:text-white"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <h2 className="text-lg font-semibold text-white">
+                {navigation.find(item => item.href === pathname)?.name || "Admin Dashboard"}
+              </h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-white">{admin?.full_name}</p>
+                <p className="text-xs text-gray-400">{admin?.email}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold">
+                {admin?.full_name?.charAt(0) || "A"}
+              </div>
+            </div>
+          </div>
         </header>
 
         {/* Page content */}

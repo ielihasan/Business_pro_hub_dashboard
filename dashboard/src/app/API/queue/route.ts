@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const businessId = searchParams.get("business_id");
     const status = searchParams.get("status"); // waiting, serving, completed, cancelled
     const date = searchParams.get("date"); // Filter by date (YYYY-MM-DD)
+    const queueTypeId = searchParams.get("queue_type_id"); // Filter by queue type
 
     if (!businessId) {
       return NextResponse.json(
@@ -30,6 +31,11 @@ export async function GET(req: Request) {
       `)
       .eq("business_id", businessId)
       .order("position", { ascending: true });
+
+    // Filter by queue type
+    if (queueTypeId && queueTypeId !== "all") {
+      query = query.eq("queue_type_id", queueTypeId);
+    }
 
     // Filter by status
     if (status && status !== "all") {
@@ -107,6 +113,8 @@ export async function POST(req: Request) {
       customer_phone,
       customer_email,
       service_type,
+      queue_type_id,
+      queue_type_name,
       notes,
       priority = "normal",
     } = body;
@@ -118,21 +126,27 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the current max position for today
+    // Get the current max position for today (per queue type if specified)
     const today = new Date().toISOString().split("T")[0];
-    const { data: lastEntry } = await supabase
+    let positionQuery = supabase
       .from("queue_entries")
       .select("position")
       .eq("business_id", business_id)
       .gte("created_at", `${today}T00:00:00.000Z`)
       .order("position", { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
+    // Position can be per queue type or global
+    if (queue_type_id) {
+      positionQuery = positionQuery.eq("queue_type_id", queue_type_id);
+    }
+
+    const { data: lastEntry } = await positionQuery.single();
     const nextPosition = (lastEntry?.position || 0) + 1;
 
-    // Generate unique ticket number
-    const ticketNumber = `Q${today.replace(/-/g, "")}-${nextPosition
+    // Generate unique ticket number with queue type prefix
+    const prefix = queue_type_name ? queue_type_name.charAt(0).toUpperCase() : "Q";
+    const ticketNumber = `${prefix}${today.replace(/-/g, "")}-${nextPosition
       .toString()
       .padStart(3, "0")}`;
 
@@ -145,11 +159,14 @@ export async function POST(req: Request) {
         customer_phone,
         customer_email,
         service_type,
+        queue_type_id,
+        queue_type_name,
         notes,
         priority,
         position: nextPosition,
         ticket_number: ticketNumber,
         status: "waiting",
+        joined_via: "walk_in",
         created_at: new Date().toISOString(),
       })
       .select()

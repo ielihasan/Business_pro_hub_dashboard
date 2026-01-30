@@ -287,9 +287,123 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at DESC);
 ```
 
-### 6. Queue Management Tables (Optional - for future expansion)
+### 6. Queue Types Table (For Multi-Queue Management)
 
-These tables can be added later for queue management features:
+This table allows businesses to create multiple queue types (e.g., "Haircut Queue", "Consultation Queue"):
+
+```sql
+-- Create queue_types table
+CREATE TABLE IF NOT EXISTS public.queue_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    color TEXT DEFAULT '#3B82F6',
+    icon TEXT DEFAULT 'users',
+    estimated_service_time INTEGER DEFAULT 5,
+    max_capacity INTEGER DEFAULT 50,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.queue_types ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for queue_types
+CREATE POLICY "Anyone can view active queue types"
+    ON public.queue_types
+    FOR SELECT
+    USING (is_active = true);
+
+CREATE POLICY "Business owners can manage own queue types"
+    ON public.queue_types
+    FOR ALL
+    USING (business_id::text = auth.uid()::text);
+
+CREATE POLICY "Allow insert for authenticated users"
+    ON public.queue_types
+    FOR INSERT
+    WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_queue_types_business_id ON public.queue_types(business_id);
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_queue_types_updated_at
+    BEFORE UPDATE ON public.queue_types
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 7. Queue Entries Table (Queue Management)
+
+This table stores queue entries for customers joining queues:
+
+```sql
+-- Create queue_entries table
+CREATE TABLE IF NOT EXISTS public.queue_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL,
+    queue_type_id UUID REFERENCES public.queue_types(id) ON DELETE SET NULL,
+    queue_type_name TEXT,
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT,
+    customer_email TEXT,
+    service_type TEXT,
+    notes TEXT,
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('normal', 'high', 'vip')),
+    position INTEGER NOT NULL,
+    ticket_number TEXT UNIQUE NOT NULL,
+    status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'completed', 'cancelled', 'no_show')),
+    joined_via TEXT DEFAULT 'walk_in' CHECK (joined_via IN ('walk_in', 'qr_code', 'app', 'web')),
+    served_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.queue_entries ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for queue_entries
+CREATE POLICY "Anyone can view queue entries"
+    ON public.queue_entries
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Anyone can insert queue entries"
+    ON public.queue_entries
+    FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Business owners can update queue entries"
+    ON public.queue_entries
+    FOR UPDATE
+    USING (business_id::text = auth.uid()::text);
+
+CREATE POLICY "Business owners can delete queue entries"
+    ON public.queue_entries
+    FOR DELETE
+    USING (business_id::text = auth.uid()::text);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_queue_entries_business_id ON public.queue_entries(business_id);
+CREATE INDEX IF NOT EXISTS idx_queue_entries_queue_type_id ON public.queue_entries(queue_type_id);
+CREATE INDEX IF NOT EXISTS idx_queue_entries_status ON public.queue_entries(status);
+CREATE INDEX IF NOT EXISTS idx_queue_entries_ticket_number ON public.queue_entries(ticket_number);
+CREATE INDEX IF NOT EXISTS idx_queue_entries_created_at ON public.queue_entries(created_at DESC);
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_queue_entries_updated_at
+    BEFORE UPDATE ON public.queue_entries
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 8. Legacy Queue Tables (Optional - for backward compatibility)
+
+These tables can be used for the legacy queue system:
 
 ```sql
 -- Create queues table
@@ -301,22 +415,6 @@ CREATE TABLE IF NOT EXISTS public.queues (
     max_capacity INTEGER,
     estimated_service_time INTEGER, -- in minutes
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Create queue_entries table
-CREATE TABLE IF NOT EXISTS public.queue_entries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    queue_id UUID REFERENCES public.queues(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,
-    status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed', 'cancelled')),
-    joined_at TIMESTAMPTZ DEFAULT NOW(),
-    called_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    estimated_wait_time INTEGER, -- in minutes
-    notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

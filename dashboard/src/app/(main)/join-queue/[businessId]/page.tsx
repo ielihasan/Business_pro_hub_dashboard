@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -34,6 +35,7 @@ import {
   MapPin,
   Calendar,
   Hash,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
@@ -49,6 +51,8 @@ interface QueueTicket {
   estimated_wait_minutes: number;
   people_ahead: number;
   service_type?: string;
+  queue_type_id?: string;
+  queue_type_name?: string;
   created_at?: string;
 }
 
@@ -61,12 +65,26 @@ interface QueueInfo {
   is_open: boolean;
 }
 
+interface QueueType {
+  id: string;
+  business_id: string;
+  name: string;
+  description?: string;
+  color: string;
+  icon: string;
+  estimated_service_time: number;
+  max_capacity: number;
+  is_active: boolean;
+}
+
 export default function JoinQueuePage({
   params,
 }: {
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = use(params);
+  const searchParams = useSearchParams();
+  const queueTypeFromUrl = searchParams.get("queue_type");
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -77,6 +95,10 @@ export default function JoinQueuePage({
   const [queueClosed, setQueueClosed] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
+  // Queue types state
+  const [queueTypes, setQueueTypes] = useState<QueueType[]>([]);
+  const [selectedQueueType, setSelectedQueueType] = useState<string>(queueTypeFromUrl || "");
+
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
@@ -84,10 +106,42 @@ export default function JoinQueuePage({
     service_type: "",
   });
 
+  // Fetch queue types
+  const fetchQueueTypes = useCallback(async () => {
+    try {
+      const res = await fetch(`/API/queue-types?business_id=${businessId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const types = data.data || [];
+        setQueueTypes(types);
+
+        // If queue_type was provided in URL, validate it exists
+        if (queueTypeFromUrl && types.length > 0) {
+          const validType = types.find((t: QueueType) => t.id === queueTypeFromUrl);
+          if (validType) {
+            setSelectedQueueType(queueTypeFromUrl);
+          } else {
+            // Invalid queue type, let user choose
+            setSelectedQueueType("");
+          }
+        } else if (types.length === 1 && types[0].id !== "default") {
+          // Auto-select if only one queue type exists
+          setSelectedQueueType(types[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching queue types:", error);
+    }
+  }, [businessId, queueTypeFromUrl]);
+
   // Fetch initial queue info
   const fetchQueueInfo = useCallback(async () => {
     try {
-      const res = await fetch(`/API/queue/info?business_id=${businessId}`);
+      let url = `/API/queue/info?business_id=${businessId}`;
+      if (selectedQueueType && selectedQueueType !== "default") {
+        url += `&queue_type_id=${selectedQueueType}`;
+      }
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setQueueInfo(data.data);
@@ -99,7 +153,7 @@ export default function JoinQueuePage({
     } finally {
       setInitialLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, selectedQueueType]);
 
   // Refresh ticket status
   const refreshTicketStatus = useCallback(async (ticketNumber: string) => {
@@ -125,15 +179,27 @@ export default function JoinQueuePage({
     }
   }, [businessId]);
 
+  // Fetch queue types on mount
+  useEffect(() => {
+    fetchQueueTypes();
+  }, [fetchQueueTypes]);
+
   // Check if user already has a ticket (using localStorage)
   useEffect(() => {
     fetchQueueInfo();
 
-    const savedTicket = localStorage.getItem(`queue_ticket_${businessId}`);
+    // Build storage key with optional queue type
+    const storageKey = selectedQueueType && selectedQueueType !== "default"
+      ? `queue_ticket_${businessId}_${selectedQueueType}`
+      : `queue_ticket_${businessId}`;
+
+    const savedTicket = localStorage.getItem(storageKey);
     if (savedTicket) {
       const ticketData = JSON.parse(savedTicket);
       // Check if ticket is still valid (same day)
-      const ticketDate = ticketData.ticket_number?.split("-")[0]?.replace("Q", "");
+      const ticketNumber = ticketData.ticket_number || "";
+      const ticketDateMatch = ticketNumber.match(/\d{8}/);
+      const ticketDate = ticketDateMatch ? ticketDateMatch[0] : "";
       const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
       if (ticketDate === today && ticketData.status !== "completed" && ticketData.status !== "cancelled") {
         setTicket(ticketData);
@@ -141,10 +207,10 @@ export default function JoinQueuePage({
         // Refresh status
         refreshTicketStatus(ticketData.ticket_number);
       } else {
-        localStorage.removeItem(`queue_ticket_${businessId}`);
+        localStorage.removeItem(storageKey);
       }
     }
-  }, [businessId, fetchQueueInfo, refreshTicketStatus]);
+  }, [businessId, selectedQueueType, fetchQueueInfo, refreshTicketStatus]);
 
   // Set up real-time subscription for queue updates
   useEffect(() => {
@@ -189,6 +255,14 @@ export default function JoinQueuePage({
       return;
     }
 
+    // Require queue type selection if multiple types exist
+    if (queueTypes.length > 1 && !selectedQueueType) {
+      toast.error("Please select a queue type");
+      return;
+    }
+
+    const selectedType = queueTypes.find(t => t.id === selectedQueueType);
+
     try {
       setLoading(true);
       const res = await fetch("/API/queue/join", {
@@ -197,30 +271,31 @@ export default function JoinQueuePage({
         body: JSON.stringify({
           business_id: businessId,
           ...formData,
+          queue_type_id: selectedQueueType || undefined,
+          queue_type_name: selectedType?.name || undefined,
         }),
       });
 
       const data = await res.json();
+
+      // Build storage key with optional queue type
+      const storageKey = selectedQueueType && selectedQueueType !== "default"
+        ? `queue_ticket_${businessId}_${selectedQueueType}`
+        : `queue_ticket_${businessId}`;
 
       if (!res.ok) {
         if (data.data) {
           // User already in queue
           setTicket(data.data);
           setJoined(true);
-          localStorage.setItem(
-            `queue_ticket_${businessId}`,
-            JSON.stringify(data.data)
-          );
+          localStorage.setItem(storageKey, JSON.stringify(data.data));
         }
         throw new Error(data.error);
       }
 
       setTicket(data.data);
       setJoined(true);
-      localStorage.setItem(
-        `queue_ticket_${businessId}`,
-        JSON.stringify(data.data)
-      );
+      localStorage.setItem(storageKey, JSON.stringify(data.data));
       toast.success("Successfully joined the queue!");
 
       // Refresh queue info
@@ -247,7 +322,11 @@ export default function JoinQueuePage({
         console.error("Error leaving queue:", error);
       }
     }
-    localStorage.removeItem(`queue_ticket_${businessId}`);
+    // Build storage key with optional queue type
+    const storageKey = ticket?.queue_type_id && ticket.queue_type_id !== "default"
+      ? `queue_ticket_${businessId}_${ticket.queue_type_id}`
+      : `queue_ticket_${businessId}`;
+    localStorage.removeItem(storageKey);
     setJoined(false);
     setTicket(null);
     setFormData({
@@ -297,6 +376,8 @@ export default function JoinQueuePage({
   }
 
   if (joined && ticket) {
+    const ticketQueueType = queueTypes.find(t => t.id === ticket.queue_type_id);
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">
@@ -310,6 +391,18 @@ export default function JoinQueuePage({
             <CardDescription className="text-blue-100">
               {ticket.business_name || businessName}
             </CardDescription>
+            {(ticket.queue_type_name || ticketQueueType) && (
+              <Badge
+                className="mt-2 mx-auto"
+                style={{
+                  backgroundColor: ticketQueueType?.color || "#3B82F6",
+                  color: "white"
+                }}
+              >
+                <Layers className="h-3 w-3 mr-1" />
+                {ticket.queue_type_name || ticketQueueType?.name}
+              </Badge>
+            )}
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             {/* Ticket Number - Large Display */}
@@ -448,6 +541,9 @@ export default function JoinQueuePage({
     );
   }
 
+  // Get the selected queue type details
+  const selectedTypeDetails = queueTypes.find(t => t.id === selectedQueueType);
+
   // Join Queue Form
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
@@ -463,6 +559,53 @@ export default function JoinQueuePage({
             Join the queue and skip the wait!
           </CardDescription>
         </CardHeader>
+
+        {/* Queue Type Selection - Show if multiple queue types exist */}
+        {queueTypes.length > 1 && (
+          <div className="px-6 pb-4">
+            <Label className="text-sm font-medium mb-2 block">
+              Select Queue <span className="text-red-500">*</span>
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {queueTypes.filter(t => t.is_active).map((queueType) => (
+                <button
+                  key={queueType.id}
+                  onClick={() => setSelectedQueueType(queueType.id)}
+                  className={`p-3 rounded-xl border-2 transition-all text-left ${
+                    selectedQueueType === queueType.id
+                      ? "border-blue-500 bg-blue-50 shadow-md"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: queueType.color }}
+                    >
+                      {queueType.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{queueType.name}</p>
+                      <p className="text-xs text-gray-500">~{queueType.estimated_service_time} min</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Show selected queue type info */}
+        {selectedTypeDetails && selectedTypeDetails.description && (
+          <div className="px-6 pb-2">
+            <div
+              className="p-3 rounded-lg border-l-4"
+              style={{ borderColor: selectedTypeDetails.color, backgroundColor: selectedTypeDetails.color + "10" }}
+            >
+              <p className="text-sm text-gray-600">{selectedTypeDetails.description}</p>
+            </div>
+          </div>
+        )}
 
         {/* Queue Status Info */}
         {queueInfo && (
@@ -532,7 +675,7 @@ export default function JoinQueuePage({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="service">Service Type</Label>
+            <Label htmlFor="service">Service Type (Optional)</Label>
             <Select
               value={formData.service_type}
               onValueChange={(value) =>
@@ -556,15 +699,18 @@ export default function JoinQueuePage({
 
           <Button
             onClick={handleJoinQueue}
-            disabled={loading}
+            disabled={loading || (queueTypes.length > 1 && !selectedQueueType)}
             className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700"
+            style={selectedTypeDetails ? { backgroundColor: selectedTypeDetails.color } : {}}
           >
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
                 <Ticket className="h-5 w-5 mr-2" />
-                Join Queue Now
+                {selectedTypeDetails
+                  ? `Join ${selectedTypeDetails.name} Queue`
+                  : "Join Queue Now"}
               </>
             )}
           </Button>
