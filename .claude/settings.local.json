@@ -30,7 +30,8 @@
       "Bash(ping:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

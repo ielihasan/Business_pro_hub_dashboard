@@ -22,13 +22,14 @@ import {
   Calendar,
   BellRing
 } from "lucide-react";
+import { ScrollProgress } from "@/components/ui/scroll-progress";
 
 export default function LandingPage() {
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
     if (element) {
-      const headerOffset = 80; // Height of sticky header
+      const headerOffset = 76; // Height of sticky header + progress bar below (73 + 3)
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
@@ -151,6 +152,9 @@ export default function LandingPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Scroll Progress Indicator - Below Header */}
+      <ScrollProgress height={3} position="below-header" headerHeight={73} />
+
       {/* Header */}
       <motion.header
         className="border-b border-gray-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-sm"
