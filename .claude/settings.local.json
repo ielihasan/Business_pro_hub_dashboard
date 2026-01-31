@@ -31,7 +31,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
       "Bash(pkill:*)",
-      "Bash(xargs basename:*)"
+      "Bash(xargs basename:*)",
+      "Bash(cat:*)"
     ]
   }
 }

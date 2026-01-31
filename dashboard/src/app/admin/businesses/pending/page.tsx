@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle, MailCheck, MailX } from "lucide-react";
 import { toast } from "sonner";
 
 interface PendingBusiness {
@@ -27,6 +27,8 @@ interface PendingBusiness {
   business_phone: string;
   business_description: string;
   created_at: string;
+  email_verified: boolean;
+  email_verified_at: string | null;
 }
 
 export default function PendingBusinessesPage() {
@@ -237,10 +239,21 @@ export default function PendingBusinessesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-xl">{business.business_name}</CardTitle>
-                    <CardDescription className="mt-1 flex gap-2">
+                    <CardDescription className="mt-1 flex flex-wrap gap-2">
                       <Badge variant="outline">{business.business_type}</Badge>
                       {business.business_type === "Admin" && (
                         <Badge variant="default">Admin Registration</Badge>
+                      )}
+                      {business.email_verified ? (
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
+                          <MailCheck className="h-3 w-3" />
+                          Email Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-200 flex items-center gap-1">
+                          <MailX className="h-3 w-3" />
+                          Awaiting Verification
+                        </Badge>
                       )}
                     </CardDescription>
                   </div>
@@ -297,21 +310,32 @@ export default function PendingBusinessesPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-2">
-                  <Button
-                    className="flex-1"
-                    onClick={() => openDialog(business, "approve")}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => openDialog(business, "reject")}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Reject
-                  </Button>
+                  {business.email_verified ? (
+                    <>
+                      <Button
+                        className="flex-1"
+                        onClick={() => openDialog(business, "approve")}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Approve
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => openDialog(business, "reject")}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex-1 text-center py-2 px-4 bg-amber-50 border border-amber-200 rounded-md">
+                      <p className="text-sm text-amber-800">
+                        <AlertCircle className="h-4 w-4 inline mr-1" />
+                        Waiting for email verification before approval
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

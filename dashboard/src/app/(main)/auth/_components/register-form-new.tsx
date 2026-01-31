@@ -108,14 +108,16 @@ export function RegisterFormNew() {
         throw new Error(result.error);
       }
 
-      toast.success("Admin registration submitted! Awaiting approval from existing admin.");
+      toast.success("Registration submitted! Please check your email to verify your account.");
 
-      // Store email for login page
+      // Store email for verification page
       if (typeof window !== "undefined") {
+        sessionStorage.setItem("pendingVerificationEmail", data.email);
         sessionStorage.setItem("lastRegisteredEmail", data.email);
       }
 
-      router.push("/auth/waiting-approval-admin");
+      // Redirect to email verification pending page
+      router.push("/auth/verify-email-pending");
     } catch (err: any) {
       toast.error(err.message || "Admin registration failed.");
     } finally {
@@ -145,14 +147,16 @@ export function RegisterFormNew() {
         throw new Error(result.error);
       }
 
-      toast.success("Business registration submitted! Awaiting admin approval.");
+      toast.success("Registration submitted! Please check your email to verify your account.");
 
-      // Store email for login page
+      // Store email for verification page
       if (typeof window !== "undefined") {
+        sessionStorage.setItem("pendingVerificationEmail", data.email);
         sessionStorage.setItem("lastRegisteredEmail", data.email);
       }
 
-      router.push("/auth/waiting-approval-business");
+      // Redirect to email verification pending page
+      router.push("/auth/verify-email-pending");
     } catch (err: any) {
       toast.error(err.message || "Business registration failed.");
     } finally {
