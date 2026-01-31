@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,6 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -25,838 +33,817 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
   DollarSign,
   CreditCard,
-  Search,
-  MoreHorizontal,
-  Eye,
-  Download,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-  ArrowUpRight,
-  Receipt,
-  Clock,
   CheckCircle,
   XCircle,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Search,
+  RefreshCw,
+  Download,
+  Eye,
+  Building2,
+  Users,
+  Receipt,
+  BarChart3,
+  PieChart,
+  ArrowDownRight,
+  Loader2,
+  Sparkles,
+  Zap,
+  Crown,
   AlertCircle,
+  Smartphone,
+  Banknote,
 } from "lucide-react";
-
-// Mock data for demonstration - will be replaced with real Stripe data later
-const mockRevenueData = [
-  { month: "Jan", revenue: 4500, subscriptions: 12, transactions: 45 },
-  { month: "Feb", revenue: 5200, subscriptions: 15, transactions: 52 },
-  { month: "Mar", revenue: 4800, subscriptions: 14, transactions: 48 },
-  { month: "Apr", revenue: 6100, subscriptions: 18, transactions: 61 },
-  { month: "May", revenue: 7200, subscriptions: 22, transactions: 72 },
-  { month: "Jun", revenue: 6800, subscriptions: 20, transactions: 68 },
-  { month: "Jul", revenue: 8500, subscriptions: 25, transactions: 85 },
-  { month: "Aug", revenue: 9200, subscriptions: 28, transactions: 92 },
-  { month: "Sep", revenue: 8800, subscriptions: 26, transactions: 88 },
-  { month: "Oct", revenue: 10500, subscriptions: 32, transactions: 105 },
-  { month: "Nov", revenue: 11200, subscriptions: 35, transactions: 112 },
-  { month: "Dec", revenue: 12500, subscriptions: 38, transactions: 125 },
-];
-
-const mockPayments = [
-  {
-    id: "pay_1",
-    transaction_id: "txn_3L8K9mJ2eZvKYr2C",
-    business_name: "Coffee Corner",
-    business_email: "coffee@example.com",
-    amount: 29.99,
-    currency: "USD",
-    status: "completed",
-    payment_method: "card",
-    card_last4: "4242",
-    card_brand: "Visa",
-    plan: "Basic",
-    description: "Monthly subscription - Basic Plan",
-    created_at: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "pay_2",
-    transaction_id: "txn_4M9L0nK3fAwLZs3D",
-    business_name: "Tech Solutions",
-    business_email: "tech@example.com",
-    amount: 99.99,
-    currency: "USD",
-    status: "completed",
-    payment_method: "card",
-    card_last4: "1234",
-    card_brand: "Mastercard",
-    plan: "Premium",
-    description: "Monthly subscription - Premium Plan",
-    created_at: "2024-01-14T14:22:00Z",
-  },
-  {
-    id: "pay_3",
-    transaction_id: "txn_5N0M1oL4gBxMAt4E",
-    business_name: "Fitness Hub",
-    business_email: "fitness@example.com",
-    amount: 29.99,
-    currency: "USD",
-    status: "pending",
-    payment_method: "card",
-    card_last4: "5678",
-    card_brand: "Visa",
-    plan: "Basic",
-    description: "Monthly subscription - Basic Plan",
-    created_at: "2024-01-14T09:15:00Z",
-  },
-  {
-    id: "pay_4",
-    transaction_id: "txn_6O1N2pM5hCyNBu5F",
-    business_name: "Beauty Studio",
-    business_email: "beauty@example.com",
-    amount: 99.99,
-    currency: "USD",
-    status: "completed",
-    payment_method: "card",
-    card_last4: "9012",
-    card_brand: "Amex",
-    plan: "Premium",
-    description: "Monthly subscription - Premium Plan",
-    created_at: "2024-01-13T16:45:00Z",
-  },
-  {
-    id: "pay_5",
-    transaction_id: "txn_7P2O3qN6iDzOCv6G",
-    business_name: "Auto Service",
-    business_email: "auto@example.com",
-    amount: 29.99,
-    currency: "USD",
-    status: "failed",
-    payment_method: "card",
-    card_last4: "3456",
-    card_brand: "Visa",
-    plan: "Basic",
-    description: "Monthly subscription - Basic Plan",
-    created_at: "2024-01-13T11:30:00Z",
-  },
-  {
-    id: "pay_6",
-    transaction_id: "txn_8Q3P4rO7jEaPDw7H",
-    business_name: "Pet Care Plus",
-    business_email: "petcare@example.com",
-    amount: 49.99,
-    currency: "USD",
-    status: "completed",
-    payment_method: "card",
-    card_last4: "7890",
-    card_brand: "Mastercard",
-    plan: "Standard",
-    description: "Monthly subscription - Standard Plan",
-    created_at: "2024-01-12T13:20:00Z",
-  },
-  {
-    id: "pay_7",
-    transaction_id: "txn_9R4Q5sP8kFbQEx8I",
-    business_name: "Restaurant Delight",
-    business_email: "restaurant@example.com",
-    amount: 99.99,
-    currency: "USD",
-    status: "refunded",
-    payment_method: "card",
-    card_last4: "2468",
-    card_brand: "Visa",
-    plan: "Premium",
-    description: "Monthly subscription - Premium Plan",
-    created_at: "2024-01-11T08:45:00Z",
-  },
-  {
-    id: "pay_8",
-    transaction_id: "txn_0S5R6tQ9lGcRFy9J",
-    business_name: "Dental Clinic",
-    business_email: "dental@example.com",
-    amount: 49.99,
-    currency: "USD",
-    status: "completed",
-    payment_method: "card",
-    card_last4: "1357",
-    card_brand: "Visa",
-    plan: "Standard",
-    description: "Monthly subscription - Standard Plan",
-    created_at: "2024-01-10T15:10:00Z",
-  },
-];
-
-const planDistribution = [
-  { name: "Free", value: 45, color: "#e5e7eb" },
-  { name: "Basic", value: 30, color: "#9ca3af" },
-  { name: "Standard", value: 15, color: "#4b5563" },
-  { name: "Premium", value: 10, color: "#000000" },
-];
-
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "#000000",
-  },
-  subscriptions: {
-    label: "Subscriptions",
-    color: "#6b7280",
-  },
-  transactions: {
-    label: "Transactions",
-    color: "#374151",
-  },
-};
+import { toast } from "sonner";
 
 interface Payment {
   id: string;
-  transaction_id: string;
+  business_id: string;
   business_name: string;
   business_email: string;
+  owner_name: string;
+  plan_id: string;
+  plan_name: string;
   amount: number;
   currency: string;
   status: string;
   payment_method: string;
-  card_last4: string;
-  card_brand: string;
-  plan: string;
   description: string;
+  transaction_id: string;
   created_at: string;
 }
 
-export default function AnalyticsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+interface Stats {
+  totalRevenue: number;
+  totalTransactions: number;
+  successfulPayments: number;
+  pendingPayments: number;
+  failedPayments: number;
+  planDistribution: Record<string, number>;
+  monthlyRevenue: { month: string; revenue: number; transactions: number }[];
+}
+
+interface Subscription {
+  id: string;
+  full_name: string;
+  email: string;
+  business_name: string;
+  subscription_plan: string;
+  subscription_status: string;
+  subscription_expires_at: string | null;
+  created_at: string;
+  plan_details: { name: string; price: number };
+}
+
+const paymentMethodIcons: Record<string, any> = {
+  card: CreditCard,
+  jazzcash: Smartphone,
+  easypaisa: Smartphone,
+  bank: Banknote,
+  free: Sparkles,
+};
+
+const planIcons: Record<string, any> = {
+  free: Sparkles,
+  starter: Zap,
+  professional: Crown,
+  enterprise: Building2,
+};
+
+const planColors: Record<string, string> = {
+  free: "bg-gray-100 text-gray-700",
+  starter: "bg-blue-100 text-blue-700",
+  professional: "bg-purple-100 text-purple-700",
+  enterprise: "bg-amber-100 text-amber-700",
+};
+
+export default function AnalyticsPaymentsPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Filters
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("30d");
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Payment details dialog
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Filter payments
-  const filteredPayments = mockPayments.filter((payment) => {
-    const matchesSearch =
-      payment.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.business_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.transaction_id.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    fetchStats();
+    fetchPayments();
+    fetchSubscriptions();
+  }, []);
 
-    const matchesStatus =
-      statusFilter === "all" || payment.status === statusFilter;
+  useEffect(() => {
+    fetchPayments();
+  }, [statusFilter, planFilter, page]);
 
-    const matchesPlan =
-      planFilter === "all" || payment.plan.toLowerCase() === planFilter;
+  const fetchStats = async () => {
+    try {
+      const res = await fetch("/API/admin/payments?type=stats");
+      const data = await res.json();
 
-    return matchesSearch && matchesStatus && matchesPlan;
-  });
+      if (data.error) throw new Error(data.error);
+      setStats(data.data);
+    } catch (error: any) {
+      console.error("Stats error:", error);
+      toast.error("Failed to load statistics");
+    }
+  };
 
-  // Calculate stats
-  const totalRevenue = mockPayments
-    .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + p.amount, 0);
+  const fetchPayments = async () => {
+    try {
+      setPaymentsLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10",
+      });
 
-  const totalTransactions = mockPayments.length;
-  const completedTransactions = mockPayments.filter(
-    (p) => p.status === "completed"
-  ).length;
-  const pendingTransactions = mockPayments.filter(
-    (p) => p.status === "pending"
-  ).length;
-  const failedTransactions = mockPayments.filter(
-    (p) => p.status === "failed"
-  ).length;
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (planFilter !== "all") params.append("plan", planFilter);
+      if (search) params.append("search", search);
+
+      const res = await fetch(`/API/admin/payments?${params}`);
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      setPayments(data.data || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+    } catch (error: any) {
+      console.error("Payments error:", error);
+      setPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const fetchSubscriptions = async () => {
+    try {
+      const res = await fetch("/API/admin/payments?type=subscriptions");
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+      setSubscriptions(data.data || []);
+    } catch (error: any) {
+      console.error("Subscriptions error:", error);
+    }
+  };
+
+  const handleSearch = () => {
+    setPage(1);
+    fetchPayments();
+  };
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchStats();
+    fetchPayments();
+    fetchSubscriptions();
+    toast.success("Data refreshed");
   };
 
-  const openViewDialog = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setViewDialogOpen(true);
+  const handleExport = () => {
+    const headers = ["Date", "Business", "Email", "Plan", "Amount", "Method", "Status", "Transaction ID"];
+    const rows = payments.map((p) => [
+      new Date(p.created_at).toLocaleDateString(),
+      p.business_name,
+      p.business_email,
+      p.plan_name,
+      `Rs. ${p.amount}`,
+      p.payment_method,
+      p.status,
+      p.transaction_id || "-",
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payments-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("Payments exported to CSV");
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
+  const formatCurrency = (amount: number) => {
+    return `Rs. ${amount.toLocaleString()}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      year: "numeric",
     });
   };
 
-  const formatCurrency = (amount: number, currency: string = "USD") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(amount);
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
         return (
-          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case "pending":
         return (
-          <Badge className="bg-gray-200 text-gray-600 hover:bg-gray-200">
+          <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         );
       case "failed":
         return (
-          <Badge className="bg-gray-300 text-gray-800 hover:bg-gray-300">
+          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
             <XCircle className="h-3 w-3 mr-1" />
             Failed
           </Badge>
         );
       case "refunded":
         return (
-          <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
-            <AlertCircle className="h-3 w-3 mr-1" />
+          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
+            <ArrowDownRight className="h-3 w-3 mr-1" />
             Refunded
           </Badge>
         );
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge>{status}</Badge>;
     }
   };
 
+  const getPlanBadge = (planId: string) => {
+    const PlanIcon = planIcons[planId] || Sparkles;
+    const colorClass = planColors[planId] || planColors.free;
+    const planName = planId.charAt(0).toUpperCase() + planId.slice(1);
+
+    return (
+      <Badge className={`${colorClass} hover:${colorClass}`}>
+        <PlanIcon className="h-3 w-3 mr-1" />
+        {planName}
+      </Badge>
+    );
+  };
+
+  const revenueChange = stats?.monthlyRevenue && stats.monthlyRevenue.length >= 2
+    ? ((stats.monthlyRevenue[stats.monthlyRevenue.length - 1].revenue -
+        stats.monthlyRevenue[stats.monthlyRevenue.length - 2].revenue) /
+        (stats.monthlyRevenue[stats.monthlyRevenue.length - 2].revenue || 1)) *
+      100
+    : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Analytics & Payments</h1>
-          <p className="mt-2 text-gray-600">
-            Track revenue, subscriptions, and payment transactions
+          <p className="mt-1 text-gray-600">
+            Monitor revenue, subscriptions, and payment transactions
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[140px]">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
+          </Button>
+          <Button variant="outline" size="icon" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Revenue */}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
-                <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-                  <ArrowUpRight className="h-4 w-4" />
-                  <span>+12.5% from last month</span>
-                </div>
+                <p className="text-sm font-medium text-green-600">Total Revenue</p>
+                <p className="text-3xl font-bold text-green-700 mt-1">
+                  {formatCurrency(stats?.totalRevenue || 0)}
+                </p>
+                {revenueChange !== 0 && (
+                  <div className="flex items-center mt-2 text-sm">
+                    {revenueChange > 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-600 mr-1" />
+                    )}
+                    <span className={revenueChange > 0 ? "text-green-600" : "text-red-600"}>
+                      {Math.abs(revenueChange).toFixed(1)}% from last month
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-black" />
+              <div className="p-3 bg-green-200 rounded-full">
+                <DollarSign className="h-6 w-6 text-green-700" />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Total Transactions */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Transactions</p>
-                <p className="text-2xl font-bold">{totalTransactions}</p>
-                <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-                  <ArrowUpRight className="h-4 w-4" />
-                  <span>+8.2% from last month</span>
-                </div>
+                <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {stats?.totalTransactions || 0}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">All time</p>
               </div>
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <CreditCard className="h-6 w-6 text-gray-700" />
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Receipt className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Successful Payments */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Successful Payments</p>
-                <p className="text-2xl font-bold">{completedTransactions}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {((completedTransactions / totalTransactions) * 100).toFixed(1)}% success rate
+                <p className="text-sm font-medium text-gray-600">Successful</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {stats?.successfulPayments || 0}
+                </p>
+                <p className="text-sm text-green-600 mt-2">
+                  {stats?.totalTransactions
+                    ? ((stats.successfulPayments / stats.totalTransactions) * 100).toFixed(1)
+                    : 0}
+                  % success rate
                 </p>
               </div>
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-gray-700" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Pending/Failed */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Pending / Failed</p>
-                <p className="text-2xl font-bold">
-                  {pendingTransactions} / {failedTransactions}
+                <p className="text-sm font-medium text-gray-600">Pending / Failed</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {(stats?.pendingPayments || 0) + (stats?.failedPayments || 0)}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">Requires attention</p>
+                <div className="flex gap-3 mt-2 text-sm">
+                  <span className="text-yellow-600">{stats?.pendingPayments || 0} pending</span>
+                  <span className="text-red-600">{stats?.failedPayments || 0} failed</span>
+                </div>
               </div>
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <AlertCircle className="h-6 w-6 text-gray-600" />
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <AlertCircle className="h-6 w-6 text-yellow-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Section */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Monthly revenue for the current year</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Revenue Overview
+            </CardTitle>
+            <CardDescription>Monthly revenue for the last 6 months</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
-              <AreaChart data={mockRevenueData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#000000" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#000000" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-xs"
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `$${value / 1000}k`}
-                  className="text-xs"
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => formatCurrency(value as number)}
-                    />
-                  }
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#000000"
-                  strokeWidth={2}
-                  fill="url(#colorRevenue)"
-                />
-              </AreaChart>
-            </ChartContainer>
+            {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-end justify-between h-48 gap-2">
+                  {stats.monthlyRevenue.map((item, index) => {
+                    const maxRevenue = Math.max(...stats.monthlyRevenue.map((m) => m.revenue));
+                    const height = maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center">
+                        <div className="w-full flex flex-col items-center">
+                          <span className="text-xs text-gray-500 mb-1">
+                            {formatCurrency(item.revenue)}
+                          </span>
+                          <div
+                            className="w-full bg-black rounded-t transition-all duration-500"
+                            style={{ height: `${Math.max(height, 5)}%`, minHeight: "8px" }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-600 mt-2">{item.month}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-black rounded" />
+                    <span>Revenue</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                <BarChart3 className="h-12 w-12 mb-2 text-gray-300" />
+                <p>No revenue data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Plan Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Plan Distribution</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Plan Distribution
+            </CardTitle>
             <CardDescription>Active subscriptions by plan</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={planDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {planDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {planDistribution.map((plan) => (
-                <div key={plan.name} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: plan.color }}
-                  />
-                  <span className="text-sm text-gray-600">
-                    {plan.name}: {plan.value}%
-                  </span>
+            {stats?.planDistribution ? (
+              <div className="space-y-4">
+                {Object.entries(stats.planDistribution).map(([plan, count]) => {
+                  const total = Object.values(stats.planDistribution).reduce((a, b) => a + b, 0);
+                  const percentage = total > 0 ? (count / total) * 100 : 0;
+                  const PlanIcon = planIcons[plan] || Sparkles;
+
+                  return (
+                    <div key={plan} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <PlanIcon className="h-4 w-4" />
+                          <span className="capitalize font-medium">{plan}</span>
+                        </div>
+                        <span className="text-gray-600">
+                          {count} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${
+                            plan === "free"
+                              ? "bg-gray-400"
+                              : plan === "starter"
+                              ? "bg-blue-500"
+                              : plan === "professional"
+                              ? "bg-purple-500"
+                              : "bg-amber-500"
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <Separator className="my-4" />
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Total Businesses</span>
+                  <span>{Object.values(stats.planDistribution).reduce((a, b) => a + b, 0)}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                <PieChart className="h-12 w-12 mb-2 text-gray-300" />
+                <p>No subscription data</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Transactions Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transactions & Subscriptions</CardTitle>
-          <CardDescription>Monthly comparison of transactions and new subscriptions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[250px]">
-            <BarChart data={mockRevenueData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                axisLine={false}
-                className="text-xs"
-              />
-              <YAxis tickLine={false} axisLine={false} className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="transactions" fill="#374151" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="subscriptions" fill="#9ca3af" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+      {/* Tabs for Payments and Subscriptions */}
+      <Tabs defaultValue="payments" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Payment Transactions
+          </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Business Subscriptions
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Payment Records */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>Payment Records</CardTitle>
-              <CardDescription>
-                All payment transactions from businesses
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="w-fit">
-              Stripe Integration Coming Soon
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by business, email, or transaction ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={planFilter} onValueChange={setPlanFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Plan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="basic">Basic</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
+        {/* Payments Tab */}
+        <TabsContent value="payments">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Payment Transactions</CardTitle>
+                  <CardDescription>All payment records from businesses</CardDescription>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by business, email, transaction..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      className="pl-9 w-full sm:w-64"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-36">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="refunded">Refunded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={planFilter} onValueChange={setPlanFilter}>
+                    <SelectTrigger className="w-full sm:w-36">
+                      <SelectValue placeholder="Plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="starter">Starter</SelectItem>
+                      <SelectItem value="professional">Professional</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {paymentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : payments.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Receipt className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <p className="font-medium text-lg">No payment records found</p>
+                  <p className="text-sm mt-1">
+                    Payment transactions will appear here when businesses upgrade their plans
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Business</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payments.map((payment) => {
+                          const PaymentIcon = paymentMethodIcons[payment.payment_method] || CreditCard;
+                          return (
+                            <TableRow key={payment.id}>
+                              <TableCell className="text-sm text-gray-600">
+                                {formatDate(payment.created_at)}
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{payment.business_name}</p>
+                                  <p className="text-xs text-gray-500">{payment.business_email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>{getPlanBadge(payment.plan_id)}</TableCell>
+                              <TableCell className="font-semibold">
+                                {formatCurrency(payment.amount)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <PaymentIcon className="h-4 w-4 text-gray-400" />
+                                  <span className="capitalize text-sm">{payment.payment_method}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPayment(payment);
+                                    setIsDetailsOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
 
-          {/* Table */}
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Transaction</TableHead>
-                  <TableHead>Business</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12">
-                      <Receipt className="mx-auto h-12 w-12 text-gray-300" />
-                      <h3 className="mt-4 text-lg font-medium text-gray-900">
-                        No payments found
-                      </h3>
-                      <p className="mt-2 text-gray-500">
-                        Try adjusting your search or filter criteria
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-sm text-gray-600">
+                        Page {page} of {totalPages}
                       </p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-mono text-sm">{payment.transaction_id}</p>
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                            <CreditCard className="h-3 w-3" />
-                            {payment.card_brand} •••• {payment.card_last4}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{payment.business_name}</p>
-                          <p className="text-sm text-gray-500">{payment.business_email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-semibold">
-                          {formatCurrency(payment.amount, payment.currency)}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{payment.plan}</Badge>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                      <TableCell className="text-gray-500 text-sm">
-                        {formatDate(payment.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openViewDialog(payment)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Receipt className="h-4 w-4 mr-2" />
-                              Download Receipt
-                            </DropdownMenuItem>
-                            {payment.status === "completed" && (
-                              <DropdownMenuItem className="text-red-600">
-                                <AlertCircle className="h-4 w-4 mr-2" />
-                                Initiate Refund
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === 1}
+                          onClick={() => setPage(page - 1)}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === totalPages}
+                          onClick={() => setPage(page + 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-gray-500">
-              Showing {filteredPayments.length} of {mockPayments.length} payments
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" className="w-9">
-                1
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Subscriptions Tab */}
+        <TabsContent value="subscriptions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Subscriptions</CardTitle>
+              <CardDescription>Current subscription status of all businesses</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {subscriptions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <p className="font-medium text-lg">No businesses found</p>
+                  <p className="text-sm mt-1">
+                    Business subscriptions will appear here when businesses are approved
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Business</TableHead>
+                        <TableHead>Owner</TableHead>
+                        <TableHead>Current Plan</TableHead>
+                        <TableHead>Monthly Value</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Expires</TableHead>
+                        <TableHead>Member Since</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {subscriptions.map((sub) => (
+                        <TableRow key={sub.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{sub.business_name || "N/A"}</p>
+                              <p className="text-xs text-gray-500">{sub.email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{sub.full_name}</TableCell>
+                          <TableCell>{getPlanBadge(sub.subscription_plan || "free")}</TableCell>
+                          <TableCell className="font-semibold">
+                            {formatCurrency(sub.plan_details?.price || 0)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                sub.subscription_status === "active"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }
+                            >
+                              {sub.subscription_status || "active"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {sub.subscription_expires_at
+                              ? formatDate(sub.subscription_expires_at)
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {formatDate(sub.created_at)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Payment Details Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-black" />
-              Payment Details
-            </DialogTitle>
-            <DialogDescription>
-              Complete transaction information
-            </DialogDescription>
+            <DialogTitle>Payment Details</DialogTitle>
+            <DialogDescription>Transaction information</DialogDescription>
           </DialogHeader>
+
           {selectedPayment && (
-            <div className="space-y-6 py-4">
-              {/* Transaction Info */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Transaction Information
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Transaction ID</span>
-                    <span className="font-mono">{selectedPayment.transaction_id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Amount</span>
-                    <span className="font-semibold">
-                      {formatCurrency(selectedPayment.amount, selectedPayment.currency)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Status</span>
-                    {getStatusBadge(selectedPayment.status)}
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Date</span>
-                    <span>{formatDate(selectedPayment.created_at)}</span>
-                  </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-500">Amount</p>
+                  <p className="text-2xl font-bold">{formatCurrency(selectedPayment.amount)}</p>
                 </div>
+                {getStatusBadge(selectedPayment.status)}
               </div>
 
-              {/* Business Info */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Business Information
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Business Name</span>
-                    <span className="font-medium">{selectedPayment.business_name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Email</span>
-                    <span>{selectedPayment.business_email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Plan</span>
-                    <Badge variant="outline">{selectedPayment.plan}</Badge>
-                  </div>
-                </div>
-              </div>
+              <Separator />
 
-              {/* Payment Method */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Payment Method
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Method</span>
-                    <span className="capitalize">{selectedPayment.payment_method}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Card</span>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>
-                        {selectedPayment.card_brand} •••• {selectedPayment.card_last4}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Transaction ID</span>
+                  <span className="font-mono text-sm">{selectedPayment.transaction_id || "-"}</span>
                 </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Description
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 text-sm">
-                  <p>{selectedPayment.description}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Business</span>
+                  <span className="font-medium">{selectedPayment.business_name}</span>
                 </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t">
-                <Button variant="outline" className="flex-1">
-                  <Receipt className="h-4 w-4 mr-2" />
-                  Download Receipt
-                </Button>
-                {selectedPayment.status === "completed" && (
-                  <Button variant="destructive" className="flex-1">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Initiate Refund
-                  </Button>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Email</span>
+                  <span>{selectedPayment.business_email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Owner</span>
+                  <span>{selectedPayment.owner_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Plan</span>
+                  {getPlanBadge(selectedPayment.plan_id)}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Payment Method</span>
+                  <span className="capitalize">{selectedPayment.payment_method}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Date & Time</span>
+                  <span>{formatDateTime(selectedPayment.created_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Description</span>
+                  <span className="text-right text-sm">{selectedPayment.description}</span>
+                </div>
               </div>
             </div>
           )}

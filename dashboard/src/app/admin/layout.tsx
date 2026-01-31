@@ -23,7 +23,7 @@ const navigation = [
   { name: "Pending Businesses", href: "/admin/businesses/pending", icon: Clock },
   { name: "Approved Businesses", href: "/admin/businesses/approved", icon: CheckCircle },
   { name: "Admin Management", href: "/admin/users", icon: Users },
-  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { name: "Analytics & Payments", href: "/admin/analytics", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
