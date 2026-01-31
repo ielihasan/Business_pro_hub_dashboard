@@ -38,68 +38,92 @@ export function LoginForm() {
       if (error) throw error;
       if (!authData.user) throw new Error("Login failed");
 
-      // Check admins table for all roles
-      const { data: adminData, error: adminError } = await supabase
+      // Check admins table for all approved roles
+      const { data: adminData } = await supabase
         .from("admins")
         .select("*")
         .eq("id", authData.user.id);
 
-      if (adminError || !adminData || adminData.length === 0) {
-        // Check if user is in business_applications (pending approval)
-        const { data: applicationData, error: appError } = await supabase
-          .from("business_applications")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .single();
+      // Check business_applications for all pending applications (not rejected)
+      const { data: pendingApplications } = await supabase
+        .from("business_applications")
+        .select("*")
+        .eq("user_id", authData.user.id)
+        .eq("is_approved", false)
+        .eq("is_rejected", false);
 
-        if (applicationData) {
-          // User has a pending application
-          if (applicationData.is_rejected) {
-            toast.error(`Your application was rejected. Reason: ${applicationData.rejection_reason || 'Not specified'}`);
-            await supabase.auth.signOut();
-            return;
-          }
+      // Combine approved accounts and pending applications
+      const approvedAccounts = (adminData || []).map(acc => ({
+        ...acc,
+        is_pending: false,
+      }));
 
-          // Redirect to appropriate waiting page based on application type
-          const isAdminApplication = applicationData.business_type === "Admin";
-          const waitingPage = isAdminApplication ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business";
-          const message = isAdminApplication
-            ? "Your admin registration is awaiting approval."
-            : "Your business application is awaiting admin approval.";
+      const pendingAccounts = (pendingApplications || []).map(app => ({
+        ...app,
+        id: app.user_id,
+        role: app.business_type === "Admin" ? "admin" : "business_owner",
+        is_approved: false,
+        is_pending: true,
+        email_verified: app.email_verified,
+      }));
 
-          toast.warning(message);
-          router.push(waitingPage);
-          return;
-        }
+      // Filter out pending applications that already have an approved account of the same role
+      const filteredPendingAccounts = pendingAccounts.filter(pending => {
+        return !approvedAccounts.some(approved => approved.role === pending.role);
+      });
 
-        // User not found in either table
+      const allAccounts = [...approvedAccounts, ...filteredPendingAccounts];
+
+      // No accounts found at all
+      if (allAccounts.length === 0) {
         toast.error("User profile not found. Please contact support.");
         await supabase.auth.signOut();
         return;
       }
 
-      // Check if user has multiple roles
-      if (adminData.length > 1) {
-        // User has multiple roles - store in session and redirect to role selection
-        sessionStorage.setItem("multipleRoles", JSON.stringify(adminData));
+      // Check if user has multiple accounts (approved or pending)
+      if (allAccounts.length > 1) {
+        // User has multiple accounts - store in session and redirect to role selection
+        sessionStorage.setItem("multipleRoles", JSON.stringify(allAccounts));
         router.push("/auth/select-role");
         return;
       }
 
-      // Single role - proceed with normal login
-      const userRole = adminData[0];
+      // Single account - proceed based on its status
+      const userAccount = allAccounts[0];
 
-      if (userRole.role === "admin") {
-        // Admin - full access
+      // Check if it's a pending application
+      if (userAccount.is_pending) {
+        // Check if email is verified
+        if (!userAccount.email_verified) {
+          sessionStorage.setItem("pendingVerificationEmail", userAccount.email);
+          toast.warning("Please verify your email first.");
+          router.push("/auth/verify-email-pending");
+          return;
+        }
+
+        // Email verified but waiting for approval
+        const isAdminApplication = userAccount.role === "admin";
+        const waitingPage = isAdminApplication ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business";
+        const message = isAdminApplication
+          ? "Your admin registration is awaiting approval."
+          : "Your business application is awaiting admin approval.";
+
+        toast.warning(message);
+        router.push(waitingPage);
+        return;
+      }
+
+      // Approved account - proceed with normal login
+      if (userAccount.role === "admin") {
         if (data.remember && authData.session) {
           await supabase.auth.setSession(authData.session);
         }
 
         toast.success("Welcome, Admin!");
         router.push("/admin/dashboard");
-      } else if (userRole.role === "business_owner") {
-        // Business Owner - check approval status
-        if (!userRole.is_approved) {
+      } else if (userAccount.role === "business_owner") {
+        if (!userAccount.is_approved) {
           toast.warning("Your business account is pending approval.");
           router.push("/auth/waiting-approval-business");
           return;
@@ -109,7 +133,7 @@ export function LoginForm() {
           await supabase.auth.setSession(authData.session);
         }
 
-        toast.success(`Welcome back, ${userRole.business_name}!`);
+        toast.success(`Welcome back, ${userAccount.business_name}!`);
         router.push("/business/dashboard");
       } else {
         toast.error("Invalid account type.");

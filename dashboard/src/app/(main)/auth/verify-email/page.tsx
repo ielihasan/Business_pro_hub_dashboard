@@ -16,6 +16,7 @@ function VerifyEmailContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error" | "already_verified">("loading");
   const [message, setMessage] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [isAdminApplication, setIsAdminApplication] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -41,10 +42,12 @@ function VerifyEmailContent() {
       if (data.alreadyVerified) {
         setStatus("already_verified");
         setMessage("Your email has already been verified");
+        setIsAdminApplication(data.isAdminApplication || false);
       } else {
         setStatus("success");
         setMessage("Your email has been verified successfully!");
         setBusinessName(data.businessName || "");
+        setIsAdminApplication(data.isAdminApplication || false);
       }
     } catch (error: any) {
       setStatus("error");
@@ -53,7 +56,11 @@ function VerifyEmailContent() {
   };
 
   const handleContinue = () => {
-    router.push("/auth/waiting-approval-business");
+    if (isAdminApplication) {
+      router.push("/auth/waiting-approval-admin");
+    } else {
+      router.push("/auth/waiting-approval-business");
+    }
   };
 
   return (
@@ -112,10 +119,16 @@ function VerifyEmailContent() {
             {/* Success Content */}
             {(status === "success" || status === "already_verified") && (
               <>
-                {businessName && (
+                {businessName && !isAdminApplication && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                     <p className="text-sm text-green-600 mb-1">Business Name</p>
                     <p className="font-semibold text-green-800">{businessName}</p>
+                  </div>
+                )}
+                {isAdminApplication && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <p className="text-sm text-blue-600 mb-1">Application Type</p>
+                    <p className="font-semibold text-blue-800">Platform Administrator</p>
                   </div>
                 )}
 

@@ -26,23 +26,37 @@ export default function WaitingApprovalBusinessPage() {
         return;
       }
 
-      // Check if user has a pending application
-      const { data: application, error } = await supabase
+      // Check if user has a pending business application (not Admin)
+      const { data: applications, error } = await supabase
         .from("business_applications")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .neq("business_type", "Admin")
+        .eq("is_approved", false)
+        .eq("is_rejected", false)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-      if (error || !application) {
+      if (error || !applications || applications.length === 0) {
+        // No pending business application found, check if already approved in admins table
+        const { data: businessData } = await supabase
+          .from("admins")
+          .select("*")
+          .eq("id", user.id)
+          .eq("role", "business_owner")
+          .single();
+
+        if (businessData) {
+          toast.success("Your business account is already approved!");
+          router.push("/business/dashboard");
+          return;
+        }
+
         router.push("/auth/v1/login");
         return;
       }
 
-      // Redirect admin applications to admin waiting page
-      if (application.business_type === "Admin") {
-        router.push("/auth/waiting-approval-admin");
-        return;
-      }
+      const application = applications[0];
 
       // Check if application is approved
       if (application.is_approved) {

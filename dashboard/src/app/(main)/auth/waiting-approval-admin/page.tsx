@@ -26,25 +26,39 @@ export default function WaitingApprovalAdminPage() {
         return;
       }
 
-      // Check if user has a pending application
-      const { data: application, error } = await supabase
+      // Check if user has a pending admin application (filter by Admin type)
+      const { data: applications, error } = await supabase
         .from("business_applications")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .eq("business_type", "Admin")
+        .eq("is_approved", false)
+        .eq("is_rejected", false)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-      if (error || !application) {
+      if (error || !applications || applications.length === 0) {
+        // No pending admin application found, check if already approved in admins table
+        const { data: adminData } = await supabase
+          .from("admins")
+          .select("*")
+          .eq("id", user.id)
+          .eq("role", "admin")
+          .single();
+
+        if (adminData) {
+          toast.success("Your admin account is already approved!");
+          router.push("/admin/dashboard");
+          return;
+        }
+
         router.push("/auth/v1/login");
         return;
       }
 
-      // Redirect business applications to business waiting page
-      if (application.business_type !== "Admin") {
-        router.push("/auth/waiting-approval-business");
-        return;
-      }
+      const application = applications[0];
 
-      // Check if application is approved
+      // Check if application is approved (shouldn't happen with the query above, but just in case)
       if (application.is_approved) {
         toast.success("Your admin registration has been approved!");
         router.push("/auth/v1/login");

@@ -75,6 +75,8 @@ export async function GET(request: NextRequest) {
       applicationId: application.id,
       email: application.email,
       businessName: application.business_name,
+      businessType: application.business_type,
+      isAdminApplication: application.business_type === 'Admin',
     });
   } catch (error: any) {
     console.error('Error in verify-email route:', error);

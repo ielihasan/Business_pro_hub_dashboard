@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Building2, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Shield, Building2, ArrowRight, Clock, CheckCircle, MailX, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SelectRolePage() {
@@ -36,6 +37,29 @@ export default function SelectRolePage() {
 
   const handleRoleSelect = async (role: any) => {
     try {
+      // Check if this is a pending application
+      if (role.is_pending) {
+        // Check if email is verified
+        if (!role.email_verified) {
+          sessionStorage.setItem("pendingVerificationEmail", role.email);
+          toast.warning("Please verify your email first.");
+          router.push("/auth/verify-email-pending");
+          return;
+        }
+
+        // Email verified but waiting for approval
+        const isAdminApplication = role.role === "admin";
+        const waitingPage = isAdminApplication ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business";
+        const message = isAdminApplication
+          ? "Your admin registration is awaiting approval."
+          : "Your business application is awaiting admin approval.";
+
+        toast.warning(message);
+        router.push(waitingPage);
+        return;
+      }
+
+      // Approved accounts
       if (role.role === "admin") {
         sessionStorage.removeItem("multipleRoles");
         toast.success("Welcome, Admin!");
@@ -107,27 +131,52 @@ export default function SelectRolePage() {
                       {role.role === "admin" ? "Administrator" : "Business Owner"}
                     </p>
                   </div>
-                  {role.role === "business_owner" && (
-                    <>
-                      <div>
-                        <p className="text-sm text-gray-500">Business Type</p>
-                        <p className="font-medium text-gray-900">{role.business_type}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Status</p>
-                        <p className="font-medium text-gray-900">
-                          {role.is_approved ? (
-                            <span className="text-green-600">Approved</span>
-                          ) : (
-                            <span className="text-yellow-600">Pending Approval</span>
-                          )}
-                        </p>
-                      </div>
-                    </>
+                  {role.role === "business_owner" && !role.is_pending && (
+                    <div>
+                      <p className="text-sm text-gray-500">Business Type</p>
+                      <p className="font-medium text-gray-900">{role.business_type}</p>
+                    </div>
                   )}
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <div className="mt-1">
+                      {role.is_pending ? (
+                        !role.email_verified ? (
+                          <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                            <MailX className="w-3 h-3 mr-1" />
+                            Email Not Verified
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Awaiting Approval
+                          </Badge>
+                        )
+                      ) : role.is_approved ? (
+                        <Badge variant="default" className="bg-green-600">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Approved
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pending Approval
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <Button className="w-full" variant={role.role === "admin" ? "default" : "outline"}>
-                  Continue as {role.role === "admin" ? "Admin" : "Business Owner"}
+                <Button
+                  className="w-full"
+                  variant={role.is_pending && !role.email_verified ? "outline" : role.role === "admin" ? "default" : "outline"}
+                >
+                  {role.is_pending && !role.email_verified ? (
+                    <>Verify Email</>
+                  ) : role.is_pending ? (
+                    <>View Status</>
+                  ) : (
+                    <>Continue as {role.role === "admin" ? "Admin" : "Business Owner"}</>
+                  )}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </CardContent>
