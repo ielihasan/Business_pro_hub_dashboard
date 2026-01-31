@@ -135,6 +135,23 @@ export default function PendingBusinessesPage() {
         throw new Error(appError.message || "Failed to update application");
       }
 
+      // Send approval notification email
+      try {
+        await fetch("/API/auth/send-approval-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: selectedBusiness.email,
+            fullName: selectedBusiness.full_name,
+            businessName: isAdminApplication ? undefined : selectedBusiness.business_name,
+            isApproved: true,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Failed to send approval email:", emailError);
+        // Don't fail the approval if email fails
+      }
+
       const approvalMessage = isAdminApplication
         ? `Admin ${selectedBusiness.full_name} has been approved!`
         : `${selectedBusiness.business_name} has been approved!`;
@@ -172,6 +189,25 @@ export default function PendingBusinessesPage() {
         .eq("id", selectedBusiness.id);
 
       if (error) throw error;
+
+      // Send rejection notification email
+      const isAdminApplication = selectedBusiness.business_type === "Admin";
+      try {
+        await fetch("/API/auth/send-approval-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: selectedBusiness.email,
+            fullName: selectedBusiness.full_name,
+            businessName: isAdminApplication ? undefined : selectedBusiness.business_name,
+            isApproved: false,
+            rejectionReason: rejectionReason,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Failed to send rejection email:", emailError);
+        // Don't fail the rejection if email fails
+      }
 
       toast.success(`${selectedBusiness.business_name} has been rejected`);
       setSelectedBusiness(null);
