@@ -448,69 +448,100 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {/* Free Plan */}
           <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
-            <CardHeader className="pb-8">
-              <div className="space-y-4">
-                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Starter</CardTitle>
+            <CardHeader className="pb-6">
+              <div className="space-y-3">
+                <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Free</CardTitle>
                 <div>
-                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">$0</span>
-                  <span className="text-gray-600 ml-2 text-[18px]">/month</span>
+                  <span className="text-[32px] md:text-[36px] font-bold text-gray-900">Rs. 0</span>
+                  <span className="text-gray-600 ml-1 text-[14px]">/month</span>
                 </div>
-                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">Perfect for small businesses starting out</p>
+                <p className="text-gray-600 text-[14px] md:text-[15px] leading-[1.6]">Perfect for getting started</p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <ul className="space-y-4">
-                {["Up to 50 customers/month", "Basic queue management", "Email support", "Mobile app access"].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3">
+            <CardContent className="space-y-5">
+              <ul className="space-y-3">
+                {["Up to 50 queue entries/month", "Basic queue management", "QR code generation", "Email support", "1 staff member"].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
                     <div className="mt-0.5">
-                      <CheckCircle className="h-5 w-5 text-gray-700" />
+                      <CheckCircle className="h-4 w-4 text-gray-600" />
                     </div>
-                    <span className="text-gray-700 text-[16px] leading-[1.5]">{feature}</span>
+                    <span className="text-gray-700 text-[14px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
               <Link href="/auth/v1/register">
-                <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50 text-[18px]">
+                <Button variant="outline" size="lg" className="w-full border-2 h-11 font-semibold hover:bg-gray-50 text-[15px]">
                   Start Free
                 </Button>
               </Link>
             </CardContent>
           </Card>
 
-          {/* Pro Plan */}
-          <Card className="border-2 border-gray-900 shadow-2xl scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-gray-200 transition-all duration-300">
-            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2">
-              <Badge className="px-6 py-2 bg-gray-900 text-white border-0 shadow-lg text-[16px] font-bold">
-                ⭐ MOST POPULAR
+          {/* Starter Plan - Most Popular */}
+          <Card className="border-2 border-gray-900 shadow-2xl md:scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-gray-200 transition-all duration-300">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <Badge className="px-4 py-1.5 bg-gray-900 text-white border-0 shadow-lg text-[13px] font-bold whitespace-nowrap">
+                MOST POPULAR
               </Badge>
             </div>
-            <CardHeader className="pb-8 pt-10">
-              <div className="space-y-4">
-                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Professional</CardTitle>
+            <CardHeader className="pb-6 pt-8">
+              <div className="space-y-3">
+                <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Starter</CardTitle>
                 <div>
-                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">$29</span>
-                  <span className="text-gray-600 ml-2 text-[18px]">/month</span>
+                  <span className="text-[32px] md:text-[36px] font-bold text-gray-900">Rs. 2,999</span>
+                  <span className="text-gray-600 ml-1 text-[14px]">/month</span>
                 </div>
-                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">Best for growing businesses</p>
+                <p className="text-gray-600 text-[14px] md:text-[15px] leading-[1.6]">For small businesses</p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <ul className="space-y-4">
-                {["Unlimited customers", "Advanced analytics", "Priority support", "SMS notifications", "Custom branding"].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3">
+            <CardContent className="space-y-5">
+              <ul className="space-y-3">
+                {["Up to 500 queue entries/month", "Advanced queue management", "Priority email support", "Basic analytics", "Up to 3 staff members"].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
                     <div className="mt-0.5">
-                      <CheckCircle className="h-5 w-5 text-gray-900" />
+                      <CheckCircle className="h-4 w-4 text-gray-900" />
                     </div>
-                    <span className="text-gray-700 font-medium text-[16px] leading-[1.5]">{feature}</span>
+                    <span className="text-gray-700 font-medium text-[14px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
               <Link href="/auth/v1/register">
-                <Button size="lg" className="w-full h-12 bg-gray-900 hover:bg-gray-800 shadow-lg font-semibold text-white text-[18px]">
-                  Start Free Trial
+                <Button size="lg" className="w-full h-11 bg-gray-900 hover:bg-gray-800 shadow-lg font-semibold text-white text-[15px]">
+                  Get Started
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Professional Plan */}
+          <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
+            <CardHeader className="pb-6">
+              <div className="space-y-3">
+                <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Professional</CardTitle>
+                <div>
+                  <span className="text-[32px] md:text-[36px] font-bold text-gray-900">Rs. 5,999</span>
+                  <span className="text-gray-600 ml-1 text-[14px]">/month</span>
+                </div>
+                <p className="text-gray-600 text-[14px] md:text-[15px] leading-[1.6]">For growing businesses</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <ul className="space-y-3">
+                {["Unlimited queue entries", "24/7 priority support", "Advanced analytics", "Up to 10 staff members", "SMS notifications", "Custom branding"].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <div className="mt-0.5">
+                      <CheckCircle className="h-4 w-4 text-gray-700" />
+                    </div>
+                    <span className="text-gray-700 text-[14px] leading-[1.5]">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth/v1/register">
+                <Button variant="outline" size="lg" className="w-full border-2 h-11 font-semibold hover:bg-gray-50 text-[15px]">
+                  Get Started
                 </Button>
               </Link>
             </CardContent>
@@ -518,30 +549,33 @@ export default function LandingPage() {
 
           {/* Enterprise Plan */}
           <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
-            <CardHeader className="pb-8">
-              <div className="space-y-4">
-                <CardTitle className="text-[24px] md:text-[28px] leading-[1.3]">Enterprise</CardTitle>
+            <CardHeader className="pb-6">
+              <div className="space-y-3">
+                <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Enterprise</CardTitle>
                 <div>
-                  <span className="text-[40px] md:text-[48px] font-bold text-gray-900">Custom</span>
+                  <span className="text-[32px] md:text-[36px] font-bold text-gray-900">Rs. 14,999</span>
+                  <span className="text-gray-600 ml-1 text-[14px]">/month</span>
                 </div>
-                <p className="text-gray-600 text-[16px] md:text-[18px] leading-[1.6]">For large organizations with specific needs</p>
+                <p className="text-gray-600 text-[14px] md:text-[15px] leading-[1.6]">For large organizations</p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <ul className="space-y-4">
-                {["Everything in Pro", "Multiple locations", "API access", "Dedicated support", "Custom integrations"].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3">
+            <CardContent className="space-y-5">
+              <ul className="space-y-3">
+                {["Everything in Professional", "Unlimited staff members", "Dedicated account manager", "Custom integrations", "API access", "White-label solution"].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
                     <div className="mt-0.5">
-                      <CheckCircle className="h-5 w-5 text-gray-700" />
+                      <CheckCircle className="h-4 w-4 text-gray-700" />
                     </div>
-                    <span className="text-gray-700 text-[16px] leading-[1.5]">{feature}</span>
+                    <span className="text-gray-700 text-[14px] leading-[1.5]">{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Button variant="outline" size="lg" className="w-full border-2 h-12 font-semibold hover:bg-gray-50 text-[18px]">
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Contact Sales
-              </Button>
+              <Link href="/auth/v1/register">
+                <Button variant="outline" size="lg" className="w-full border-2 h-11 font-semibold hover:bg-gray-50 text-[15px]">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Contact Sales
+                </Button>
+              </Link>
             </CardContent>
           </Card>
           </div>
