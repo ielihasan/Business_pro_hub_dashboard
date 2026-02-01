@@ -3,6 +3,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import {
@@ -20,11 +26,15 @@ import {
   Globe,
   MessageSquare,
   Calendar,
-  BellRing
+  BellRing,
+  Play,
+  X
 } from "lucide-react";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 
 export default function LandingPage() {
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
+
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
@@ -285,12 +295,15 @@ export default function LandingPage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="/auth/v1/login">
-                <Button size="lg" variant="outline" className="text-[20px] px-10 py-6 border-2 h-auto hover:bg-gray-50">
-                  <Globe className="mr-2 h-5 w-5" />
-                  Watch Demo
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-[20px] px-10 py-6 border-2 h-auto hover:bg-gray-50"
+                onClick={() => setIsDemoOpen(true)}
+              >
+                <Play className="mr-2 h-5 w-5" />
+                Watch Demo
+              </Button>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-8 text-[16px] text-gray-600">
@@ -664,30 +677,30 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Product</h3>
               <ul className="space-y-3">
-                <li><a href="#features" className="hover:text-white">Features</a></li>
-                <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
-                <li><a href="#testimonials" className="hover:text-white">Testimonials</a></li>
-                <li><a href="#" className="hover:text-white">Demo</a></li>
+                <li><a href="#features" className="hover:text-white transition-colors cursor-pointer">Features</a></li>
+                <li><a href="#pricing" className="hover:text-white transition-colors cursor-pointer">Pricing</a></li>
+                <li><a href="#testimonials" className="hover:text-white transition-colors cursor-pointer">Testimonials</a></li>
+                <li><button onClick={() => setIsDemoOpen(true)} className="hover:text-white transition-colors cursor-pointer">Demo</button></li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Company</h3>
               <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white">About Elixa Software</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
-                <li><a href="#" className="hover:text-white">Careers</a></li>
-                <li><a href="#" className="hover:text-white">Press Kit</a></li>
+                <li><Link href="/company#about" className="hover:text-white transition-colors">About Elixa Software</Link></li>
+                <li><Link href="/company#blog" className="hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/company#careers" className="hover:text-white transition-colors">Careers</Link></li>
+                <li><Link href="/company#press" className="hover:text-white transition-colors">Press Kit</Link></li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Support</h3>
               <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white">Help Center</a></li>
-                <li><a href="#" className="hover:text-white">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
+                <li><Link href="/support#help-center" className="hover:text-white transition-colors">Help Center</Link></li>
+                <li><Link href="/support#contact" className="hover:text-white transition-colors">Contact Us</Link></li>
+                <li><Link href="/legal?tab=privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/legal?tab=terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
@@ -703,14 +716,78 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="flex gap-6 text-sm">
-                <a href="#" className="hover:text-white">Privacy</a>
-                <a href="#" className="hover:text-white">Terms</a>
-                <a href="#" className="hover:text-white">Cookies</a>
+                <Link href="/legal?tab=privacy" className="hover:text-white transition-colors">Privacy</Link>
+                <Link href="/legal?tab=terms" className="hover:text-white transition-colors">Terms</Link>
+                <Link href="/legal?tab=cookies" className="hover:text-white transition-colors">Cookies</Link>
               </div>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Demo Video Dialog */}
+      <Dialog open={isDemoOpen} onOpenChange={setIsDemoOpen}>
+        <DialogContent className="sm:max-w-4xl p-0 bg-black border-gray-800 overflow-hidden [&>button]:hidden">
+          <DialogHeader className="p-4 pb-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-white text-lg">BusinessHub Pro Demo</DialogTitle>
+              {/* Custom Close Button */}
+              <button
+                onClick={() => setIsDemoOpen(false)}
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+            </div>
+          </DialogHeader>
+          <div className="relative aspect-video bg-gray-900">
+            {/* Placeholder for demo video - replace with actual video embed */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+              <div className="h-24 w-24 rounded-full bg-white/10 flex items-center justify-center mb-6 hover:bg-white/20 transition-colors cursor-pointer">
+                <Play className="h-12 w-12 text-white ml-1" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-2">Product Demo Video</h3>
+              <p className="text-gray-400 text-center max-w-md px-4">
+                See how BusinessHub Pro can transform your business operations with smart queue management and real-time analytics.
+              </p>
+              <div className="mt-8 grid grid-cols-3 gap-8 text-center">
+                <div>
+                  <div className="text-3xl font-bold text-white">40%</div>
+                  <div className="text-sm text-gray-400">Reduced Wait Times</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-white">10K+</div>
+                  <div className="text-sm text-gray-400">Active Businesses</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-white">4.9/5</div>
+                  <div className="text-sm text-gray-400">Customer Rating</div>
+                </div>
+              </div>
+              <div className="mt-8 flex gap-4">
+                <Link href="/auth/v1/register">
+                  <Button className="bg-white text-black hover:bg-gray-100">
+                    Start Free Trial
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button
+                  className="bg-white/10 text-white border-2 border-white hover:bg-white hover:text-black transition-colors"
+                  onClick={() => setIsDemoOpen(false)}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-900 border-t border-gray-800">
+            <p className="text-xs text-gray-500 text-center">
+              A product by <span className="text-gray-400 font-medium">Elixa Software Private Limited</span>
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
