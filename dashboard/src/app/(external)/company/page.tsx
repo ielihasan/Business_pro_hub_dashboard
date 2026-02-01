@@ -17,6 +17,10 @@ import {
   FileText,
   Download,
   ExternalLink,
+  Code2,
+  Smartphone,
+  LayoutDashboard,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +56,63 @@ export default function CompanyPage() {
     { name: "Engineering", count: "20+ engineers", description: "Building robust and scalable solutions" },
     { name: "Design", count: "8+ designers", description: "Creating beautiful and intuitive experiences" },
     { name: "Support", count: "15+ specialists", description: "Ensuring customer success 24/7" },
+  ];
+
+  const coreTeam = [
+    {
+      name: "Ali Hassan",
+      role: "Backend & Business Logic Lead",
+      regNo: "22021519-076",
+      icon: Code2,
+      responsibilities: [
+        "Database schema design and management (Supabase/PostgreSQL)",
+        "API development and integration (Next.js API routes)",
+        "Authentication and authorization implementation",
+        "Real-time features (Supabase Realtime)",
+        "Payment integration (Stripe/local providers)",
+        "Email service integration (Resend)",
+        "Server-side business logic",
+        "Data security and encryption",
+        "Performance optimization (queries, caching)",
+        "Deployment and DevOps setup",
+      ],
+    },
+    {
+      name: "Meera Shahzadi",
+      role: "Mobile Development & UX Lead",
+      regNo: "22021519-069",
+      icon: Smartphone,
+      responsibilities: [
+        "React Native / Expo mobile app development",
+        "Customer-facing mobile features",
+        "Push notifications implementation",
+        "Mobile UI/UX design and prototyping",
+        "QR code scanning functionality",
+        "Offline capability and sync",
+        "App Store / Play Store deployment",
+        "Mobile-specific performance optimization",
+        "Cross-platform testing",
+        "User experience research and testing",
+      ],
+    },
+    {
+      name: "Rimsha Naeem",
+      role: "Web Frontend & Analytics Lead",
+      regNo: "22021519-066",
+      icon: LayoutDashboard,
+      responsibilities: [
+        "Next.js frontend development",
+        "Dashboard UI components (shadcn/ui)",
+        "Data visualization and charts (Recharts)",
+        "Responsive design implementation",
+        "State management (React hooks, context)",
+        "Form handling and validation",
+        "Landing page and marketing pages",
+        "Analytics dashboard development",
+        "Frontend performance optimization",
+        "Accessibility compliance (WCAG)",
+      ],
+    },
   ];
 
   const openPositions = [
@@ -178,6 +239,59 @@ export default function CompanyPage() {
                   <CardDescription>{dept.description}</CardDescription>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Core Team Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge className="mb-6 px-4 py-2 bg-gray-900 text-white">
+              <Users className="w-4 h-4 mr-2 inline" />
+              Project Team
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Meet the Core Team</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              The talented individuals driving BusinessHub Pro development
+            </p>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {coreTeam.map((member, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15 }}
+              >
+                <Card className="h-full hover:shadow-xl transition-shadow border-2 hover:border-gray-900">
+                  <CardHeader className="text-center pb-4">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                      <member.icon className="h-10 w-10 text-white" />
+                    </div>
+                    <CardTitle className="text-xl">{member.name}</CardTitle>
+                    <CardDescription className="text-base font-medium text-gray-700">
+                      {member.role}
+                    </CardDescription>
+                    <Badge variant="outline" className="mt-2 w-fit mx-auto">
+                      Reg# {member.regNo}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Key Responsibilities:</p>
+                    <ul className="space-y-2">
+                      {member.responsibilities.map((resp, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>{resp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -313,14 +427,18 @@ export default function CompanyPage() {
             Have questions about our company or products? We'd love to hear from you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary">
-              <Mail className="h-4 w-4 mr-2" />
-              contact@elixasoftware.com
-            </Button>
-            <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
-              <Globe className="h-4 w-4 mr-2" />
-              elixasoftware.com
-            </Button>
+            <a href="mailto:contact@elixasoftware.com">
+              <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
+                <Mail className="h-4 w-4 mr-2" />
+                contact@elixasoftware.com
+              </Button>
+            </a>
+            <a href="https://elixasoftware.com" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-white/10 text-white border-2 border-white hover:bg-white hover:text-gray-900 transition-colors">
+                <Globe className="h-4 w-4 mr-2" />
+                elixasoftware.com
+              </Button>
+            </a>
           </div>
         </div>
       </section>
