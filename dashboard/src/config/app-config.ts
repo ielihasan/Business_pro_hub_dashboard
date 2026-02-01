@@ -5,7 +5,7 @@ const currentYear = new Date().getFullYear();
 export const APP_CONFIG = {
   name: "BusinessHub Pro",
   version: packageJson.version,
-  copyright: `© ${currentYear}, BusinessHub Solutions. All rights reserved.`,
+  copyright: `© ${currentYear} Elixa Software Private Limited. All rights reserved.`,
   meta: {
     title: "BusinessHub Pro – Smart Management & Operations Dashboard",
     description: `
@@ -17,14 +17,21 @@ export const APP_CONFIG = {
       workflow management and provides data-driven decision support for retail shops, cafés, service providers, and
       general businesses.
 
-      Developed by the BusinessHub Engineering Team.
+      A product by Elixa Software Private Limited.
     `,
   },
   organization: {
+    name: "Elixa Software Private Limited",
     department: "Business Operations & Intelligence",
     faculty: "Management & Technology Division",
-    university: "BusinessHub Solutions",
-    supervisor: "Management Team",
-    contactEmail: "support@businesshub.com",
+    contactEmail: "support@elixasoftware.com",
+    website: "https://elixasoftware.com",
+  },
+  branding: {
+    company: "Elixa Software Private Limited",
+    companyShort: "Elixa Software",
+    project: "BusinessHub Pro",
+    tagline: "A product by Elixa Software Private Limited",
+    developmentNote: "Under development by Elixa Software Private Limited",
   },
 };

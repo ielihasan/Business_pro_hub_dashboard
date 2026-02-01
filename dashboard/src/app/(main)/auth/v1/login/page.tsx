@@ -110,14 +110,19 @@ export default function LoginV1() {
             </p>
           </motion.div>
 
-          <motion.p
-            className="text-center text-xs text-muted-foreground mt-6"
+          <motion.div
+            className="text-center mt-6 space-y-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.6 }}
           >
-            © BusinessHub Solutions. All rights reserved.
-          </motion.p>
+            <p className="text-xs text-muted-foreground">
+              © 2026 Business Pro Hub. All rights reserved.
+            </p>
+            <p className="text-[10px] text-muted-foreground/70">
+              A product by <span className="font-medium">Elixa Software Private Limited</span>
+            </p>
+          </motion.div>
         </div>
       </motion.div>
     </motion.div>

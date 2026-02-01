@@ -163,6 +163,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Logout
             </Button>
           </div>
+
+          {/* Elixa Software Branding */}
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <p className="text-[10px] text-gray-400 text-center">
+              Powered by <span className="font-medium text-gray-500">Elixa Software</span>
+            </p>
+          </div>
         </div>
       </div>
 

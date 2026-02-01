@@ -313,6 +313,13 @@ export default function WaitingApprovalAdminPage() {
             Sign Out
           </Button>
         </div>
+
+        {/* Elixa Software Branding */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-400">
+            Powered by <span className="font-medium text-gray-500">Elixa Software Private Limited</span>
+          </p>
+        </div>
       </div>
     </div>
   );

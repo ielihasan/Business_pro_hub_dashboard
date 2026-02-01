@@ -608,8 +608,11 @@ export default function LandingPage() {
                 </div>
                 <span className="text-xl font-bold text-white">Business Pro Hub</span>
               </div>
-              <p className="text-gray-400 mb-6 leading-relaxed max-w-sm">
+              <p className="text-gray-400 mb-4 leading-relaxed max-w-sm">
                 The most advanced queue management platform trusted by thousands of businesses worldwide.
+              </p>
+              <p className="text-gray-500 text-sm mb-6">
+                A product by <span className="text-gray-300 font-medium">Elixa Software Private Limited</span>
               </p>
               <div className="flex gap-4">
                 <a href="#" className="h-10 w-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center">
@@ -637,7 +640,7 @@ export default function LandingPage() {
             <div>
               <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Company</h3>
               <ul className="space-y-3">
-                <li><a href="#" className="hover:text-white">About Us</a></li>
+                <li><a href="#" className="hover:text-white">About Elixa Software</a></li>
                 <li><a href="#" className="hover:text-white">Blog</a></li>
                 <li><a href="#" className="hover:text-white">Careers</a></li>
                 <li><a href="#" className="hover:text-white">Press Kit</a></li>
@@ -657,9 +660,14 @@ export default function LandingPage() {
 
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-sm text-gray-500">
-                &copy; 2026 Business Pro Hub. All rights reserved.
-              </p>
+              <div className="text-center md:text-left">
+                <p className="text-sm text-gray-500">
+                  &copy; 2026 Business Pro Hub. All rights reserved.
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Developed by <span className="text-gray-400">Elixa Software Private Limited</span>
+                </p>
+              </div>
               <div className="flex gap-6 text-sm">
                 <a href="#" className="hover:text-white">Privacy</a>
                 <a href="#" className="hover:text-white">Terms</a>

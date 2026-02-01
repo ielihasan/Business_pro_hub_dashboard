@@ -205,6 +205,13 @@ function VerifyEmailContent() {
                 <p className="text-gray-500">Please wait while we verify your email...</p>
               </div>
             )}
+
+            {/* Elixa Software Branding */}
+            <div className="text-center pt-4 border-t">
+              <p className="text-[10px] text-gray-400">
+                Powered by <span className="font-medium text-gray-500">Elixa Software Private Limited</span>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

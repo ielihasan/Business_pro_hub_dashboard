@@ -63,6 +63,13 @@ export default function RegisterV1() {
                 Login here
               </Link>
             </p>
+
+            {/* Elixa Software Branding */}
+            <div className="text-center mt-6 pt-4 border-t border-gray-100">
+              <p className="text-[10px] text-muted-foreground/70">
+                A product by <span className="font-medium">Elixa Software Private Limited</span>
+              </p>
+            </div>
           </motion.div>
         </div>
       </motion.div>
