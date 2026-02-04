@@ -32,7 +32,8 @@
       "Bash(npm run build:*)",
       "Bash(pkill:*)",
       "Bash(xargs basename:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash([ -f .env.local ])"
     ]
   }
 }

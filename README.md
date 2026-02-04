@@ -2,25 +2,58 @@
 
 A comprehensive business management platform with an integrated landing page and powerful dashboard featuring real-time queue optimization.
 
-## 🚀 Quick Start
+**Company:** Elixa Software Private Limited
+**Project:** BusinessHub Pro
+
+---
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Contributor Setup Guide](#contributor-setup-guide)
+- [Environment Variables](#environment-variables)
+- [Database Setup](#database-setup)
+- [External Services Configuration](#external-services-configuration)
+- [Application Features](#application-features)
+- [User Roles & Access](#user-roles--access)
+- [Tech Stack](#tech-stack)
+- [API Endpoints](#api-endpoints)
+- [Development Commands](#development-commands)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+
+---
+
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ installed
-- Supabase account (free tier works)
 - npm or yarn
+- Supabase account (free tier works)
+- Resend account for email functionality (free tier available)
+- Google Cloud Console account (optional - for Google OAuth)
 
 ### Initial Setup
 
-1. **Install dependencies:**
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ielihasan/Business_pro_hub.git
+   cd Business_pro_hub
+   ```
+
+2. **Install dependencies:**
    ```bash
    npm run install:all
    ```
 
-2. **Configure Supabase:**
-   - Follow the detailed guide in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
-   - Create `.env.local` in the `dashboard/` directory with your Supabase keys
+3. **Configure environment variables:**
+   - Create `.env.local` in the `dashboard/` directory (see [Environment Variables](#environment-variables) section)
 
-3. **Run the application:**
+4. **Set up Supabase database:**
+   - Follow the [Database Setup](#database-setup) section
+
+5. **Run the application:**
    ```bash
    npm run dev
    ```
@@ -30,32 +63,353 @@ A comprehensive business management platform with an integrated landing page and
    start-dev.bat
    ```
 
-4. **Access the application:**
+6. **Access the application:**
    - **Landing Page**: http://localhost:3001/
    - **Login**: http://localhost:3001/auth/v1/login
    - **Register**: http://localhost:3001/auth/v1/register
    - **Admin Dashboard**: http://localhost:3001/admin/dashboard
    - **Business Dashboard**: http://localhost:3001/business/dashboard
 
+---
+
 ## Project Structure
 
 ```
 Business_pro_hub/
-├── dashboard/            # Main application (landing + dashboard)
+├── dashboard/                    # Main Next.js application
 │   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx              # Landing page (/)
-│   │   │   ├── (main)/auth/          # Authentication pages
-│   │   │   ├── admin/                # Admin dashboard
-│   │   │   ├── business/             # Business owner dashboard
-│   │   │   └── waiting-approval/     # Approval pending page
-│   │   ├── components/               # Reusable UI components
-│   │   └── lib/                      # Utilities and helpers
-├── SUPABASE_SETUP.md     # Database setup guide
-├── package.json          # Root package manager
-├── start-dev.bat         # Windows quick start script
-└── README.md             # This file
+│   │   ├── app/                 # App Router pages
+│   │   │   ├── (external)/      # Landing page & public routes
+│   │   │   ├── (main)/auth/     # Authentication pages
+│   │   │   ├── admin/           # Admin dashboard
+│   │   │   ├── business/        # Business owner dashboard
+│   │   │   ├── API/             # API routes (30+ endpoints)
+│   │   │   └── join-queue/      # Public queue join page
+│   │   ├── actions/             # Server actions
+│   │   ├── components/          # Reusable UI components
+│   │   ├── lib/                 # Utilities, helpers, Supabase client
+│   │   ├── config/              # App configuration
+│   │   ├── stores/              # Zustand state management
+│   │   └── types/               # TypeScript definitions
+│   ├── public/                  # Static assets
+│   ├── .env.example             # Environment template
+│   └── package.json
+├── database/                    # SQL schema & migrations
+│   ├── business_applications.sql
+│   ├── allow_multiple_roles.sql
+│   ├── fix_email_constraint.sql
+│   └── subscriptions_and_payments.sql
+├── SUPABASE_SETUP.md           # Detailed Supabase setup guide
+├── GOOGLE_OAUTH_SETUP.md       # Google OAuth configuration
+├── package.json                # Root package manager
+├── start-dev.bat              # Windows quick start script
+└── README.md                  # This file
 ```
+
+---
+
+## Contributor Setup Guide
+
+This section provides step-by-step instructions for new contributors to set up the complete development environment.
+
+### Step 1: Clone and Install
+
+```bash
+# Clone the repository
+git clone https://github.com/ielihasan/Business_pro_hub.git
+cd Business_pro_hub
+
+# Install all dependencies
+npm run install:all
+```
+
+### Step 2: Create Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a free account
+2. Click "New Project" and fill in:
+   - **Project name**: `businesshub-pro` (or your choice)
+   - **Database Password**: Create a strong password (save this!)
+   - **Region**: Choose closest to you
+3. Wait for the project to be created (takes ~2 minutes)
+4. Once ready, go to **Settings → API** and note down:
+   - **Project URL** (looks like: `https://xxxxxxxx.supabase.co`)
+   - **anon/public key** (starts with `eyJ...`)
+   - **service_role key** (starts with `eyJ...`) - Keep this secret!
+
+### Step 3: Create Environment File
+
+Create a file named `.env.local` in the `dashboard/` directory:
+
+```bash
+cd dashboard
+```
+
+Create `.env.local` with the following content:
+
+```env
+# ===========================================
+# SUPABASE CONFIGURATION (REQUIRED)
+# ===========================================
+# Get these from: Supabase Dashboard → Settings → API
+
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# ===========================================
+# APPLICATION CONFIGURATION (REQUIRED)
+# ===========================================
+
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+
+# ===========================================
+# EMAIL SERVICE - RESEND (REQUIRED)
+# ===========================================
+# Get these from: https://resend.com/api-keys
+# Sign up for free at resend.com
+
+RESEND_API_KEY=re_xxxxxxxxx_xxxxxxxxxxxxxxxxxxxx
+RESEND_FROM_EMAIL=BusinessHub Pro <noreply@yourdomain.com>
+
+# Optional: Admin email for notifications
+ADMIN_NOTIFICATION_EMAIL=admin@example.com
+```
+
+### Step 4: Set Up Resend (Email Service)
+
+1. Go to [resend.com](https://resend.com) and create a free account
+2. Navigate to **API Keys** and create a new API key
+3. Copy the API key (starts with `re_`) and add it to `.env.local`
+
+**For Development (No Custom Domain):**
+```env
+RESEND_API_KEY=re_your_api_key_here
+RESEND_FROM_EMAIL=BusinessHub Pro <onboarding@resend.dev>
+```
+
+**For Production (With Custom Domain):**
+- Add and verify your domain in Resend dashboard
+- Update `RESEND_FROM_EMAIL` to use your verified domain
+
+### Step 5: Run Database Migrations
+
+1. Go to your Supabase Dashboard
+2. Navigate to **SQL Editor**
+3. Run the following SQL files **in order**:
+
+**Migration 1: Core Tables (business_applications.sql)**
+```sql
+-- Copy content from: database/business_applications.sql
+```
+
+**Migration 2: Multiple Roles Support (allow_multiple_roles.sql)**
+```sql
+-- Copy content from: database/allow_multiple_roles.sql
+```
+
+**Migration 3: Email Constraint Fix (fix_email_constraint.sql)**
+```sql
+-- Copy content from: database/fix_email_constraint.sql
+```
+
+**Migration 4: Subscriptions & Payments (subscriptions_and_payments.sql)**
+```sql
+-- Copy content from: database/subscriptions_and_payments.sql
+```
+
+For complete table schemas, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
+
+### Step 6: Configure Supabase Authentication
+
+1. In Supabase Dashboard, go to **Authentication → Providers**
+2. Enable **Email** provider
+3. Configure email templates (optional but recommended)
+
+**For Google OAuth (Optional):**
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create OAuth 2.0 credentials
+3. Add authorized redirect URIs:
+   ```
+   http://localhost:3001/auth/login-callback
+   http://localhost:3001/auth/oauth-callback
+   https://your-project-id.supabase.co/auth/v1/callback
+   ```
+4. In Supabase Dashboard → Authentication → Providers:
+   - Enable **Google** provider
+   - Add your Client ID and Client Secret
+
+See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) for detailed instructions.
+
+### Step 7: Configure Redirect URLs in Supabase
+
+1. Go to Supabase Dashboard → **Authentication → URL Configuration**
+2. Add these to **Redirect URLs**:
+   ```
+   http://localhost:3001/auth/login-callback
+   http://localhost:3001/auth/oauth-callback
+   http://localhost:3001/auth/verify-email
+   ```
+
+### Step 8: Start Development Server
+
+```bash
+# From project root
+npm run dev
+```
+
+The application will be available at: **http://localhost:3001**
+
+### Step 9: Create First Admin Account
+
+1. Go to http://localhost:3001/auth/v1/register
+2. Select "Platform Admin" as the role
+3. Fill in your details and register
+4. Check your email for verification link
+5. Admin accounts are auto-approved
+
+---
+
+## Environment Variables
+
+### Required Variables
+
+| Variable | Description | Where to Get |
+|----------|-------------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Supabase Dashboard → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key | Supabase Dashboard → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) | Supabase Dashboard → Settings → API |
+| `NEXT_PUBLIC_APP_URL` | Application URL | `http://localhost:3001` for development |
+| `RESEND_API_KEY` | Resend email API key | [resend.com/api-keys](https://resend.com/api-keys) |
+| `RESEND_FROM_EMAIL` | Email sender address | Your verified domain or `onboarding@resend.dev` |
+
+### Optional Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMIN_NOTIFICATION_EMAIL` | Email for admin notifications | None |
+
+### Example .env.local File
+
+```env
+# Supabase (REQUIRED)
+NEXT_PUBLIC_SUPABASE_URL=https://hjblbmmyfznxomsrxhme.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# App URL (REQUIRED)
+NEXT_PUBLIC_APP_URL=http://localhost:3001
+
+# Resend Email Service (REQUIRED)
+RESEND_API_KEY=re_M3sMJX4L_NwVNFRLcqXnJTZCHnpXbvTsV
+RESEND_FROM_EMAIL=BusinessHub Pro <noreply@businessprohub.me>
+
+# Optional
+ADMIN_NOTIFICATION_EMAIL=admin@businessprohub.me
+```
+
+---
+
+## Database Setup
+
+### Required Tables
+
+The application requires the following database tables:
+
+| Table | Purpose | Migration File |
+|-------|---------|----------------|
+| `admins` | Admin and business owner profiles | `business_applications.sql` |
+| `business_applications` | Pending business registrations | `business_applications.sql` |
+| `User` | Customer/end-user profiles | `SUPABASE_SETUP.md` |
+| `profiles` | Additional user profiles | `SUPABASE_SETUP.md` |
+| `conversations` | Support chat conversations | `SUPABASE_SETUP.md` |
+| `messages` | Chat messages | `SUPABASE_SETUP.md` |
+| `queue_types` | Business queue categories | `SUPABASE_SETUP.md` |
+| `queue_entries` | Individual queue entries | `SUPABASE_SETUP.md` |
+| `subscriptions` | Payment subscriptions | `subscriptions_and_payments.sql` |
+| `payments` | Payment transactions | `subscriptions_and_payments.sql` |
+
+### Migration Order
+
+Run migrations in this order:
+
+1. `SUPABASE_SETUP.md` - Core tables (admins, User, profiles, etc.)
+2. `database/business_applications.sql` - Business application system
+3. `database/allow_multiple_roles.sql` - Multi-role support
+4. `database/fix_email_constraint.sql` - Email uniqueness fix
+5. `database/subscriptions_and_payments.sql` - Payment system
+
+### Key Database Features
+
+- **Row Level Security (RLS)**: Enabled on all tables
+- **Multi-role Support**: Users can have both admin + business_owner roles
+- **Composite Primary Key**: `(id, role)` for admins table
+- **Auto-updating timestamps**: `updated_at` triggers on all tables
+
+---
+
+## External Services Configuration
+
+### 1. Supabase (Database & Auth)
+
+**Required for:** Database, Authentication, File Storage
+
+**Setup:**
+1. Create account at [supabase.com](https://supabase.com)
+2. Create new project
+3. Get API keys from Settings → API
+4. Run database migrations
+5. Configure authentication providers
+
+**Free Tier Includes:**
+- 500MB database
+- 1GB file storage
+- 2GB bandwidth
+- 50,000 monthly active users
+
+### 2. Resend (Email Service)
+
+**Required for:** Email verification, Approval notifications, Password reset
+
+**Setup:**
+1. Create account at [resend.com](https://resend.com)
+2. Get API key from dashboard
+3. (Optional) Add and verify custom domain
+
+**Free Tier Includes:**
+- 3,000 emails/month
+- 100 emails/day
+
+**Email Templates Used:**
+- Email verification
+- Account approval notification
+- Account rejection notification
+- Admin notifications
+
+### 3. Google OAuth (Optional)
+
+**Required for:** Google Sign-In
+
+**Setup:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select existing
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Configure authorized redirect URIs
+6. Add credentials to Supabase Dashboard
+
+**Redirect URIs to Configure:**
+```
+# Development
+http://localhost:3001/auth/login-callback
+http://localhost:3001/auth/oauth-callback
+https://your-project-id.supabase.co/auth/v1/callback
+
+# Production
+https://yourdomain.com/auth/login-callback
+https://yourdomain.com/auth/oauth-callback
+```
+
+---
 
 ## Application Features
 
@@ -72,7 +426,8 @@ Business_pro_hub/
 - **Registration**:
   - Business Owner registration (requires admin approval)
   - Platform Admin registration (auto-approved)
-- **Role-based access control**
+- **Email Verification**: Required before approval
+- **Multi-role Support**: Same user can have multiple roles
 
 ### Dashboards
 
@@ -80,6 +435,7 @@ Business_pro_hub/
 - Platform analytics
 - Business approval management
 - User management
+- Payment tracking
 - System settings
 
 **Business Owner Dashboard** (`/business/dashboard`)
@@ -87,54 +443,23 @@ Business_pro_hub/
 - Order tracking
 - Customer database
 - Business analytics
+- Pricing management
+- Staff management
+- Business hours configuration
 
-## 📋 Supabase Configuration Required
+### Queue System
+- QR code generation for queue joining
+- Real-time queue status
+- Multiple queue types per business
+- Customer wait time tracking
+- Priority levels (normal, high, VIP)
 
-**IMPORTANT:** Before running the application, you need to:
-
-1. **Set up Supabase tables** - See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for complete SQL scripts
-2. **Add environment variables** - Create `dashboard/.env.local`:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   NEXT_PUBLIC_APP_URL=http://localhost:3001
-   ```
-
-### Required Tables:
-- `admins` - Admin and business owner profiles with roles
-- `User` - Customer/end-user profiles
-- `profiles` - Additional user profiles
-- `conversations` - Support chat conversations
-- `messages` - Chat messages
-- `business_types` - Business type categories
-- `queues` (optional) - Queue management
-- `queue_entries` (optional) - Queue entries
-
-All SQL scripts with Row Level Security policies are provided in SUPABASE_SETUP.md.
-
-## Development
-
-### Run Development Server
-```bash
-npm run dev
-```
-
-The application will be available at http://localhost:3001
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Start Production Server
-```bash
-npm start
-```
+---
 
 ## User Roles & Access
 
 ### 1. Platform Admin
-- **Access**: Full platform access
+- **Access**: Full platform control
 - **Dashboard**: `/admin/dashboard`
 - **Approval**: Auto-approved on registration
 - **Features**:
@@ -142,6 +467,7 @@ npm start
   - Approve/reject business registrations
   - View platform analytics
   - User management
+  - Payment management
 
 ### 2. Business Owner
 - **Access**: Business-specific features
@@ -152,31 +478,196 @@ npm start
   - Customer analytics
   - Order tracking
   - Business settings
+  - Staff management
 
 ### 3. Regular User/Customer
 - **Access**: Customer-facing features
-- **Dashboard**: `/dashboard`
 - **Features**:
-  - Join queues
-  - Track orders
+  - Join queues via QR code or link
+  - Track order status
   - View wait times
+
+### Multi-Role Support
+- Same email can have both admin and business_owner roles
+- Upon login with multiple roles, user selects which dashboard to access
+- Role stored in sessionStorage for the session
+
+---
 
 ## Tech Stack
 
-- **Framework**: Next.js 15.5.2 with App Router
-- **UI**: React 19 + Tailwind CSS + Shadcn/UI
+- **Framework**: Next.js 16.1.4 with App Router
+- **UI**: React 19 + Tailwind CSS 4 + Shadcn/UI
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **State Management**: Zustand
-- **Forms**: React Hook Form + Zod
-- **Data Fetching**: TanStack React Query + Axios
+- **Authentication**: Supabase Auth (Email + Google OAuth)
+- **State Management**: Zustand 5
+- **Forms**: React Hook Form 7 + Zod
+- **Data Fetching**: TanStack React Query 5 + Axios
 - **Charts**: Recharts
 - **Icons**: Lucide React
+- **Email**: Resend
+- **Animations**: Framer Motion
+- **Drag & Drop**: DND Kit
+
+---
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/verify-email` - Verify email address
+- `POST /api/auth/send-verification` - Send verification email
+- `POST /api/auth/resend-verification` - Resend verification email
+- `POST /api/auth/send-approval-notification` - Send approval notification
+
+### Admin Management
+- `GET /api/admins` - List all admins
+- `POST /api/admins/create` - Create admin
+- `PUT /api/admins/update` - Update admin
+- `DELETE /api/admins/delete` - Delete admin
+
+### Business Management
+- `GET /api/businesses` - List businesses
+- `POST /api/businesses/create` - Create business
+- `PUT /api/businesses/update` - Update business
+- `DELETE /api/businesses/delete` - Delete business
+
+### Queue Management
+- `GET /api/queue` - Get queue entries
+- `POST /api/queue/join` - Join queue
+- `GET /api/queue/status` - Get queue status
+- `GET /api/queue/info` - Get queue info
+- `GET /api/queue/qrcode` - Generate QR code
+- `PUT /api/queue/[id]` - Update queue entry
+
+### Other Endpoints
+- `/api/customers` - Customer management
+- `/api/orders` - Order management
+- `/api/pricing` - Pricing management
+- `/api/business-hours` - Business hours management
+- `/api/queue-types` - Queue type management
+- `/api/settings/profile` - Profile settings
+- `/api/settings/password` - Password settings
+
+---
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm run install:all
+
+# Run development server (port 3001)
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Lint code
+cd dashboard && npm run lint
+
+# Format code
+cd dashboard && npm run format
+
+# Check formatting
+cd dashboard && npm run format:check
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**1. "Supabase URL not found" error**
+- Ensure `.env.local` exists in `dashboard/` directory
+- Check that `NEXT_PUBLIC_SUPABASE_URL` is set correctly
+- Restart the development server
+
+**2. Email not sending**
+- Verify `RESEND_API_KEY` is correct
+- Check Resend dashboard for API key status
+- For development, use `onboarding@resend.dev` as sender
+
+**3. Google OAuth not working**
+- Verify redirect URLs are added to Google Cloud Console
+- Check that redirect URLs are added to Supabase
+- Ensure Google provider is enabled in Supabase
+
+**4. "Duplicate key" database error**
+- Run `database/allow_multiple_roles.sql` migration
+- Run `database/fix_email_constraint.sql` migration
+
+**5. Login redirects to wrong page**
+- Clear browser cache and cookies
+- Check sessionStorage in browser dev tools
+- Verify authentication middleware is working
+
+**6. Business not appearing after approval**
+- Check `admins` table for the record
+- Verify `is_approved = true`
+- Check email verification status
+
+### Getting Help
+
+1. Check existing issues on GitHub
+2. Review Supabase documentation: https://supabase.com/docs
+3. Check browser console for error messages
+4. Review server logs in terminal
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. **Fork the repository**
+2. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Set up your development environment** following the [Contributor Setup Guide](#contributor-setup-guide)
+4. **Make your changes**
+5. **Run linting and formatting**:
+   ```bash
+   cd dashboard
+   npm run lint
+   npm run format
+   ```
+6. **Commit your changes**:
+   ```bash
+   git commit -m "feat: add your feature description"
+   ```
+7. **Push to your fork**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+8. **Create a Pull Request**
+
+### Commit Message Convention
+
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, etc.)
+- `refactor:` - Code refactoring
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks
+
+---
 
 ## License
 
 See individual project directories for license information.
 
-## Contributing
+---
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Support
+
+For issues or questions:
+- Create an issue on GitHub
+- Check Supabase documentation: https://supabase.com/docs
+- Check Resend documentation: https://resend.com/docs
