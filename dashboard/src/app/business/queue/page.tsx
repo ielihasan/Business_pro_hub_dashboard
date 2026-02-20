@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -89,6 +88,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import QRCodeLib from "qrcode";
 
+/* ─── Types ─────────────────────────────────────────────────── */
 interface ScannedUser {
   id: string;
   full_name: string;
@@ -108,10 +108,8 @@ interface QueueEntry {
   priority: string;
   position: number;
   status: "waiting" | "serving" | "completed" | "cancelled";
-  estimated_wait_time?: number;
   scanned_user?: ScannedUser;
   joined_at?: string;
-  called_at?: string;
   started_at?: string;
   completed_at?: string;
   cancelled_at?: string;
@@ -145,60 +143,303 @@ interface QueueType {
   is_active: boolean;
 }
 
+/* ─── Pure helpers (outside component) ──────────────────────── */
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+function entriesForType(
+  entries: QueueEntry[],
+  queueTypeId: string | null,
+  statusFilter: string
+): QueueEntry[] {
+  const matched = entries.filter((e) =>
+    queueTypeId === null
+      ? !e.service_type || !isUuid(e.service_type)
+      : e.service_type === queueTypeId
+  );
+  return statusFilter === "all" ? matched : matched.filter((e) => e.status === statusFilter);
+}
+
+function formatTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function getWaitTime(createdAt: string) {
+  const min = Math.round((Date.now() - new Date(createdAt).getTime()) / 60000);
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "waiting":
+      return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100"><Clock className="h-3 w-3 mr-1" />Waiting</Badge>;
+    case "serving":
+      return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100"><Play className="h-3 w-3 mr-1" />Serving</Badge>;
+    case "completed":
+      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+    case "cancelled":
+      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
+}
+
+/* ─── QueueLane component (defined OUTSIDE page fn to avoid remount) */
+interface QueueLaneProps {
+  queueType: QueueType | null;
+  entries: QueueEntry[];
+  loadingQr: boolean;
+  onGenerateQr: (queueTypeId?: string) => void;
+  onAddCustomer: (queueTypeId?: string) => void;
+  onStatusChange: (entry: QueueEntry, status: "serving" | "completed" | "cancelled") => void;
+  onCancelClick: (entry: QueueEntry) => void;
+}
+
+function QueueLane({
+  queueType, entries, loadingQr,
+  onGenerateQr, onAddCustomer, onStatusChange, onCancelClick,
+}: QueueLaneProps) {
+  const waiting = entries.filter(e => e.status === "waiting").length;
+  const serving = entries.filter(e => e.status === "serving").length;
+  const color   = queueType?.color || "#6B7280";
+  const name    = queueType?.name  || "General Queue";
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Lane header */}
+      <div
+        className="px-5 py-3 flex items-center justify-between gap-3"
+        style={{ backgroundColor: color + "18", borderBottom: `2px solid ${color}40` }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base shrink-0"
+            style={{ backgroundColor: color }}
+          >
+            {queueType ? queueType.name.charAt(0).toUpperCase() : <Users className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 leading-tight truncate">{name}</p>
+            {queueType?.description && (
+              <p className="text-xs text-gray-500 truncate">{queueType.description}</p>
+            )}
+          </div>
+          {/* Mini stats */}
+          <div className="hidden sm:flex items-center gap-2 ml-1 shrink-0">
+            <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
+              <Clock className="h-3 w-3 mr-1" />{waiting} waiting
+            </Badge>
+            {serving > 0 && (
+              <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
+                <Play className="h-3 w-3 mr-1" />{serving} serving
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Lane actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm" variant="outline" className="h-8 text-xs gap-1"
+            onClick={() => onGenerateQr(queueType?.id)}
+            disabled={loadingQr}
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">QR</span>
+          </Button>
+          <Button
+            size="sm" className="h-8 text-xs gap-1 text-white"
+            style={{ backgroundColor: color }}
+            onClick={() => onAddCustomer(queueType?.id)}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Add</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Entries */}
+      <CardContent className="p-0">
+        {entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+            <Users className="h-8 w-8 text-gray-200" />
+            <p className="text-sm font-medium text-gray-400">No customers yet</p>
+            <p className="text-xs text-gray-400 max-w-[280px]">
+              {queueType
+                ? `Share the ${queueType.name} QR code or add a customer manually`
+                : "Add a customer or share the general queue link"}
+            </p>
+            <div className="flex gap-2 mt-1">
+              <Button size="sm" variant="outline" className="text-xs h-7"
+                onClick={() => onGenerateQr(queueType?.id)} disabled={loadingQr}>
+                <QrCode className="h-3 w-3 mr-1" />QR Code
+              </Button>
+              <Button size="sm" className="text-xs h-7 text-white"
+                style={{ backgroundColor: color }}
+                onClick={() => onAddCustomer(queueType?.id)}>
+                <UserPlus className="h-3 w-3 mr-1" />Add Customer
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50/60">
+                  <TableHead className="w-[64px] pl-5">#</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead className="hidden sm:table-cell">Wait</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Source</TableHead>
+                  <TableHead className="text-right pr-4">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => (
+                  <TableRow key={entry.id} className={entry.status === "serving" ? "bg-blue-50/60" : ""}>
+                    <TableCell className="pl-5">
+                      <div className="font-mono font-bold text-sm" style={{ color }}>
+                        {String(entry.position).padStart(3, "0")}
+                      </div>
+                      <div className="text-[10px] text-gray-400">{formatTime(entry.created_at)}</div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {entry.scanned_user?.avatar_url ? (
+                          <img src={entry.scanned_user.avatar_url} alt=""
+                            className="h-7 w-7 rounded-full object-cover shrink-0" />
+                        ) : entry.customer_id ? (
+                          <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                            <Users className="h-3.5 w-3.5 text-blue-600" />
+                          </div>
+                        ) : null}
+                        <div>
+                          <p className="font-medium text-sm leading-tight">
+                            {entry.scanned_user?.full_name || entry.customer_name}
+                          </p>
+                          {(entry.scanned_user?.phone_number || entry.customer_phone) && (
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {entry.scanned_user?.phone_number || entry.customer_phone}
+                            </p>
+                          )}
+                          <div className="flex gap-1 mt-0.5">
+                            {entry.customer_id && (
+                              <Badge variant="secondary"
+                                className="text-[9px] px-1 py-0 h-3.5 bg-blue-50 text-blue-700 border-blue-200">
+                                App
+                              </Badge>
+                            )}
+                            {entry.priority === "high" && (
+                              <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5">High</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="hidden sm:table-cell text-sm">
+                      {(entry.status === "waiting" || entry.status === "serving")
+                        ? <span className="font-medium">{getWaitTime(entry.created_at)}</span>
+                        : <span className="text-gray-400">—</span>}
+                    </TableCell>
+
+                    <TableCell>{getStatusBadge(entry.status)}</TableCell>
+
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="outline" className="text-xs">
+                        {entry.customer_id ? "App / QR" : "Walk-in"}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-right pr-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {entry.status === "waiting" && (
+                            <DropdownMenuItem onClick={() => onStatusChange(entry, "serving")}>
+                              <Play className="h-4 w-4 mr-2 text-blue-600" />Start Serving
+                            </DropdownMenuItem>
+                          )}
+                          {entry.status === "serving" && (
+                            <DropdownMenuItem onClick={() => onStatusChange(entry, "completed")}>
+                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />Mark Complete
+                            </DropdownMenuItem>
+                          )}
+                          {(entry.status === "waiting" || entry.status === "serving") && (
+                            <DropdownMenuItem
+                              onClick={() => onCancelClick(entry)}
+                              className="text-red-600"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />Cancel
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────── */
 export default function QueueManagementPage() {
   const [business, setBusiness] = useState<BusinessData | null>(null);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const [stats, setStats] = useState<QueueStats>({
-    total: 0,
-    waiting: 0,
-    serving: 0,
-    completed: 0,
-    cancelled: 0,
-    avgWaitTime: 0,
+    total: 0, waiting: 0, serving: 0, completed: 0, cancelled: 0, avgWaitTime: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  // queueTypeFilter removed - queue_types table not available
   const [isQueueActive, setIsQueueActive] = useState(true);
 
   // Add customer dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
-    customer_name: "",
-    customer_phone: "",
-    customer_email: "",
-    service_type: "",
-    notes: "",
-    priority: "normal",
+    customer_name: "", customer_phone: "", customer_email: "",
+    queue_type_id: "", notes: "", priority: "normal",
   });
 
-  // QR Code dialog
+  // QR picker (step 1) + QR display (step 2)
+  const [qrPickerOpen, setQrPickerOpen] = useState(false);
+  const [qrPickerSelection, setQrPickerSelection] = useState<string>("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [qrJoinUrl, setQrJoinUrl] = useState<string>("");
   const [loadingQr, setLoadingQr] = useState(false);
   const [selectedQueueTypeForQr, setSelectedQueueTypeForQr] = useState<string>("all");
 
-  // Action dialogs
+  // Cancel confirm
   const [selectedEntry, setSelectedEntry] = useState<QueueEntry | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
-  // Queue Types state
+  // Queue types
   const [queueTypes, setQueueTypes] = useState<QueueType[]>([]);
   const [queueTypeDialogOpen, setQueueTypeDialogOpen] = useState(false);
   const [editingQueueType, setEditingQueueType] = useState<QueueType | null>(null);
   const [savingQueueType, setSavingQueueType] = useState(false);
   const [newQueueType, setNewQueueType] = useState({
-    name: "",
-    description: "",
-    color: "#3B82F6",
-    estimated_service_time: 5,
-    max_capacity: 50,
+    name: "", description: "", color: "#3B82F6",
+    estimated_service_time: 5, max_capacity: 50,
   });
 
-  // Fetch business data
+  /* ── Fetch business */
   useEffect(() => {
     const fetchBusiness = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -206,285 +447,107 @@ export default function QueueManagementPage() {
         const { data } = await supabase
           .from("admins")
           .select("id, business_name")
-          .eq("id", user.id)
-          .eq("role", "business_owner")
-          .single();
-        if (data) {
-          setBusiness(data);
-        }
+          .eq("id", user.id).eq("role", "business_owner").single();
+        if (data) setBusiness(data);
       }
     };
     fetchBusiness();
   }, []);
 
-  // Fetch queue types
+  /* ── Fetch queue types */
   const fetchQueueTypes = useCallback(async (businessId: string) => {
     try {
       const res = await fetch(`/API/queue-types?business_id=${businessId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setQueueTypes(data.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching queue types:", error);
-    }
+      if (res.ok) { const j = await res.json(); setQueueTypes(j.data ?? []); }
+    } catch (err) { console.error("Error fetching queue types:", err); }
   }, []);
 
+  /* ── Fetch ALL entries (split client-side per lane) */
   const fetchQueue = useCallback(async () => {
     if (!business?.id) return;
-
     try {
       setRefreshing(true);
-      const url = `/API/queue?business_id=${business.id}&status=${statusFilter}`;
-      const res = await fetch(url);
+      const res = await fetch(`/API/queue?business_id=${business.id}&status=all`);
       const data = await res.json();
-
-      if (res.ok) {
-        setQueueEntries(data.data || []);
-        setStats(data.stats);
-      } else {
-        // If API fails, use mock data for demo
-        loadMockData();
-      }
-    } catch (error) {
-      console.error("Fetch queue error:", error);
-      loadMockData();
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [business?.id, statusFilter]);
-
-  const loadMockData = () => {
-    setQueueEntries(getMockQueueData());
-    setStats({
-      total: 8,
-      waiting: 4,
-      serving: 1,
-      completed: 2,
-      cancelled: 1,
-      avgWaitTime: 12,
-    });
-  };
+      if (res.ok) { setQueueEntries(data.data || []); setStats(data.stats); }
+    } catch (err) { console.error("Fetch queue error:", err); }
+    finally { setLoading(false); setRefreshing(false); }
+  }, [business?.id]);
 
   useEffect(() => {
     if (business?.id) {
       fetchQueue();
       fetchQueueTypes(business.id);
-      // Auto-refresh every 30 seconds
       const interval = setInterval(fetchQueue, 30000);
       return () => clearInterval(interval);
     } else {
-      // No business yet, load mock data for display
       setLoading(false);
-      loadMockData();
     }
   }, [business?.id, fetchQueue, fetchQueueTypes]);
 
-  const getMockQueueData = (): QueueEntry[] => {
-    return [
-      {
-        id: "1",
-        customer_name: "Ahmed Khan",
-        customer_phone: "+92 300 1234567",
-        service_type: "Haircut",
-        priority: "normal",
-        position: 1,
-        status: "serving",
-        joined_at: new Date(Date.now() - 25 * 60000).toISOString(),
-        started_at: new Date(Date.now() - 5 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 25 * 60000).toISOString(),
-      },
-      {
-        id: "2",
-        customer_name: "Fatima Ali",
-        customer_phone: "+92 321 9876543",
-        customer_email: "fatima@email.com",
-        service_type: "Hair Color",
-        priority: "normal",
-        position: 2,
-        status: "waiting",
-        joined_at: new Date(Date.now() - 20 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 20 * 60000).toISOString(),
-      },
-      {
-        id: "3",
-        customer_name: "Muhammad Usman",
-        customer_phone: "+92 333 4567890",
-        service_type: "Beard Trim",
-        priority: "high",
-        position: 3,
-        status: "waiting",
-        joined_at: new Date(Date.now() - 15 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-      },
-      {
-        id: "4",
-        customer_name: "Sara Ahmed",
-        customer_phone: "+92 345 6789012",
-        service_type: "Haircut",
-        priority: "normal",
-        position: 4,
-        status: "waiting",
-        joined_at: new Date(Date.now() - 10 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 10 * 60000).toISOString(),
-      },
-      {
-        id: "5",
-        customer_name: "Bilal Hassan",
-        customer_phone: "+92 312 3456789",
-        service_type: "Full Service",
-        priority: "normal",
-        position: 5,
-        status: "waiting",
-        joined_at: new Date(Date.now() - 5 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 5 * 60000).toISOString(),
-      },
-    ];
-  };
-
-  // Queue Type CRUD functions
-  const saveQueueTypeRequest = async (): Promise<Response> => {
-    if (editingQueueType) {
-      return fetch(`/API/queue-types/${editingQueueType.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newQueueType),
-      });
-    }
-    return fetch("/API/queue-types", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...newQueueType, business_id: business?.id }),
-    });
-  };
-
+  /* ── Queue type CRUD */
   const handleSaveQueueType = async () => {
-    if (!newQueueType.name.trim()) {
-      toast.error("Queue type name is required");
-      return;
-    }
-
+    if (!newQueueType.name.trim()) { toast.error("Queue type name is required"); return; }
+    if (!business?.id) { toast.error("Business not loaded"); return; }
     setSavingQueueType(true);
     try {
-      const action = editingQueueType ? "update" : "create";
-      const res = await saveQueueTypeRequest();
-
-      if (res.ok) {
-        toast.success(`Queue type ${action}d successfully!`);
-        if (business?.id) fetchQueueTypes(business.id);
-      } else {
-        const error = await res.json();
-        toast.error(error.error || `Failed to ${action} queue type`);
-      }
+      const isEditing = !!editingQueueType;
+      const url = isEditing ? `/API/queue-types/${editingQueueType!.id}` : "/API/queue-types";
+      const res = await fetch(url, {
+        method: isEditing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newQueueType, business_id: business.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success(`Queue type ${isEditing ? "updated" : "created"}!`);
+      await fetchQueueTypes(business.id);
       setQueueTypeDialogOpen(false);
       resetQueueTypeForm();
-    } catch (error) {
-      console.error("Error saving queue type:", error);
-      toast.error("Failed to save queue type");
-    } finally {
-      setSavingQueueType(false);
-    }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save queue type");
+    } finally { setSavingQueueType(false); }
   };
 
-  const handleDeleteQueueType = async (queueTypeId: string) => {
-    if (!confirm("Are you sure you want to delete this queue type?")) return;
-
+  const handleDeleteQueueType = async (id: string) => {
+    if (!confirm("Delete this queue type?")) return;
+    if (!business?.id) return;
     try {
-      const res = await fetch(`/API/queue-types/${queueTypeId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Queue type deleted successfully!");
-        if (business?.id) fetchQueueTypes(business.id);
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Failed to delete queue type");
-      }
-    } catch (error) {
-      console.error("Error deleting queue type:", error);
-      toast.error("Failed to delete queue type");
-    }
+      const res = await fetch(`/API/queue-types/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success("Queue type deleted!");
+      await fetchQueueTypes(business.id);
+    } catch (err: any) { toast.error(err.message || "Failed to delete"); }
   };
 
-  const handleEditQueueType = (queueType: QueueType) => {
-    setEditingQueueType(queueType);
-    setNewQueueType({
-      name: queueType.name,
-      description: queueType.description || "",
-      color: queueType.color,
-      estimated_service_time: queueType.estimated_service_time,
-      max_capacity: queueType.max_capacity,
-    });
+  const handleEditQueueType = (qt: QueueType) => {
+    setEditingQueueType(qt);
+    setNewQueueType({ name: qt.name, description: qt.description || "", color: qt.color,
+      estimated_service_time: qt.estimated_service_time, max_capacity: qt.max_capacity });
     setQueueTypeDialogOpen(true);
   };
 
   const resetQueueTypeForm = () => {
     setEditingQueueType(null);
-    setNewQueueType({
-      name: "",
-      description: "",
-      color: "#3B82F6",
-      estimated_service_time: 5,
-      max_capacity: 50,
-    });
+    setNewQueueType({ name: "", description: "", color: "#3B82F6", estimated_service_time: 5, max_capacity: 50 });
   };
 
-  // Generate QR code client-side
-  const generateQrCodeClientSide = async (url: string): Promise<string | null> => {
-    try {
-      const qrDataUrl = await QRCodeLib.toDataURL(url, {
-        errorCorrectionLevel: "H" as const,
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-        width: 400,
-      });
-      return qrDataUrl;
-    } catch (error) {
-      console.error("Client-side QR generation error:", error);
-      return null;
-    }
-  };
+  /* ── Add customer */
+  const openAddCustomer = useCallback((queueTypeId?: string) => {
+    setNewCustomer({
+      customer_name: "", customer_phone: "", customer_email: "",
+      queue_type_id: queueTypeId || "", notes: "", priority: "normal",
+    });
+    setAddDialogOpen(true);
+  }, []);
 
   const handleAddCustomer = async () => {
-    if (!newCustomer.customer_name) {
-      toast.error("Customer name is required");
-      return;
-    }
-
+    if (!newCustomer.customer_name) { toast.error("Customer name is required"); return; }
+    if (!newCustomer.customer_phone) { toast.error("Phone number is required"); return; }
+    if (!business?.id) { toast.error("Business not loaded"); return; }
     try {
       setAddingCustomer(true);
-
-      if (!business?.id) {
-        // Demo mode - add locally
-        const newEntry: QueueEntry = {
-          id: `demo-${Date.now()}`,
-          customer_name: newCustomer.customer_name,
-          customer_phone: newCustomer.customer_phone,
-          customer_email: newCustomer.customer_email,
-          service_type: newCustomer.service_type,
-          notes: newCustomer.notes,
-          priority: newCustomer.priority,
-          position: queueEntries.length + 1,
-          status: "waiting",
-          joined_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        };
-        setQueueEntries([...queueEntries, newEntry]);
-        setStats({
-          ...stats,
-          total: stats.total + 1,
-          waiting: stats.waiting + 1,
-        });
-        toast.success(`Customer added! Position: #${newEntry.position}`);
-        setAddDialogOpen(false);
-        resetNewCustomer();
-        return;
-      }
-
       const res = await fetch("/API/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -493,566 +556,275 @@ export default function QueueManagementPage() {
           customer_name: newCustomer.customer_name,
           customer_phone: newCustomer.customer_phone,
           customer_email: newCustomer.customer_email,
-          service_type: newCustomer.service_type,
+          queue_type_id: (newCustomer.queue_type_id && newCustomer.queue_type_id !== "__general__") ? newCustomer.queue_type_id : undefined,
           notes: newCustomer.notes,
           priority: newCustomer.priority,
         }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
-      toast.success(`Customer added! Position: #${data.data.position}`);
+      const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
+      toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
       setAddDialogOpen(false);
-      resetNewCustomer();
       fetchQueue();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add customer");
-    } finally {
-      setAddingCustomer(false);
-    }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add customer");
+    } finally { setAddingCustomer(false); }
   };
 
-  const resetNewCustomer = () => {
-    setNewCustomer({
-      customer_name: "",
-      customer_phone: "",
-      customer_email: "",
-      service_type: "",
-      notes: "",
-      priority: "normal",
-    });
-  };
-
-  const handleStatusChange = async (
-    entry: QueueEntry,
-    newStatus: "serving" | "completed" | "cancelled"
+  /* ── Status change */
+  const handleStatusChange = useCallback(async (
+    entry: QueueEntry, newStatus: "serving" | "completed" | "cancelled"
   ) => {
     try {
-      if (!business?.id) {
-        // Demo mode - update locally
-        setQueueEntries((prev: QueueEntry[]) =>
-          prev.map((e: QueueEntry) => (e.id === entry.id ? { ...e, status: newStatus } : e))
-        );
-
-        // Update stats
-        const newStats = { ...stats };
-        if (entry.status === "waiting") newStats.waiting--;
-        if (entry.status === "serving") newStats.serving--;
-        if (newStatus === "serving") newStats.serving++;
-        if (newStatus === "completed") newStats.completed++;
-        if (newStatus === "cancelled") newStats.cancelled++;
-        setStats(newStats);
-
-        toast.success(`Status updated to ${newStatus}`);
-        return;
-      }
-
       const res = await fetch(`/API/queue/${entry.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      toast.success(`Status → ${newStatus}`);
+      // optimistic update
+      setQueueEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
+    } catch (err: any) { toast.error(err.message || "Failed to update status"); }
+  }, []);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error);
-      }
+  const handleCancelClick = useCallback((entry: QueueEntry) => {
+    setSelectedEntry(entry);
+    setCancelDialogOpen(true);
+  }, []);
 
-      toast.success(`Status updated to ${newStatus}`);
-      fetchQueue();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update status");
-    }
+  /* ── QR helpers */
+  const buildJoinUrl = (queueTypeId?: string) => {
+    const bId = business?.id || "demo-business";
+    const base = `${window.location.origin}/join-queue/${bId}`;
+    return queueTypeId ? `${base}?queue_type=${queueTypeId}` : base;
   };
 
-  const buildJoinUrl = (queueTypeId?: string): string => {
-    const businessId = business?.id || "demo-business";
-    const base = `${window.location.origin}/join-queue/${businessId}`;
-    return queueTypeId && queueTypeId !== "all"
-      ? `${base}?queue_type=${queueTypeId}`
-      : base;
+  const generateQrCodeClientSide = async (url: string) => {
+    try {
+      return await QRCodeLib.toDataURL(url, {
+        errorCorrectionLevel: "H", margin: 2,
+        color: { dark: "#000000", light: "#FFFFFF" }, width: 400,
+      });
+    } catch { return null; }
   };
 
-  const applyClientSideQr = async (joinUrl: string) => {
-    setQrJoinUrl(joinUrl);
-    const clientQr = await generateQrCodeClientSide(joinUrl);
-    setQrCode(clientQr);
-  };
+  const openQrPicker = () => { setQrPickerSelection(""); setQrPickerOpen(true); };
 
-  const handleGenerateQrCode = async (queueTypeId?: string) => {
+  const handleGenerateQrCode = useCallback(async (queueTypeId?: string) => {
     setLoadingQr(true);
     setSelectedQueueTypeForQr(queueTypeId || "all");
     const joinUrl = buildJoinUrl(queueTypeId);
-
     try {
-      const businessId = business?.id || "demo-business";
-      const apiUrl = `/API/queue/qrcode?business_id=${businessId}`;
-      const res = await fetch(apiUrl);
+      setQrCode(await generateQrCodeClientSide(joinUrl));
+      setQrJoinUrl(joinUrl);
+    } catch (e) { console.error(e); }
+    finally { setQrDialogOpen(true); setLoadingQr(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business?.id]);
 
-      if (res.ok) {
-        const data = await res.json();
-        setQrCode(data.data.qr_code);
-        setQrJoinUrl(data.data.join_url || joinUrl);
-      } else {
-        await applyClientSideQr(joinUrl);
-      }
-    } catch (error) {
-      console.error("QR code error:", error);
-      await applyClientSideQr(joinUrl);
-    } finally {
-      setQrDialogOpen(true);
-      setLoadingQr(false);
-    }
-  };
-
-  const copyJoinUrl = () => {
-    navigator.clipboard.writeText(qrJoinUrl);
-    toast.success("Link copied to clipboard");
-  };
+  const copyJoinUrl = () => { navigator.clipboard.writeText(qrJoinUrl); toast.success("Link copied!"); };
 
   const downloadQrCode = () => {
-    if (!qrCode) {
-      toast.error("QR code not available");
-      return;
-    }
+    if (!qrCode) return;
     const link = document.createElement("a");
-    const queueType = queueTypes.find((t: QueueType) => t.id === selectedQueueTypeForQr);
-    const fileName = queueType
-      ? `queue-qr-${queueType.name.toLowerCase().replace(/\s+/g, "-")}.png`
-      : `queue-qr-${business?.id || "demo"}.png`;
-    link.download = fileName;
-    link.href = qrCode;
-    link.click();
-    toast.success("QR code downloaded!");
+    const qt = queueTypes.find(t => t.id === selectedQueueTypeForQr);
+    link.download = qt ? `queue-qr-${qt.name.toLowerCase().replace(/\s+/g, "-")}.png` : "queue-qr.png";
+    link.href = qrCode; link.click();
+    toast.success("QR downloaded!");
   };
 
   const shareQrCode = async () => {
     if (navigator.share) {
       try {
-        const queueType = queueTypes.find((t: QueueType) => t.id === selectedQueueTypeForQr);
+        const qt = queueTypes.find(t => t.id === selectedQueueTypeForQr);
         await navigator.share({
-          title: queueType ? `Join ${queueType.name} Queue` : "Join Our Queue",
+          title: qt ? `Join ${qt.name} Queue` : "Join Our Queue",
           text: `Join the queue at ${business?.business_name || "our business"}`,
           url: qrJoinUrl,
         });
-      } catch {
-        copyJoinUrl();
-      }
-    } else {
-      copyJoinUrl();
+        return;
+      } catch { /* fallthrough */ }
     }
+    copyJoinUrl();
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const selectedQrQueueType = queueTypes.find(t => t.id === selectedQueueTypeForQr);
 
-  const getWaitTime = (createdAt: string) => {
-    const minutes = Math.round(
-      (Date.now() - new Date(createdAt).getTime()) / 60000
-    );
-    if (minutes < 60) return `${minutes} min`;
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "waiting":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
-            <Clock className="h-3 w-3 mr-1" />
-            Waiting
-          </Badge>
-        );
-      case "serving":
-        return (
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-            <Play className="h-3 w-3 mr-1" />
-            Serving
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Completed
-          </Badge>
-        );
-      case "cancelled":
-        return (
-          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-            <XCircle className="h-3 w-3 mr-1" />
-            Cancelled
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    if (priority === "high") {
-      return (
-        <Badge variant="destructive" className="text-xs">
-          High Priority
-        </Badge>
-      );
-    }
-    return null;
-  };
-
-  const filteredEntries =
-    statusFilter === "all"
-      ? queueEntries
-      : queueEntries.filter((e: QueueEntry) => e.status === statusFilter);
-
+  /* ─────────────────────────────────────────────────────────── */
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Queue Management</h1>
-          <p className="mt-2 text-gray-600">
-            Manage your customer queue in real-time
-          </p>
+          <p className="mt-1 text-gray-500">Manage your customer queues in real-time</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Switch
-              checked={isQueueActive}
-              onCheckedChange={setIsQueueActive}
-            />
-            <Label className="text-sm">
-              Queue {isQueueActive ? "Open" : "Closed"}
-            </Label>
+            <Switch checked={isQueueActive} onCheckedChange={setIsQueueActive} />
+            <Label className="text-sm">Queue {isQueueActive ? "Open" : "Closed"}</Label>
           </div>
-          <Button variant="outline" onClick={() => handleGenerateQrCode()} disabled={loadingQr}>
-            {loadingQr ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <QrCode className="h-4 w-4 mr-2" />
-            )}
-            QR Code
-          </Button>
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Customer
+          <Button onClick={() => openAddCustomer()}>
+            <UserPlus className="h-4 w-4 mr-2" />Add Customer
           </Button>
         </div>
       </div>
 
-      {/* Tabs for Queue and Queue Types */}
+      {/* Tabs */}
       <Tabs defaultValue="queue" className="space-y-6">
         <TabsList>
           <TabsTrigger value="queue" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Queue
+            <Users className="h-4 w-4" />Queue
+            {stats.waiting > 0 && (
+              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-yellow-500 text-white rounded-full">
+                {stats.waiting}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="queue-types" className="flex items-center gap-2">
-            <Layers className="h-4 w-4" />
-            Queue Types
+            <Layers className="h-4 w-4" />Queue Types
+            {queueTypes.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs">{queueTypes.length}</Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
-        {/* Queue Tab */}
+        {/* ══ QUEUE TAB ══ */}
         <TabsContent value="queue" className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+
+          {/* Global stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Total Today</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-gray-400" />
+                  <div><p className="text-xs text-gray-500">Total Today</p><p className="text-2xl font-bold">{stats.total}</p></div>
+                  <Users className="h-6 w-6 text-gray-400" />
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-700">Waiting</p>
-                    <p className="text-2xl font-bold text-yellow-800">
-                      {stats.waiting}
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-500" />
+                  <div><p className="text-xs text-yellow-700">Waiting</p><p className="text-2xl font-bold text-yellow-800">{stats.waiting}</p></div>
+                  <Clock className="h-6 w-6 text-yellow-500" />
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-700">Serving</p>
-                    <p className="text-2xl font-bold text-blue-800">
-                      {stats.serving}
-                    </p>
-                  </div>
-                  <Play className="h-8 w-8 text-blue-500" />
+                  <div><p className="text-xs text-blue-700">Serving</p><p className="text-2xl font-bold text-blue-800">{stats.serving}</p></div>
+                  <Play className="h-6 w-6 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-green-200 bg-green-50">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-700">Completed</p>
-                    <p className="text-2xl font-bold text-green-800">
-                      {stats.completed}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-500" />
+                  <div><p className="text-xs text-green-700">Completed</p><p className="text-2xl font-bold text-green-800">{stats.completed}</p></div>
+                  <CheckCircle className="h-6 w-6 text-green-500" />
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-red-200 bg-red-50">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-700">Cancelled</p>
-                    <p className="text-2xl font-bold text-red-800">
-                      {stats.cancelled}
-                    </p>
-                  </div>
-                  <XCircle className="h-8 w-8 text-red-500" />
+                  <div><p className="text-xs text-red-700">Cancelled</p><p className="text-2xl font-bold text-red-800">{stats.cancelled}</p></div>
+                  <XCircle className="h-6 w-6 text-red-500" />
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-purple-700">Avg Wait</p>
-                    <p className="text-2xl font-bold text-purple-800">
-                      {stats.avgWaitTime}m
-                    </p>
-                  </div>
-                  <Timer className="h-8 w-8 text-purple-500" />
+                  <div><p className="text-xs text-purple-700">Avg Wait</p><p className="text-2xl font-bold text-purple-800">{stats.avgWaitTime}m</p></div>
+                  <Timer className="h-6 w-6 text-purple-500" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Queue Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <CardTitle>Current Queue</CardTitle>
-                  <CardDescription>
-                    Today's queue entries - auto refreshes every 30 seconds
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Filter status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="waiting">Waiting</SelectItem>
-                      <SelectItem value="serving">Serving</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={fetchQueue}
-                    disabled={refreshing}
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                    />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[80px]">#</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Wait Time</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEntries.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-12">
-                            <Clock className="mx-auto h-12 w-12 text-gray-300" />
-                            <h3 className="mt-4 text-lg font-medium text-gray-900">
-                              No customers in queue
-                            </h3>
-                            <p className="mt-2 text-gray-500">
-                              Add customers or share your QR code to get started
-                            </p>
-                            <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Add Customer to Queue
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredEntries.map((entry: QueueEntry) => (
-                          <TableRow
-                            key={entry.id}
-                            className={
-                              entry.status === "serving" ? "bg-blue-50" : ""
-                            }
-                          >
-                            <TableCell>
-                              <div className="font-mono font-bold text-lg">
-                                {String(entry.position).padStart(3, "0")}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {formatTime(entry.created_at)}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-start gap-2">
-                                {entry.scanned_user?.avatar_url ? (
-                                  <img
-                                    src={entry.scanned_user.avatar_url}
-                                    alt=""
-                                    className="h-8 w-8 rounded-full object-cover mt-0.5"
-                                  />
-                                ) : entry.customer_id ? (
-                                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-                                    <Users className="h-4 w-4 text-blue-600" />
-                                  </div>
-                                ) : null}
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
-                                    {entry.scanned_user?.full_name || entry.customer_name}
-                                  </span>
-                                  {(entry.scanned_user?.phone_number || entry.customer_phone) && (
-                                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                                      <Phone className="h-3 w-3" />
-                                      {entry.scanned_user?.phone_number || entry.customer_phone}
-                                    </span>
-                                  )}
-                                  {(entry.scanned_user?.email || entry.customer_email) && (
-                                    <span className="text-xs text-gray-400">
-                                      {entry.scanned_user?.email || entry.customer_email}
-                                    </span>
-                                  )}
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    {entry.customer_id && (
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-700 border-blue-200">
-                                        App User
-                                      </Badge>
-                                    )}
-                                    {getPriorityBadge(entry.priority)}
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm">
-                                {entry.service_type || "-"}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {entry.status === "waiting" ||
-                              entry.status === "serving" ? (
-                                <span className="font-medium">
-                                  {getWaitTime(entry.created_at)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(entry.status)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {entry.customer_id ? "App / QR" : "Walk-in"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  {entry.status === "waiting" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleStatusChange(entry, "serving")
-                                      }
-                                    >
-                                      <Play className="h-4 w-4 mr-2 text-blue-600" />
-                                      Start Serving
-                                    </DropdownMenuItem>
-                                  )}
-                                  {entry.status === "serving" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleStatusChange(entry, "completed")
-                                      }
-                                    >
-                                      <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                                      Mark Complete
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(entry.status === "waiting" ||
-                                    entry.status === "serving") && (
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setSelectedEntry(entry);
-                                        setCancelDialogOpen(true);
-                                      }}
-                                      className="text-red-600"
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Cancel
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+          {/* Status filter + refresh */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-gray-500">Show:</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="waiting">Waiting</SelectItem>
+                  <SelectItem value="serving">Serving</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchQueue} disabled={refreshing} className="h-8">
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />Refresh
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-gray-300" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* One lane per queue type — always rendered (shows 0-customer empty state) */}
+              {queueTypes.map(qt => (
+                <QueueLane
+                  key={qt.id}
+                  queueType={qt}
+                  entries={entriesForType(queueEntries, qt.id, statusFilter)}
+                  loadingQr={loadingQr}
+                  onGenerateQr={handleGenerateQrCode}
+                  onAddCustomer={openAddCustomer}
+                  onStatusChange={handleStatusChange}
+                  onCancelClick={handleCancelClick}
+                />
+              ))}
+
+              {/* General lane — always rendered */}
+              <QueueLane
+                key="general"
+                queueType={null}
+                entries={entriesForType(queueEntries, null, statusFilter)}
+                loadingQr={loadingQr}
+                onGenerateQr={handleGenerateQrCode}
+                onAddCustomer={openAddCustomer}
+                onStatusChange={handleStatusChange}
+                onCancelClick={handleCancelClick}
+              />
+
+              {/* Prompt to create queue types if none exist */}
+              {queueTypes.length === 0 && (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                    <Layers className="h-10 w-10 text-gray-200" />
+                    <div>
+                      <p className="font-semibold text-gray-600">No queue types created yet</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                        Go to <strong>Queue Types</strong> tab to create queues — each type gets its own lane, QR code, and customer list.
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm"
+                      onClick={() => document.querySelector<HTMLButtonElement>('[value="queue-types"]')?.click()}>
+                      <Plus className="h-4 w-4 mr-2" />Create Queue Type
+                    </Button>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </TabsContent>
 
-        {/* Queue Types Tab */}
+        {/* ══ QUEUE TYPES TAB ══ */}
         <TabsContent value="queue-types" className="space-y-6">
-          {/* QR Code Generation Section */}
+
+          {/* QR card */}
           <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1062,211 +834,114 @@ export default function QueueManagementPage() {
                   </div>
                   <div>
                     <CardTitle className="text-xl">Generate QR Code</CardTitle>
-                    <CardDescription className="text-base">
-                      Create QR codes for customers to join your queue
-                    </CardDescription>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Each queue type gets its own QR — customers scan and join instantly.
+                    </p>
                   </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-2">
-                  {queueTypes.length > 0 && (
-                    <Select value={selectedQueueTypeForQr} onValueChange={setSelectedQueueTypeForQr}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select queue type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Queues</SelectItem>
-                        {queueTypes.map((qt: QueueType) => (
-                          <SelectItem key={qt.id} value={qt.id}>
-                            {qt.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <Button
-                    size="lg"
-                    onClick={() => handleGenerateQrCode(selectedQueueTypeForQr)}
-                    disabled={loadingQr}
-                  >
-                    {loadingQr ? (
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    ) : (
-                      <QrCode className="h-5 w-5 mr-2" />
-                    )}
-                    Generate QR Code
-                  </Button>
-                </div>
+                <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="hidden sm:flex">
+                  {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
+                  Generate QR
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Easy Join</p>
-                    <p className="text-sm text-gray-500">Customers scan & join instantly</p>
-                  </div>
+                  <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
+                  <div><p className="font-semibold text-gray-900">Easy Join</p><p className="text-sm text-gray-500">Customers scan &amp; join instantly</p></div>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Real-time Updates</p>
-                    <p className="text-sm text-gray-500">Live queue position tracking</p>
-                  </div>
+                  <div className="p-2 bg-green-100 rounded-lg"><Clock className="h-5 w-5 text-green-600" /></div>
+                  <div><p className="font-semibold text-gray-900">Real-time Updates</p><p className="text-sm text-gray-500">Live queue position tracking</p></div>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Share2 className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Share Anywhere</p>
-                    <p className="text-sm text-gray-500">Print, display, or share online</p>
-                  </div>
+                  <div className="p-2 bg-purple-100 rounded-lg"><Share2 className="h-5 w-5 text-purple-600" /></div>
+                  <div><p className="font-semibold text-gray-900">Per-Queue QR</p><p className="text-sm text-gray-500">Separate QR per queue type</p></div>
                 </div>
               </div>
-              {/* Mobile controls */}
-              <div className="sm:hidden mt-4 space-y-3">
-                {queueTypes.length > 0 && (
-                  <Select value={selectedQueueTypeForQr} onValueChange={setSelectedQueueTypeForQr}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select queue type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Queues</SelectItem>
-                      {queueTypes.map((qt: QueueType) => (
-                        <SelectItem key={qt.id} value={qt.id}>
-                          {qt.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <Button
-                  size="lg"
-                  onClick={() => handleGenerateQrCode(selectedQueueTypeForQr)}
-                  disabled={loadingQr}
-                  className="w-full"
-                >
-                  {loadingQr ? (
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  ) : (
-                    <QrCode className="h-5 w-5 mr-2" />
-                  )}
-                  Generate QR Code
-                </Button>
-              </div>
+              <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="sm:hidden mt-4 w-full">
+                {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
+                Generate QR Code
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Queue Types Management */}
+          {/* Queue types grid */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Queue Types
-                  </CardTitle>
-                  <CardDescription>
-                    Manage different queues for your services (e.g., Haircut, Consultation)
-                  </CardDescription>
+                  <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />Queue Types</CardTitle>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Each type appears as its own lane in the Queue tab with its own QR code
+                  </p>
                 </div>
-                <Button
-                  onClick={() => {
-                    resetQueueTypeForm();
-                    setQueueTypeDialogOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Queue Type
+                <Button onClick={() => { resetQueueTypeForm(); setQueueTypeDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />Add Queue Type
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {queueTypes.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Settings className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No queue types created yet</p>
-                  <p className="text-sm mt-1">Create queue types to manage different services</p>
-                  <Button
-                    className="mt-4"
-                    onClick={() => {
-                      resetQueueTypeForm();
-                      setQueueTypeDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Queue Type
+                <div className="text-center py-10 text-gray-400">
+                  <Settings className="h-12 w-12 mx-auto mb-3 text-gray-200" />
+                  <p className="font-medium">No queue types yet</p>
+                  <p className="text-sm mt-1">Create one to manage different services with separate queues</p>
+                  <Button className="mt-4" onClick={() => { resetQueueTypeForm(); setQueueTypeDialogOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />Create First Queue Type
                   </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {queueTypes.map((queueType: QueueType) => (
-                    <div
-                      key={queueType.id}
-                      className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
-                      style={{ borderColor: queueType.color + "40", backgroundColor: queueType.color + "08" }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
-                            style={{ backgroundColor: queueType.color }}
-                          >
-                            {queueType.name.charAt(0).toUpperCase()}
+                  {queueTypes.map(qt => {
+                    const laneEntries = entriesForType(queueEntries, qt.id, "all");
+                    const waiting = laneEntries.filter(e => e.status === "waiting").length;
+                    const serving = laneEntries.filter(e => e.status === "serving").length;
+                    return (
+                      <div key={qt.id}
+                        className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
+                        style={{ borderColor: qt.color + "40", backgroundColor: qt.color + "08" }}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+                              style={{ backgroundColor: qt.color }}>
+                              {qt.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{qt.name}</h3>
+                              <p className="text-xs text-gray-500">{qt.description || "No description"}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{queueType.name}</h3>
-                            <p className="text-sm text-gray-500">{queueType.description || "No description"}</p>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditQueueType(qt)}>
+                              <Edit2 className="h-4 w-4 text-gray-400" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteQueueType(qt.id)}>
+                              <Trash2 className="h-4 w-4 text-red-400" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEditQueueType(queueType)}
-                          >
-                            <Edit2 className="h-4 w-4 text-gray-500" />
+                        <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min</span>
+                          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />Max {qt.max_capacity}</span>
+                          <span className="text-yellow-600 font-medium">{waiting} waiting</span>
+                          {serving > 0 && <span className="text-blue-600 font-medium">{serving} serving</span>}
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs"
+                            onClick={() => handleGenerateQrCode(qt.id)} disabled={loadingQr}
+                            style={{ borderColor: qt.color + "60", color: qt.color }}>
+                            <QrCode className="h-3.5 w-3.5 mr-1" />QR Code
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDeleteQueueType(queueType.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                          <Button size="sm" variant="outline" className="flex-1 text-xs"
+                            onClick={() => openAddCustomer(qt.id)}>
+                            <UserPlus className="h-3.5 w-3.5 mr-1" />Add Customer
                           </Button>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          ~{queueType.estimated_service_time} min
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          Max {queueType.max_capacity}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleGenerateQrCode(queueType.id)}
-                          disabled={loadingQr}
-                        >
-                          <QrCode className="h-4 w-4 mr-1" />
-                          QR Code
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1274,165 +949,107 @@ export default function QueueManagementPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Customer Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      {/* ══ DIALOGS ══ */}
+
+      {/* QR Picker */}
+      <Dialog open={qrPickerOpen} onOpenChange={setQrPickerOpen}>
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-blue-600" />
-              Add Customer to Queue
+              <QrCode className="h-5 w-5 text-primary" />Generate Queue QR Code
             </DialogTitle>
             <DialogDescription>
-              Add a walk-in customer to the queue
+              Choose which queue this QR is for. Customers who scan it join that queue automatically.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="customer_name">Customer Name *</Label>
-              <Input
-                id="customer_name"
-                placeholder="Enter customer name"
-                value={newCustomer.customer_name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                  setNewCustomer({
-                    ...newCustomer,
-                    customer_name: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="customer_phone">Phone Number</Label>
-              <Input
-                id="customer_phone"
-                placeholder="+92 300 1234567"
-                value={newCustomer.customer_phone}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                  setNewCustomer({
-                    ...newCustomer,
-                    customer_phone: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="service_type">Service Type</Label>
-              <Select
-                value={newCustomer.service_type}
-                onValueChange={(value: string) =>
-                  setNewCustomer({ ...newCustomer, service_type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Haircut">Haircut</SelectItem>
-                  <SelectItem value="Beard Trim">Beard Trim</SelectItem>
-                  <SelectItem value="Hair Color">Hair Color</SelectItem>
-                  <SelectItem value="Full Service">Full Service</SelectItem>
-                  <SelectItem value="Printing">Printing</SelectItem>
-                  <SelectItem value="Consultation">Consultation</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={newCustomer.priority}
-                onValueChange={(value: string) =>
-                  setNewCustomer({ ...newCustomer, priority: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="high">High Priority</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Any special requests..."
-                value={newCustomer.notes}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                  setNewCustomer({ ...newCustomer, notes: e.target.value })
-                }
-              />
-            </div>
+          <div className="py-2 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            <button onClick={() => setQrPickerSelection("general")}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${qrPickerSelection === "general" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5 text-gray-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">General Queue</p>
+                <p className="text-sm text-gray-500">No specific service — open to everyone</p>
+              </div>
+              {qrPickerSelection === "general" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
+            </button>
+
+            {queueTypes.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-sm border border-dashed rounded-xl">
+                <Layers className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                No queue types yet — create one to generate a specific QR
+              </div>
+            ) : (
+              queueTypes.filter(qt => qt.is_active).map(qt => (
+                <button key={qt.id} onClick={() => setQrPickerSelection(qt.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${qrPickerSelection === qt.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0"
+                    style={{ backgroundColor: qt.color }}>
+                    {qt.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900">{qt.name}</p>
+                    <p className="text-sm text-gray-500">{qt.description || `~${qt.estimated_service_time} min · Max ${qt.max_capacity}`}</p>
+                  </div>
+                  {qrPickerSelection === qt.id && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
+                </button>
+              ))
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddCustomer} disabled={addingCustomer}>
-              {addingCustomer ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <UserPlus className="h-4 w-4 mr-2" />
-              )}
-              Add to Queue
+            <Button variant="outline" onClick={() => setQrPickerOpen(false)}>Cancel</Button>
+            <Button disabled={!qrPickerSelection || loadingQr}
+              onClick={() => { setQrPickerOpen(false); handleGenerateQrCode(qrPickerSelection === "general" ? undefined : qrPickerSelection); }}>
+              {loadingQr ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
+              Generate QR Code
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Dialog */}
+      {/* QR Display */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent className="sm:max-w-2xl gap-0 p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                <QrCode className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg shrink-0"
+                style={{ backgroundColor: selectedQrQueueType ? selectedQrQueueType.color + "20" : "hsl(var(--primary)/0.1)" }}>
+                <QrCode className="h-5 w-5" style={{ color: selectedQrQueueType?.color || "hsl(var(--primary))" }} />
               </div>
               <div>
-                <DialogTitle className="text-lg leading-tight">Queue QR Code</DialogTitle>
+                <DialogTitle className="text-lg leading-tight">
+                  {selectedQrQueueType ? `QR Code — ${selectedQrQueueType.name}` : "General Queue QR Code"}
+                </DialogTitle>
                 <DialogDescription className="text-sm mt-0.5">
-                  Share this so customers can join your queue instantly
+                  {selectedQrQueueType
+                    ? `Customers scan to join the ${selectedQrQueueType.name} queue`
+                    : "Customers scan to join the general queue"}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-
-          <div className="flex flex-col sm:flex-row min-h-0">
-            {/* Left — QR panel */}
-            <div className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 sm:w-64 sm:shrink-0 border-b sm:border-b-0 sm:border-r">
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 sm:w-64 shrink-0 border-b sm:border-b-0 sm:border-r">
               {qrCode ? (
                 <>
                   <div className="bg-white rounded-xl shadow p-3 border">
-                    <img
-                      src={qrCode}
-                      alt="Queue QR Code"
-                      className="w-48 h-48 object-contain block"
-                    />
+                    <img src={qrCode} alt="QR" className="w-48 h-48 object-contain block" />
                   </div>
+                  {selectedQrQueueType && (
+                    <Badge className="text-white text-xs" style={{ backgroundColor: selectedQrQueueType.color }}>
+                      {selectedQrQueueType.name}
+                    </Badge>
+                  )}
                   <p className="text-xs text-gray-400">Point camera to scan</p>
                 </>
               ) : (
-                <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-xl bg-white flex flex-col items-center justify-center gap-2">
-                  {loadingQr ? (
-                    <>
-                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                      <p className="text-xs text-gray-400">Generating…</p>
-                    </>
-                  ) : (
-                    <>
-                      <QrCode className="h-8 w-8 text-gray-300" />
-                      <p className="text-xs text-gray-400">Loading QR…</p>
-                    </>
-                  )}
+                <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-xl bg-white flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
               )}
             </div>
-
-            {/* Right — details */}
             <div className="flex flex-col gap-4 p-6 flex-1 min-w-0">
-              {/* Live stats */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-lg bg-blue-50 px-3 py-2 text-center">
                   <p className="text-xl font-bold text-blue-600 leading-none">{stats.waiting}</p>
@@ -1447,178 +1064,181 @@ export default function QueueManagementPage() {
                   <p className="text-[11px] text-purple-500 mt-1">Avg Wait</p>
                 </div>
               </div>
-
-              {/* Join link */}
               <div className="space-y-1">
                 <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Join Link</p>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={qrJoinUrl}
-                    readOnly
-                    className="text-xs bg-gray-50 font-mono h-8 truncate"
-                  />
+                  <Input value={qrJoinUrl} readOnly className="text-xs bg-gray-50 font-mono h-8 truncate" />
                   <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={copyJoinUrl}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
-
-              {/* Steps */}
               <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">How it works</p>
-                <div className="space-y-1.5">
-                  {[
-                    "Customer scans the QR code",
-                    "They enter details or log in via app",
-                    "Position tracked live on their phone",
-                  ].map((step, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="h-4 w-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
-                        {i + 1}
-                      </span>
-                      <span className="text-xs text-gray-600">{step}</span>
-                    </div>
-                  ))}
-                </div>
+                {["Customer scans the QR code", "They enter details or log in via app", "Position tracked live on their phone"].map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="text-xs text-gray-600">{s}</span>
+                  </div>
+                ))}
               </div>
-
-              {/* Actions */}
               <div className="flex gap-2 mt-auto">
-                <Button variant="outline" size="sm" onClick={shareQrCode} className="flex-1">
-                  <Share2 className="h-4 w-4 mr-1.5" />
-                  Share
-                </Button>
-                {qrCode && (
-                  <Button variant="outline" size="sm" onClick={downloadQrCode} className="flex-1">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    Download
-                  </Button>
-                )}
-                <Button size="sm" onClick={() => window.open(qrJoinUrl, "_blank")} className="flex-1">
-                  <ExternalLink className="h-4 w-4 mr-1.5" />
-                  Preview
-                </Button>
+                <Button variant="outline" size="sm" onClick={shareQrCode} className="flex-1"><Share2 className="h-4 w-4 mr-1.5" />Share</Button>
+                {qrCode && <Button variant="outline" size="sm" onClick={downloadQrCode} className="flex-1"><Download className="h-4 w-4 mr-1.5" />Download</Button>}
+                <Button size="sm" onClick={() => window.open(qrJoinUrl, "_blank")} className="flex-1"><ExternalLink className="h-4 w-4 mr-1.5" />Preview</Button>
               </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Queue Type Create/Edit Dialog */}
-      <Dialog open={queueTypeDialogOpen} onOpenChange={(open: boolean) => {
-        setQueueTypeDialogOpen(open);
-        if (!open) resetQueueTypeForm();
-      }}>
+      {/* Add Customer */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600" />Add Customer to Queue
+            </DialogTitle>
+            <DialogDescription>Add a walk-in customer manually</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Queue Type</Label>
+              <Select value={newCustomer.queue_type_id}
+                onValueChange={v => setNewCustomer(p => ({ ...p, queue_type_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select queue type (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__general__">General (no specific type)</SelectItem>
+                  {queueTypes.filter(qt => qt.is_active).map(qt => (
+                    <SelectItem key={qt.id} value={qt.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: qt.color }} />
+                        {qt.name}
+                        <span className="text-gray-400 text-xs">~{qt.estimated_service_time}min</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Customer Name *</Label>
+              <Input placeholder="Enter customer name" value={newCustomer.customer_name}
+                onChange={e => setNewCustomer(p => ({ ...p, customer_name: e.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phone Number *</Label>
+              <Input placeholder="+92 300 1234567" value={newCustomer.customer_phone}
+                onChange={e => setNewCustomer(p => ({ ...p, customer_phone: e.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Email (optional)</Label>
+              <Input type="email" placeholder="customer@email.com" value={newCustomer.customer_email}
+                onChange={e => setNewCustomer(p => ({ ...p, customer_email: e.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Priority</Label>
+              <Select value={newCustomer.priority}
+                onValueChange={v => setNewCustomer(p => ({ ...p, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">High Priority</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Textarea placeholder="Any special requests..." value={newCustomer.notes}
+                onChange={e => setNewCustomer(p => ({ ...p, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddCustomer} disabled={addingCustomer}>
+              {addingCustomer ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
+              Add to Queue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Queue Type Create/Edit */}
+      <Dialog open={queueTypeDialogOpen}
+        onOpenChange={open => { setQueueTypeDialogOpen(open); if (!open) resetQueueTypeForm(); }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingQueueType ? "Edit Queue Type" : "Create Queue Type"}
-            </DialogTitle>
+            <DialogTitle>{editingQueueType ? "Edit Queue Type" : "Create Queue Type"}</DialogTitle>
             <DialogDescription>
-              {editingQueueType
-                ? "Update the details of this queue type"
-                : "Create a new queue type to manage different services"}
+              {editingQueueType ? "Update this queue type" : "A new lane will appear in the Queue tab immediately after saving"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Queue Name *</Label>
-              <Input
-                id="name"
-                placeholder="e.g., Haircut, Consultation, General"
+              <Label>Queue Name *</Label>
+              <Input placeholder="e.g., Haircut, Consultation, General"
                 value={newQueueType.name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, name: e.target.value })}
-              />
+                onChange={e => setNewQueueType(p => ({ ...p, name: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Brief description of this queue type"
+              <Label>Description</Label>
+              <Textarea placeholder="Brief description of this queue type"
                 value={newQueueType.description}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, description: e.target.value })}
-              />
+                onChange={e => setNewQueueType(p => ({ ...p, description: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="color">Color</Label>
+                <Label>Color</Label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    id="color"
-                    value={newQueueType.color}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, color: e.target.value })}
-                    className="w-12 h-10 rounded border cursor-pointer"
-                  />
-                  <Input
-                    value={newQueueType.color}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, color: e.target.value })}
-                    className="flex-1"
-                  />
+                  <input type="color" value={newQueueType.color}
+                    onChange={e => setNewQueueType(p => ({ ...p, color: e.target.value }))}
+                    className="w-12 h-10 rounded border cursor-pointer" />
+                  <Input value={newQueueType.color}
+                    onChange={e => setNewQueueType(p => ({ ...p, color: e.target.value }))}
+                    className="flex-1" />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estimated_time">Est. Service Time (min)</Label>
-                <Input
-                  id="estimated_time"
-                  type="number"
-                  min={1}
-                  value={newQueueType.estimated_service_time}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, estimated_service_time: parseInt(e.target.value) || 5 })}
-                />
+                <Label>Est. Service Time (min)</Label>
+                <Input type="number" min={1} value={newQueueType.estimated_service_time}
+                  onChange={e => setNewQueueType(p => ({ ...p, estimated_service_time: parseInt(e.target.value) || 5 }))} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="max_capacity">Max Capacity</Label>
-              <Input
-                id="max_capacity"
-                type="number"
-                min={1}
-                value={newQueueType.max_capacity}
-                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, max_capacity: parseInt(e.target.value) || 50 })}
-              />
-              <p className="text-sm text-gray-500">Maximum number of customers allowed in this queue</p>
+              <Label>Max Capacity</Label>
+              <Input type="number" min={1} value={newQueueType.max_capacity}
+                onChange={e => setNewQueueType(p => ({ ...p, max_capacity: parseInt(e.target.value) || 50 }))} />
+              <p className="text-xs text-gray-400">Maximum customers allowed in this queue at once</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setQueueTypeDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setQueueTypeDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveQueueType} disabled={savingQueueType}>
-              {savingQueueType ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
+              {savingQueueType && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editingQueueType ? "Update" : "Create"} Queue Type
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Confirmation Dialog */}
+      {/* Cancel Confirm */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              Cancel Queue Entry?
+              <AlertCircle className="h-5 w-5 text-red-600" />Cancel Queue Entry?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel the queue entry for{" "}
-              <strong>{selectedEntry?.customer_name}</strong>? This action
-              cannot be undone.
+              Are you sure you want to cancel the entry for <strong>{selectedEntry?.customer_name}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep in Queue</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700"
               onClick={() => {
-                if (selectedEntry) {
-                  handleStatusChange(selectedEntry, "cancelled");
-                }
+                if (selectedEntry) handleStatusChange(selectedEntry, "cancelled");
                 setCancelDialogOpen(false);
-              }}
-            >
+              }}>
               Cancel Entry
             </AlertDialogAction>
           </AlertDialogFooter>

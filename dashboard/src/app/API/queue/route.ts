@@ -12,8 +12,9 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get("business_id");
-    const status = searchParams.get("status"); // waiting, serving, completed, cancelled
+    const status = searchParams.get("status"); // waiting, serving, completed, cancelled, all
     const date = searchParams.get("date"); // Filter by date (YYYY-MM-DD)
+    const queueTypeId = searchParams.get("queue_type_id"); // Filter by queue type (stored in service_type column)
 
     if (!businessId) {
       return NextResponse.json(
@@ -34,6 +35,11 @@ export async function GET(req: Request) {
     // Filter by status
     if (status && status !== "all") {
       query = query.eq("status", status);
+    }
+
+    // Filter by queue type (queue type ID is stored in the service_type column)
+    if (queueTypeId && queueTypeId !== "all") {
+      query = query.eq("service_type", queueTypeId);
     }
 
     // Filter by date
@@ -62,22 +68,32 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Get queue statistics
+    // Get full stats for the business today (not filtered by queue type, to show totals)
+    const today = new Date().toISOString().split("T")[0];
+    const { data: allTodayData } = await supabase
+      .from("queues")
+      .select("status, started_at, created_at")
+      .eq("business_id", businessId)
+      .gte("created_at", `${today}T00:00:00.000Z`)
+      .lte("created_at", `${today}T23:59:59.999Z`);
+
+    // Calculate stats
+    const statsSource = queueTypeId && queueTypeId !== "all" ? data : (allTodayData || []);
     const stats = {
-      total: data?.length || 0,
-      waiting: data?.filter((e) => e.status === "waiting").length || 0,
-      serving: data?.filter((e) => e.status === "serving").length || 0,
-      completed: data?.filter((e) => e.status === "completed").length || 0,
-      cancelled: data?.filter((e) => e.status === "cancelled").length || 0,
+      total: statsSource?.length || 0,
+      waiting: statsSource?.filter((e) => e.status === "waiting").length || 0,
+      serving: statsSource?.filter((e) => e.status === "serving").length || 0,
+      completed: statsSource?.filter((e) => e.status === "completed").length || 0,
+      cancelled: statsSource?.filter((e) => e.status === "cancelled").length || 0,
     };
 
-    // Calculate average wait time using started_at (when service started) and created_at
-    const completedEntries = data?.filter(
+    // Calculate average wait time using started_at and created_at
+    const completedEntries = statsSource?.filter(
       (e) => e.status === "completed" && e.started_at && e.created_at
     );
     let avgWaitTime = 0;
     if (completedEntries && completedEntries.length > 0) {
-      const totalWaitTime = completedEntries.reduce((sum, entry) => {
+      const totalWaitTime = completedEntries.reduce((sum: number, entry: any) => {
         const waitTime =
           new Date(entry.started_at).getTime() -
           new Date(entry.created_at).getTime();
@@ -106,6 +122,7 @@ export async function POST(req: Request) {
       customer_phone,
       customer_email,
       service_type,
+      queue_type_id, // optional: queue type ID
       notes,
       priority = "normal",
     } = body;
@@ -117,9 +134,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the current max position for today
+    // Get the current max position for today (scoped to queue_type if applicable)
     const today = new Date().toISOString().split("T")[0];
-    const positionQuery = supabase
+    let positionQuery = supabase
       .from("queues")
       .select("position")
       .eq("business_id", business_id)
@@ -127,8 +144,15 @@ export async function POST(req: Request) {
       .order("position", { ascending: false })
       .limit(1);
 
+    if (queue_type_id) {
+      positionQuery = positionQuery.eq("service_type", queue_type_id);
+    }
+
     const { data: lastEntry } = await positionQuery.single();
     const nextPosition = (lastEntry?.position || 0) + 1;
+
+    // service_type stores the queue_type_id if provided, else free-text service type
+    const serviceTypeValue = queue_type_id || service_type || null;
 
     // Create queue entry using existing queues table columns
     const { data: queueEntry, error } = await supabase
@@ -138,7 +162,7 @@ export async function POST(req: Request) {
         customer_name,
         customer_phone,
         customer_email,
-        service_type,
+        service_type: serviceTypeValue,
         notes,
         priority,
         position: nextPosition,

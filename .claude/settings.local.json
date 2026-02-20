@@ -44,7 +44,10 @@
       "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__list_projects",
       "Bash(nslookup:*)",
       "Bash(tasklist:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx next build:*)",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\X\\\\FYP\\\\Business_pro_hub_dashboard\\\\dashboard\\\\src\\\\app\\\\API\\\\queue\" -Filter \"*.ts\")",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

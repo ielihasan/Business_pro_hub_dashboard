@@ -16,8 +16,11 @@ export async function GET(
     const { id } = await params;
 
     const { data, error } = await supabase
-      .from("queue_entries")
-      .select("*")
+      .from("queues")
+      .select(`
+        *,
+        scanned_user:User(id, full_name, email, phone_number, avatar_url)
+      `)
       .eq("id", id)
       .single();
 
@@ -39,7 +42,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, notes, service_type } = body;
+    const { status, notes, service_type, priority } = body;
 
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -49,8 +52,10 @@ export async function PATCH(
       updateData.status = status;
 
       // Update timestamps based on status
+      // queues table uses: called_at, started_at, completed_at, cancelled_at
       if (status === "serving") {
-        updateData.served_at = new Date().toISOString();
+        updateData.started_at = new Date().toISOString();
+        updateData.called_at = new Date().toISOString();
       } else if (status === "completed") {
         updateData.completed_at = new Date().toISOString();
       } else if (status === "cancelled") {
@@ -60,9 +65,10 @@ export async function PATCH(
 
     if (notes !== undefined) updateData.notes = notes;
     if (service_type !== undefined) updateData.service_type = service_type;
+    if (priority !== undefined) updateData.priority = priority;
 
     const { data, error } = await supabase
-      .from("queue_entries")
+      .from("queues")
       .update(updateData)
       .eq("id", id)
       .select()
@@ -92,7 +98,7 @@ export async function DELETE(
     const { id } = await params;
 
     const { error } = await supabase
-      .from("queue_entries")
+      .from("queues")
       .delete()
       .eq("id", id);
 

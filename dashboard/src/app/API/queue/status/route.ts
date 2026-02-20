@@ -7,17 +7,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET - Get queue status for a customer by ticket number or phone
+// GET - Get queue status for a customer by queue entry ID or phone
+// The join-queue page calls this with ?ticket=<id> (the queue entry id)
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const ticketNumber = searchParams.get("ticket");
+    // "ticket" param = the queue entry's `id` (UUID) stored in localStorage
+    const entryId = searchParams.get("ticket");
     const phone = searchParams.get("phone");
     const businessId = searchParams.get("business_id");
 
-    if (!ticketNumber && !phone) {
+    if (!entryId && !phone) {
       return NextResponse.json(
-        { error: "Ticket number or phone is required" },
+        { error: "Entry ID or phone is required" },
         { status: 400 }
       );
     }
@@ -25,26 +27,23 @@ export async function GET(req: Request) {
     const today = new Date().toISOString().split("T")[0];
 
     let query = supabase
-      .from("queue_entries")
-      .select(
-        `
+      .from("queues")
+      .select(`
         id,
-        ticket_number,
         customer_name,
         customer_phone,
         position,
         status,
         service_type,
         created_at,
-        served_at,
+        started_at,
         business_id,
-        businesses:business_id(business_name)
-      `
-      )
+        customer_id
+      `)
       .gte("created_at", `${today}T00:00:00.000Z`);
 
-    if (ticketNumber) {
-      query = query.eq("ticket_number", ticketNumber);
+    if (entryId) {
+      query = query.eq("id", entryId);
     } else if (phone && businessId) {
       query = query
         .eq("customer_phone", phone)
@@ -61,50 +60,58 @@ export async function GET(req: Request) {
       );
     }
 
-    // Get number of people ahead
+    // Get business name from admins table
+    const { data: business } = await supabase
+      .from("admins")
+      .select("business_name")
+      .eq("id", entry.business_id)
+      .eq("role", "business_owner")
+      .single();
+
+    // Get number of people ahead (waiting, with lower position)
     const { count: peopleAhead } = await supabase
-      .from("queue_entries")
+      .from("queues")
       .select("*", { count: "exact", head: true })
       .eq("business_id", entry.business_id)
       .eq("status", "waiting")
       .lt("position", entry.position)
       .gte("created_at", `${today}T00:00:00.000Z`);
 
-    // Get current serving
+    // Get current serving entry
     const { data: currentServing } = await supabase
-      .from("queue_entries")
-      .select("id, ticket_number, customer_name")
+      .from("queues")
+      .select("id, position, customer_name")
       .eq("business_id", entry.business_id)
       .eq("status", "serving")
-      .order("served_at", { ascending: true })
+      .order("started_at", { ascending: true })
       .limit(1)
       .single();
 
     // Get waiting count
     const { count: waitingCount } = await supabase
-      .from("queue_entries")
+      .from("queues")
       .select("*", { count: "exact", head: true })
       .eq("business_id", entry.business_id)
       .eq("status", "waiting")
       .gte("created_at", `${today}T00:00:00.000Z`);
 
-    // Calculate estimated wait time
+    // Calculate estimated wait time using completed entries
     const { data: completedToday } = await supabase
-      .from("queue_entries")
-      .select("served_at, created_at")
+      .from("queues")
+      .select("started_at, created_at")
       .eq("business_id", entry.business_id)
       .eq("status", "completed")
       .gte("created_at", `${today}T00:00:00.000Z`)
-      .not("served_at", "is", null)
+      .not("started_at", "is", null)
       .limit(20);
 
     let estimatedWaitMinutes = (peopleAhead || 0) * 5; // Default 5 min per person
 
     if (completedToday && completedToday.length > 0) {
       const avgServiceTime =
-        completedToday.reduce((sum, e) => {
+        completedToday.reduce((sum: number, e: any) => {
           const serviceTime =
-            new Date(e.served_at).getTime() - new Date(e.created_at).getTime();
+            new Date(e.started_at).getTime() - new Date(e.created_at).getTime();
           return sum + serviceTime;
         }, 0) /
         completedToday.length /
@@ -113,28 +120,33 @@ export async function GET(req: Request) {
       estimatedWaitMinutes = Math.round((peopleAhead || 0) * avgServiceTime);
     }
 
-    // Extract business name from nested object
-    const businessName = (entry.businesses as any)?.business_name || "Business";
+    // Use position as the display number (padded)
+    const displayNumber = String(entry.position).padStart(3, "0");
+    const servingDisplayNumber = currentServing
+      ? String(currentServing.position).padStart(3, "0")
+      : null;
 
     return NextResponse.json({
       data: {
         id: entry.id,
-        ticket_number: entry.ticket_number,
+        // Keep ticket_number compatible field for the join-queue page
+        ticket_number: entry.id,
         customer_name: entry.customer_name,
         customer_phone: entry.customer_phone,
         position: entry.position,
         status: entry.status,
         service_type: entry.service_type,
         created_at: entry.created_at,
-        served_at: entry.served_at,
+        started_at: entry.started_at,
         business_id: entry.business_id,
-        business_name: businessName,
+        business_name: business?.business_name || "Business",
         people_ahead: peopleAhead || 0,
         estimated_wait_minutes: estimatedWaitMinutes,
+        display_number: displayNumber,
       },
       queue_info: {
         current_serving: currentServing?.id || null,
-        current_serving_number: currentServing?.ticket_number || null,
+        current_serving_number: servingDisplayNumber,
         current_serving_name: currentServing?.customer_name || null,
         total_waiting: waitingCount || 0,
       },

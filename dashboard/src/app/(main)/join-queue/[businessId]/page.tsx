@@ -14,13 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   CheckCircle,
   Clock,
   Users,
@@ -42,7 +35,7 @@ import { supabase } from "@/lib/supabase-client";
 
 interface QueueTicket {
   id: string;
-  ticket_number: string;
+  ticket_number: string; // equals id — used for localStorage key
   customer_name: string;
   customer_phone?: string;
   position: number;
@@ -54,6 +47,7 @@ interface QueueTicket {
   queue_type_id?: string;
   queue_type_name?: string;
   created_at?: string;
+  display_number?: string;
 }
 
 interface QueueInfo {
@@ -103,8 +97,14 @@ export default function JoinQueuePage({
     customer_name: "",
     customer_phone: "",
     customer_email: "",
-    service_type: "",
   });
+
+  // Build storage key for this business + queue type
+  const getStorageKey = useCallback((queueTypeId?: string) => {
+    return queueTypeId && queueTypeId !== "default"
+      ? `queue_ticket_${businessId}_${queueTypeId}`
+      : `queue_ticket_${businessId}`;
+  }, [businessId]);
 
   // Fetch queue types
   const fetchQueueTypes = useCallback(async () => {
@@ -121,10 +121,9 @@ export default function JoinQueuePage({
           if (validType) {
             setSelectedQueueType(queueTypeFromUrl);
           } else {
-            // Invalid queue type, let user choose
             setSelectedQueueType("");
           }
-        } else if (types.length === 1 && types[0].id !== "default") {
+        } else if (types.length === 1) {
           // Auto-select if only one queue type exists
           setSelectedQueueType(types[0].id);
         }
@@ -155,29 +154,32 @@ export default function JoinQueuePage({
     }
   }, [businessId, selectedQueueType]);
 
-  // Refresh ticket status
-  const refreshTicketStatus = useCallback(async (ticketNumber: string) => {
+  // Refresh ticket status using the entry's id
+  const refreshTicketStatus = useCallback(async (entryId: string) => {
     try {
-      const res = await fetch(`/API/queue/status?ticket=${ticketNumber}`);
+      const res = await fetch(`/API/queue/status?ticket=${entryId}`);
       const data = await res.json();
       if (res.ok && data.data) {
-        setTicket(data.data);
+        setTicket(prev => ({ ...(prev || {}), ...data.data } as QueueTicket));
         setQueueInfo(prev => prev ? {
           ...prev,
           current_serving: data.queue_info?.current_serving || prev.current_serving,
           current_serving_number: data.queue_info?.current_serving_number || prev.current_serving_number,
           total_waiting: data.queue_info?.total_waiting ?? prev.total_waiting,
         } : null);
-        localStorage.setItem(
-          `queue_ticket_${businessId}`,
-          JSON.stringify(data.data)
-        );
+        // Update localStorage
+        const storageKey = getStorageKey(ticket?.queue_type_id);
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localStorage.setItem(storageKey, JSON.stringify({ ...parsed, ...data.data }));
+        }
         setLastRefresh(new Date());
       }
     } catch (error) {
       console.error("Status refresh error:", error);
     }
-  }, [businessId]);
+  }, [ticket?.queue_type_id, getStorageKey]);
 
   // Fetch queue types on mount
   useEffect(() => {
@@ -188,49 +190,55 @@ export default function JoinQueuePage({
   useEffect(() => {
     fetchQueueInfo();
 
-    // Build storage key with optional queue type
-    const storageKey = selectedQueueType && selectedQueueType !== "default"
-      ? `queue_ticket_${businessId}_${selectedQueueType}`
-      : `queue_ticket_${businessId}`;
-
+    const storageKey = getStorageKey(selectedQueueType || queueTypeFromUrl || undefined);
     const savedTicket = localStorage.getItem(storageKey);
+
     if (savedTicket) {
-      const ticketData = JSON.parse(savedTicket);
-      // Check if ticket is still valid (same day)
-      const ticketNumber = ticketData.ticket_number || "";
-      const ticketDateMatch = ticketNumber.match(/\d{8}/);
-      const ticketDate = ticketDateMatch ? ticketDateMatch[0] : "";
-      const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
-      if (ticketDate === today && ticketData.status !== "completed" && ticketData.status !== "cancelled") {
-        setTicket(ticketData);
-        setJoined(true);
-        // Refresh status
-        refreshTicketStatus(ticketData.ticket_number);
-      } else {
+      try {
+        const ticketData: QueueTicket = JSON.parse(savedTicket);
+        // Validate ticket is today
+        if (ticketData.created_at) {
+          const ticketDate = new Date(ticketData.created_at).toDateString();
+          const today = new Date().toDateString();
+          if (
+            ticketDate === today &&
+            ticketData.status !== "completed" &&
+            ticketData.status !== "cancelled"
+          ) {
+            setTicket(ticketData);
+            setJoined(true);
+            // Refresh status from server
+            if (ticketData.id) {
+              refreshTicketStatus(ticketData.id);
+            }
+          } else {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      } catch {
         localStorage.removeItem(storageKey);
       }
     }
-  }, [businessId, selectedQueueType, fetchQueueInfo, refreshTicketStatus]);
+  }, [businessId, selectedQueueType, queueTypeFromUrl, fetchQueueInfo, getStorageKey, refreshTicketStatus]);
 
-  // Set up real-time subscription for queue updates
+  // Set up real-time subscription for queue updates using the `queues` table
   useEffect(() => {
     if (!joined || !ticket) return;
 
-    // Subscribe to queue_entries table changes
     const channel = supabase
-      .channel(`queue-updates-${businessId}`)
+      .channel(`queue-updates-${businessId}-${ticket.id}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
-          table: "queue_entries",
-          filter: `business_id=eq.${businessId}`,
+          table: "queues",
+          filter: `id=eq.${ticket.id}`,
         },
-        () => {
-          // Refresh ticket status when any queue entry changes
-          if (ticket?.ticket_number) {
-            refreshTicketStatus(ticket.ticket_number);
+        (payload) => {
+          if (payload.new) {
+            setTicket(prev => prev ? { ...prev, status: payload.new.status } : prev);
+            setLastRefresh(new Date());
           }
         }
       )
@@ -238,8 +246,8 @@ export default function JoinQueuePage({
 
     // Also set up auto-refresh every 15 seconds
     const refreshInterval = setInterval(() => {
-      if (ticket?.ticket_number) {
-        refreshTicketStatus(ticket.ticket_number);
+      if (ticket?.id) {
+        refreshTicketStatus(ticket.id);
       }
     }, 15000);
 
@@ -247,7 +255,7 @@ export default function JoinQueuePage({
       supabase.removeChannel(channel);
       clearInterval(refreshInterval);
     };
-  }, [joined, ticket?.ticket_number, businessId, refreshTicketStatus]);
+  }, [joined, ticket?.id, businessId, refreshTicketStatus]);
 
   const handleJoinQueue = async () => {
     if (!formData.customer_name || !formData.customer_phone) {
@@ -277,11 +285,7 @@ export default function JoinQueuePage({
       });
 
       const data = await res.json();
-
-      // Build storage key with optional queue type
-      const storageKey = selectedQueueType && selectedQueueType !== "default"
-        ? `queue_ticket_${businessId}_${selectedQueueType}`
-        : `queue_ticket_${businessId}`;
+      const storageKey = getStorageKey(selectedQueueType || undefined);
 
       if (!res.ok) {
         if (data.data) {
@@ -298,10 +302,9 @@ export default function JoinQueuePage({
       localStorage.setItem(storageKey, JSON.stringify(data.data));
       toast.success("Successfully joined the queue!");
 
-      // Refresh queue info
       fetchQueueInfo();
     } catch (error: any) {
-      if (error.message.includes("closed")) {
+      if (error.message?.includes("closed")) {
         setQueueClosed(true);
       }
       toast.error(error.message || "Failed to join queue");
@@ -322,19 +325,11 @@ export default function JoinQueuePage({
         console.error("Error leaving queue:", error);
       }
     }
-    // Build storage key with optional queue type
-    const storageKey = ticket?.queue_type_id && ticket.queue_type_id !== "default"
-      ? `queue_ticket_${businessId}_${ticket.queue_type_id}`
-      : `queue_ticket_${businessId}`;
+    const storageKey = getStorageKey(ticket?.queue_type_id || undefined);
     localStorage.removeItem(storageKey);
     setJoined(false);
     setTicket(null);
-    setFormData({
-      customer_name: "",
-      customer_phone: "",
-      customer_email: "",
-      service_type: "",
-    });
+    setFormData({ customer_name: "", customer_phone: "", customer_email: "" });
     toast.success("You have left the queue");
   };
 
@@ -366,7 +361,7 @@ export default function JoinQueuePage({
               Queue is Closed
             </h2>
             <p className="text-gray-500 text-center">
-              This business's queue is currently closed. Please try again during
+              This business&apos;s queue is currently closed. Please try again during
               business hours.
             </p>
           </CardContent>
@@ -377,6 +372,7 @@ export default function JoinQueuePage({
 
   if (joined && ticket) {
     const ticketQueueType = queueTypes.find(t => t.id === ticket.queue_type_id);
+    const displayNum = ticket.display_number || String(ticket.position).padStart(3, "0");
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
@@ -407,13 +403,10 @@ export default function JoinQueuePage({
           <CardContent className="pt-6 space-y-6">
             {/* Ticket Number - Large Display */}
             <div className="text-center bg-gray-50 rounded-xl p-6">
-              <p className="text-sm text-gray-500 mb-1">Your Ticket Number</p>
+              <p className="text-sm text-gray-500 mb-1">Your Queue Number</p>
               <div className="text-6xl font-bold text-blue-600 font-mono">
-                {ticket.ticket_number.split("-")[1]}
+                #{displayNum}
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                {ticket.ticket_number}
-              </p>
             </div>
 
             {/* Status Badge */}
@@ -427,7 +420,7 @@ export default function JoinQueuePage({
               {ticket.status === "serving" && (
                 <Badge className="bg-green-100 text-green-700 text-lg px-6 py-3 animate-pulse">
                   <Bell className="h-5 w-5 mr-2" />
-                  It's Your Turn!
+                  It&apos;s Your Turn!
                 </Badge>
               )}
               {ticket.status === "completed" && (
@@ -449,7 +442,7 @@ export default function JoinQueuePage({
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
                 <p className="text-sm text-blue-600 mb-1">Now Serving</p>
                 <p className="text-3xl font-bold text-blue-700 font-mono">
-                  {queueInfo.current_serving_number.split("-")[1] || queueInfo.current_serving_number}
+                  #{queueInfo.current_serving_number}
                 </p>
               </div>
             )}
@@ -480,10 +473,10 @@ export default function JoinQueuePage({
                 <User className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">{ticket.customer_name}</span>
               </div>
-              {ticket.service_type && (
+              {ticket.queue_type_name && (
                 <div className="flex items-center gap-3 text-sm">
                   <Hash className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">{ticket.service_type}</span>
+                  <span className="text-gray-600">{ticket.queue_type_name}</span>
                 </div>
               )}
               {ticket.created_at && (
@@ -519,13 +512,13 @@ export default function JoinQueuePage({
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
-                onClick={() => ticket?.ticket_number && refreshTicketStatus(ticket.ticket_number)}
+                onClick={() => ticket?.id && refreshTicketStatus(ticket.id)}
                 className="w-full"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh Status
               </Button>
-              {(ticket.status === "waiting") && (
+              {ticket.status === "waiting" && (
                 <Button
                   variant="ghost"
                   onClick={handleLeaveQueue}
@@ -560,7 +553,7 @@ export default function JoinQueuePage({
           </CardDescription>
         </CardHeader>
 
-        {/* Queue Type Selection - Show if multiple queue types exist */}
+        {/* Queue Type Selection — shown if multiple queue types exist */}
         {queueTypes.length > 1 && (
           <div className="px-6 pb-4">
             <Label className="text-sm font-medium mb-2 block">
@@ -625,7 +618,7 @@ export default function JoinQueuePage({
                 <div className="mt-3 pt-3 border-t border-gray-200 text-center">
                   <p className="text-xs text-gray-500">Now Serving</p>
                   <p className="text-xl font-bold text-green-600 font-mono">
-                    #{queueInfo.current_serving_number.split("-")[1] || queueInfo.current_serving_number}
+                    #{queueInfo.current_serving_number}
                   </p>
                 </div>
               )}
@@ -670,37 +663,27 @@ export default function JoinQueuePage({
               />
             </div>
             <p className="text-xs text-gray-500">
-              We'll use this to identify your position in queue
+              We&apos;ll use this to identify your position in queue
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="service">Service Type (Optional)</Label>
-            <Select
-              value={formData.service_type}
-              onValueChange={(value) =>
-                setFormData({ ...formData, service_type: value })
+            <Label htmlFor="email">Email (optional)</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
+              value={formData.customer_email}
+              onChange={(e) =>
+                setFormData({ ...formData, customer_email: e.target.value })
               }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a service" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Haircut">Haircut</SelectItem>
-                <SelectItem value="Beard Trim">Beard Trim</SelectItem>
-                <SelectItem value="Hair Color">Hair Color</SelectItem>
-                <SelectItem value="Full Service">Full Service</SelectItem>
-                <SelectItem value="Printing">Printing</SelectItem>
-                <SelectItem value="Consultation">Consultation</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           <Button
             onClick={handleJoinQueue}
             disabled={loading || (queueTypes.length > 1 && !selectedQueueType)}
-            className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700"
+            className="w-full h-12 text-lg"
             style={selectedTypeDetails ? { backgroundColor: selectedTypeDetails.color } : {}}
           >
             {loading ? (
