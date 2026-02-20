@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -89,23 +89,34 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import QRCodeLib from "qrcode";
 
+interface ScannedUser {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number?: string;
+  avatar_url?: string;
+}
+
 interface QueueEntry {
   id: string;
-  ticket_number: string;
   customer_name: string;
   customer_phone?: string;
   customer_email?: string;
+  customer_id?: string;
   service_type?: string;
   notes?: string;
   priority: string;
   position: number;
   status: "waiting" | "serving" | "completed" | "cancelled";
-  joined_via?: string;
-  queue_type_id?: string;
-  queue_type_name?: string;
-  created_at: string;
-  served_at?: string;
+  estimated_wait_time?: number;
+  scanned_user?: ScannedUser;
+  joined_at?: string;
+  called_at?: string;
+  started_at?: string;
   completed_at?: string;
+  cancelled_at?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 interface QueueStats {
@@ -148,7 +159,7 @@ export default function QueueManagementPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [queueTypeFilter, setQueueTypeFilter] = useState("all");
+  // queueTypeFilter removed - queue_types table not available
   const [isQueueActive, setIsQueueActive] = useState(true);
 
   // Add customer dialog
@@ -161,7 +172,6 @@ export default function QueueManagementPage() {
     service_type: "",
     notes: "",
     priority: "normal",
-    queue_type_id: "",
   });
 
   // QR Code dialog
@@ -225,10 +235,7 @@ export default function QueueManagementPage() {
 
     try {
       setRefreshing(true);
-      let url = `/API/queue?business_id=${business.id}&status=${statusFilter}`;
-      if (queueTypeFilter && queueTypeFilter !== "all") {
-        url += `&queue_type_id=${queueTypeFilter}`;
-      }
+      const url = `/API/queue?business_id=${business.id}&status=${statusFilter}`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -246,7 +253,7 @@ export default function QueueManagementPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [business?.id, statusFilter, queueTypeFilter]);
+  }, [business?.id, statusFilter]);
 
   const loadMockData = () => {
     setQueueEntries(getMockQueueData());
@@ -275,24 +282,21 @@ export default function QueueManagementPage() {
   }, [business?.id, fetchQueue, fetchQueueTypes]);
 
   const getMockQueueData = (): QueueEntry[] => {
-    const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
     return [
       {
         id: "1",
-        ticket_number: `Q${today}-001`,
         customer_name: "Ahmed Khan",
         customer_phone: "+92 300 1234567",
         service_type: "Haircut",
         priority: "normal",
         position: 1,
         status: "serving",
-        joined_via: "qr_code",
+        joined_at: new Date(Date.now() - 25 * 60000).toISOString(),
+        started_at: new Date(Date.now() - 5 * 60000).toISOString(),
         created_at: new Date(Date.now() - 25 * 60000).toISOString(),
-        served_at: new Date(Date.now() - 5 * 60000).toISOString(),
       },
       {
         id: "2",
-        ticket_number: `Q${today}-002`,
         customer_name: "Fatima Ali",
         customer_phone: "+92 321 9876543",
         customer_email: "fatima@email.com",
@@ -300,49 +304,61 @@ export default function QueueManagementPage() {
         priority: "normal",
         position: 2,
         status: "waiting",
-        joined_via: "walk_in",
+        joined_at: new Date(Date.now() - 20 * 60000).toISOString(),
         created_at: new Date(Date.now() - 20 * 60000).toISOString(),
       },
       {
         id: "3",
-        ticket_number: `Q${today}-003`,
         customer_name: "Muhammad Usman",
         customer_phone: "+92 333 4567890",
         service_type: "Beard Trim",
         priority: "high",
         position: 3,
         status: "waiting",
-        joined_via: "qr_code",
+        joined_at: new Date(Date.now() - 15 * 60000).toISOString(),
         created_at: new Date(Date.now() - 15 * 60000).toISOString(),
       },
       {
         id: "4",
-        ticket_number: `Q${today}-004`,
         customer_name: "Sara Ahmed",
         customer_phone: "+92 345 6789012",
         service_type: "Haircut",
         priority: "normal",
         position: 4,
         status: "waiting",
-        joined_via: "qr_code",
+        joined_at: new Date(Date.now() - 10 * 60000).toISOString(),
         created_at: new Date(Date.now() - 10 * 60000).toISOString(),
       },
       {
         id: "5",
-        ticket_number: `Q${today}-005`,
         customer_name: "Bilal Hassan",
         customer_phone: "+92 312 3456789",
         service_type: "Full Service",
         priority: "normal",
         position: 5,
         status: "waiting",
-        joined_via: "walk_in",
+        joined_at: new Date(Date.now() - 5 * 60000).toISOString(),
         created_at: new Date(Date.now() - 5 * 60000).toISOString(),
       },
     ];
   };
 
   // Queue Type CRUD functions
+  const saveQueueTypeRequest = async (): Promise<Response> => {
+    if (editingQueueType) {
+      return fetch(`/API/queue-types/${editingQueueType.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newQueueType),
+      });
+    }
+    return fetch("/API/queue-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newQueueType, business_id: business?.id }),
+    });
+  };
+
   const handleSaveQueueType = async () => {
     if (!newQueueType.name.trim()) {
       toast.error("Queue type name is required");
@@ -351,35 +367,15 @@ export default function QueueManagementPage() {
 
     setSavingQueueType(true);
     try {
-      if (editingQueueType) {
-        const res = await fetch(`/API/queue-types/${editingQueueType.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newQueueType),
-        });
-        if (res.ok) {
-          toast.success("Queue type updated successfully!");
-          if (business?.id) fetchQueueTypes(business.id);
-        } else {
-          const error = await res.json();
-          toast.error(error.error || "Failed to update queue type");
-        }
+      const action = editingQueueType ? "update" : "create";
+      const res = await saveQueueTypeRequest();
+
+      if (res.ok) {
+        toast.success(`Queue type ${action}d successfully!`);
+        if (business?.id) fetchQueueTypes(business.id);
       } else {
-        const res = await fetch("/API/queue-types", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...newQueueType,
-            business_id: business?.id,
-          }),
-        });
-        if (res.ok) {
-          toast.success("Queue type created successfully!");
-          if (business?.id) fetchQueueTypes(business.id);
-        } else {
-          const error = await res.json();
-          toast.error(error.error || "Failed to create queue type");
-        }
+        const error = await res.json();
+        toast.error(error.error || `Failed to ${action} queue type`);
       }
       setQueueTypeDialogOpen(false);
       resetQueueTypeForm();
@@ -464,10 +460,8 @@ export default function QueueManagementPage() {
 
       if (!business?.id) {
         // Demo mode - add locally
-        const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
         const newEntry: QueueEntry = {
           id: `demo-${Date.now()}`,
-          ticket_number: `Q${today}-${(queueEntries.length + 1).toString().padStart(3, "0")}`,
           customer_name: newCustomer.customer_name,
           customer_phone: newCustomer.customer_phone,
           customer_email: newCustomer.customer_email,
@@ -476,7 +470,7 @@ export default function QueueManagementPage() {
           priority: newCustomer.priority,
           position: queueEntries.length + 1,
           status: "waiting",
-          joined_via: "walk_in",
+          joined_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         };
         setQueueEntries([...queueEntries, newEntry]);
@@ -485,27 +479,30 @@ export default function QueueManagementPage() {
           total: stats.total + 1,
           waiting: stats.waiting + 1,
         });
-        toast.success(`Customer added! Ticket: ${newEntry.ticket_number}`);
+        toast.success(`Customer added! Position: #${newEntry.position}`);
         setAddDialogOpen(false);
         resetNewCustomer();
         return;
       }
 
-      const selectedType = queueTypes.find(t => t.id === newCustomer.queue_type_id);
       const res = await fetch("/API/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           business_id: business.id,
-          ...newCustomer,
-          queue_type_name: selectedType?.name,
+          customer_name: newCustomer.customer_name,
+          customer_phone: newCustomer.customer_phone,
+          customer_email: newCustomer.customer_email,
+          service_type: newCustomer.service_type,
+          notes: newCustomer.notes,
+          priority: newCustomer.priority,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      toast.success(`Customer added! Ticket: ${data.data.ticket_number}`);
+      toast.success(`Customer added! Position: #${data.data.position}`);
       setAddDialogOpen(false);
       resetNewCustomer();
       fetchQueue();
@@ -524,7 +521,6 @@ export default function QueueManagementPage() {
       service_type: "",
       notes: "",
       priority: "normal",
-      queue_type_id: "",
     });
   };
 
@@ -535,8 +531,8 @@ export default function QueueManagementPage() {
     try {
       if (!business?.id) {
         // Demo mode - update locally
-        setQueueEntries((prev) =>
-          prev.map((e) => (e.id === entry.id ? { ...e, status: newStatus } : e))
+        setQueueEntries((prev: QueueEntry[]) =>
+          prev.map((e: QueueEntry) => (e.id === entry.id ? { ...e, status: newStatus } : e))
         );
 
         // Update stats
@@ -570,25 +566,28 @@ export default function QueueManagementPage() {
     }
   };
 
+  const buildJoinUrl = (queueTypeId?: string): string => {
+    const businessId = business?.id || "demo-business";
+    const base = `${window.location.origin}/join-queue/${businessId}`;
+    return queueTypeId && queueTypeId !== "all"
+      ? `${base}?queue_type=${queueTypeId}`
+      : base;
+  };
+
+  const applyClientSideQr = async (joinUrl: string) => {
+    setQrJoinUrl(joinUrl);
+    const clientQr = await generateQrCodeClientSide(joinUrl);
+    setQrCode(clientQr);
+  };
+
   const handleGenerateQrCode = async (queueTypeId?: string) => {
+    setLoadingQr(true);
+    setSelectedQueueTypeForQr(queueTypeId || "all");
+    const joinUrl = buildJoinUrl(queueTypeId);
+
     try {
-      setLoadingQr(true);
-      setSelectedQueueTypeForQr(queueTypeId || "all");
-
       const businessId = business?.id || "demo-business";
-      const baseUrl = window.location.origin;
-
-      // Build join URL with optional queue type
-      let joinUrl = `${baseUrl}/join-queue/${businessId}`;
-      if (queueTypeId && queueTypeId !== "all") {
-        joinUrl += `?queue_type=${queueTypeId}`;
-      }
-
-      // Try API first
-      let apiUrl = `/API/queue/qrcode?business_id=${businessId}`;
-      if (queueTypeId && queueTypeId !== "all") {
-        apiUrl += `&queue_type_id=${queueTypeId}`;
-      }
+      const apiUrl = `/API/queue/qrcode?business_id=${businessId}`;
       const res = await fetch(apiUrl);
 
       if (res.ok) {
@@ -596,25 +595,13 @@ export default function QueueManagementPage() {
         setQrCode(data.data.qr_code);
         setQrJoinUrl(data.data.join_url || joinUrl);
       } else {
-        // Fallback - generate QR code client-side
-        setQrJoinUrl(joinUrl);
-        const clientQr = await generateQrCodeClientSide(joinUrl);
-        setQrCode(clientQr);
+        await applyClientSideQr(joinUrl);
       }
-      setQrDialogOpen(true);
     } catch (error) {
       console.error("QR code error:", error);
-      const businessId = business?.id || "demo-business";
-      const baseUrl = window.location.origin;
-      let joinUrl = `${baseUrl}/join-queue/${businessId}`;
-      if (queueTypeId && queueTypeId !== "all") {
-        joinUrl += `?queue_type=${queueTypeId}`;
-      }
-      setQrJoinUrl(joinUrl);
-      const clientQr = await generateQrCodeClientSide(joinUrl);
-      setQrCode(clientQr);
-      setQrDialogOpen(true);
+      await applyClientSideQr(joinUrl);
     } finally {
+      setQrDialogOpen(true);
       setLoadingQr(false);
     }
   };
@@ -630,7 +617,7 @@ export default function QueueManagementPage() {
       return;
     }
     const link = document.createElement("a");
-    const queueType = queueTypes.find(t => t.id === selectedQueueTypeForQr);
+    const queueType = queueTypes.find((t: QueueType) => t.id === selectedQueueTypeForQr);
     const fileName = queueType
       ? `queue-qr-${queueType.name.toLowerCase().replace(/\s+/g, "-")}.png`
       : `queue-qr-${business?.id || "demo"}.png`;
@@ -643,7 +630,7 @@ export default function QueueManagementPage() {
   const shareQrCode = async () => {
     if (navigator.share) {
       try {
-        const queueType = queueTypes.find(t => t.id === selectedQueueTypeForQr);
+        const queueType = queueTypes.find((t: QueueType) => t.id === selectedQueueTypeForQr);
         await navigator.share({
           title: queueType ? `Join ${queueType.name} Queue` : "Join Our Queue",
           text: `Join the queue at ${business?.business_name || "our business"}`,
@@ -721,7 +708,7 @@ export default function QueueManagementPage() {
   const filteredEntries =
     statusFilter === "all"
       ? queueEntries
-      : queueEntries.filter((e) => e.status === statusFilter);
+      : queueEntries.filter((e: QueueEntry) => e.status === statusFilter);
 
   return (
     <div className="space-y-6">
@@ -869,21 +856,6 @@ export default function QueueManagementPage() {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  {queueTypes.length > 0 && (
-                    <Select value={queueTypeFilter} onValueChange={setQueueTypeFilter}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Queue Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        {queueTypes.map((qt) => (
-                          <SelectItem key={qt.id} value={qt.id}>
-                            {qt.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-[150px]">
                       <SelectValue placeholder="Filter status" />
@@ -919,20 +891,19 @@ export default function QueueManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Ticket</TableHead>
+                        <TableHead className="w-[80px]">#</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Service</TableHead>
-                        {queueTypes.length > 0 && <TableHead>Queue Type</TableHead>}
                         <TableHead>Wait Time</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Joined Via</TableHead>
+                        <TableHead>Source</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredEntries.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={queueTypes.length > 0 ? 8 : 7} className="text-center py-12">
+                          <TableCell colSpan={7} className="text-center py-12">
                             <Clock className="mx-auto h-12 w-12 text-gray-300" />
                             <h3 className="mt-4 text-lg font-medium text-gray-900">
                               No customers in queue
@@ -947,7 +918,7 @@ export default function QueueManagementPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredEntries.map((entry) => (
+                        filteredEntries.map((entry: QueueEntry) => (
                           <TableRow
                             key={entry.id}
                             className={
@@ -956,24 +927,49 @@ export default function QueueManagementPage() {
                           >
                             <TableCell>
                               <div className="font-mono font-bold text-lg">
-                                {entry.ticket_number.split("-")[1]}
+                                {String(entry.position).padStart(3, "0")}
                               </div>
                               <div className="text-xs text-gray-500">
                                 {formatTime(entry.created_at)}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
-                                <span className="font-medium">
-                                  {entry.customer_name}
-                                </span>
-                                {entry.customer_phone && (
-                                  <span className="text-sm text-gray-500 flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {entry.customer_phone}
+                              <div className="flex items-start gap-2">
+                                {entry.scanned_user?.avatar_url ? (
+                                  <img
+                                    src={entry.scanned_user.avatar_url}
+                                    alt=""
+                                    className="h-8 w-8 rounded-full object-cover mt-0.5"
+                                  />
+                                ) : entry.customer_id ? (
+                                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
+                                    <Users className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                ) : null}
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {entry.scanned_user?.full_name || entry.customer_name}
                                   </span>
-                                )}
-                                {getPriorityBadge(entry.priority)}
+                                  {(entry.scanned_user?.phone_number || entry.customer_phone) && (
+                                    <span className="text-sm text-gray-500 flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />
+                                      {entry.scanned_user?.phone_number || entry.customer_phone}
+                                    </span>
+                                  )}
+                                  {(entry.scanned_user?.email || entry.customer_email) && (
+                                    <span className="text-xs text-gray-400">
+                                      {entry.scanned_user?.email || entry.customer_email}
+                                    </span>
+                                  )}
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    {entry.customer_id && (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-50 text-blue-700 border-blue-200">
+                                        App User
+                                      </Badge>
+                                    )}
+                                    {getPriorityBadge(entry.priority)}
+                                  </div>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -981,23 +977,6 @@ export default function QueueManagementPage() {
                                 {entry.service_type || "-"}
                               </span>
                             </TableCell>
-                            {queueTypes.length > 0 && (
-                              <TableCell>
-                                {entry.queue_type_name ? (
-                                  <Badge
-                                    variant="outline"
-                                    style={{
-                                      borderColor: queueTypes.find(t => t.name === entry.queue_type_name)?.color || "#888",
-                                      color: queueTypes.find(t => t.name === entry.queue_type_name)?.color || "#888",
-                                    }}
-                                  >
-                                    {entry.queue_type_name}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </TableCell>
-                            )}
                             <TableCell>
                               {entry.status === "waiting" ||
                               entry.status === "serving" ? (
@@ -1011,9 +990,7 @@ export default function QueueManagementPage() {
                             <TableCell>{getStatusBadge(entry.status)}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-xs">
-                                {entry.joined_via === "qr_code"
-                                  ? "QR Code"
-                                  : "Walk-in"}
+                                {entry.customer_id ? "App / QR" : "Walk-in"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
@@ -1098,7 +1075,7 @@ export default function QueueManagementPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Queues</SelectItem>
-                        {queueTypes.map((qt) => (
+                        {queueTypes.map((qt: QueueType) => (
                           <SelectItem key={qt.id} value={qt.id}>
                             {qt.name}
                           </SelectItem>
@@ -1160,7 +1137,7 @@ export default function QueueManagementPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Queues</SelectItem>
-                      {queueTypes.map((qt) => (
+                      {queueTypes.map((qt: QueueType) => (
                         <SelectItem key={qt.id} value={qt.id}>
                           {qt.name}
                         </SelectItem>
@@ -1228,7 +1205,7 @@ export default function QueueManagementPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {queueTypes.map((queueType) => (
+                  {queueTypes.map((queueType: QueueType) => (
                     <div
                       key={queueType.id}
                       className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
@@ -1316,7 +1293,7 @@ export default function QueueManagementPage() {
                 id="customer_name"
                 placeholder="Enter customer name"
                 value={newCustomer.customer_name}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
                   setNewCustomer({
                     ...newCustomer,
                     customer_name: e.target.value,
@@ -1330,7 +1307,7 @@ export default function QueueManagementPage() {
                 id="customer_phone"
                 placeholder="+92 300 1234567"
                 value={newCustomer.customer_phone}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
                   setNewCustomer({
                     ...newCustomer,
                     customer_phone: e.target.value,
@@ -1338,33 +1315,11 @@ export default function QueueManagementPage() {
                 }
               />
             </div>
-            {queueTypes.length > 0 && (
-              <div className="grid gap-2">
-                <Label htmlFor="queue_type">Queue Type</Label>
-                <Select
-                  value={newCustomer.queue_type_id}
-                  onValueChange={(value) =>
-                    setNewCustomer({ ...newCustomer, queue_type_id: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select queue type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {queueTypes.map((qt) => (
-                      <SelectItem key={qt.id} value={qt.id}>
-                        {qt.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <div className="grid gap-2">
               <Label htmlFor="service_type">Service Type</Label>
               <Select
                 value={newCustomer.service_type}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setNewCustomer({ ...newCustomer, service_type: value })
                 }
               >
@@ -1386,7 +1341,7 @@ export default function QueueManagementPage() {
               <Label htmlFor="priority">Priority</Label>
               <Select
                 value={newCustomer.priority}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setNewCustomer({ ...newCustomer, priority: value })
                 }
               >
@@ -1405,7 +1360,7 @@ export default function QueueManagementPage() {
                 id="notes"
                 placeholder="Any special requests..."
                 value={newCustomer.notes}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
                   setNewCustomer({ ...newCustomer, notes: e.target.value })
                 }
               />
@@ -1429,113 +1384,128 @@ export default function QueueManagementPage() {
 
       {/* QR Code Dialog */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <QrCode className="h-6 w-6 text-primary" />
-              Queue QR Code
-              {selectedQueueTypeForQr !== "all" && queueTypes.find(qt => qt.id === selectedQueueTypeForQr) && (
-                <Badge style={{ backgroundColor: queueTypes.find(qt => qt.id === selectedQueueTypeForQr)?.color }}>
-                  {queueTypes.find(qt => qt.id === selectedQueueTypeForQr)?.name}
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              Customers can scan this QR code to join your queue instantly
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            {/* Current Queue Stats */}
-            <div className="w-full grid grid-cols-3 gap-3 bg-gray-50 rounded-xl p-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats.waiting}</p>
-                <p className="text-xs text-gray-500">In Queue</p>
+        <DialogContent className="sm:max-w-2xl gap-0 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                <QrCode className="h-5 w-5 text-primary" />
               </div>
-              <div className="text-center border-x border-gray-200">
-                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-                <p className="text-xs text-gray-500">Served Today</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">~{stats.avgWaitTime} min</p>
-                <p className="text-xs text-gray-500">Avg Wait</p>
+              <div>
+                <DialogTitle className="text-lg leading-tight">Queue QR Code</DialogTitle>
+                <DialogDescription className="text-sm mt-0.5">
+                  Share this so customers can join your queue instantly
+                </DialogDescription>
               </div>
             </div>
+          </DialogHeader>
 
-            {/* QR Code */}
-            {qrCode ? (
-              <div className="border-4 border-gray-100 rounded-2xl p-4 bg-white shadow-sm">
-                <img
-                  src={qrCode}
-                  alt="Queue QR Code"
-                  className="w-56 h-56 object-contain"
-                />
+          <div className="flex flex-col sm:flex-row min-h-0">
+            {/* Left — QR panel */}
+            <div className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 sm:w-64 sm:shrink-0 border-b sm:border-b-0 sm:border-r">
+              {qrCode ? (
+                <>
+                  <div className="bg-white rounded-xl shadow p-3 border">
+                    <img
+                      src={qrCode}
+                      alt="Queue QR Code"
+                      className="w-48 h-48 object-contain block"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400">Point camera to scan</p>
+                </>
+              ) : (
+                <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-xl bg-white flex flex-col items-center justify-center gap-2">
+                  {loadingQr ? (
+                    <>
+                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                      <p className="text-xs text-gray-400">Generating…</p>
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="h-8 w-8 text-gray-300" />
+                      <p className="text-xs text-gray-400">Loading QR…</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right — details */}
+            <div className="flex flex-col gap-4 p-6 flex-1 min-w-0">
+              {/* Live stats */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-blue-50 px-3 py-2 text-center">
+                  <p className="text-xl font-bold text-blue-600 leading-none">{stats.waiting}</p>
+                  <p className="text-[11px] text-blue-500 mt-1">In Queue</p>
+                </div>
+                <div className="rounded-lg bg-green-50 px-3 py-2 text-center">
+                  <p className="text-xl font-bold text-green-600 leading-none">{stats.completed}</p>
+                  <p className="text-[11px] text-green-500 mt-1">Served Today</p>
+                </div>
+                <div className="rounded-lg bg-purple-50 px-3 py-2 text-center">
+                  <p className="text-xl font-bold text-purple-600 leading-none">~{stats.avgWaitTime}m</p>
+                  <p className="text-[11px] text-purple-500 mt-1">Avg Wait</p>
+                </div>
               </div>
-            ) : (
-              <div className="border-4 border-dashed border-gray-200 rounded-2xl p-8 bg-gray-50 w-64 h-64 flex flex-col items-center justify-center">
-                {loadingQr ? (
-                  <>
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <p className="text-sm text-gray-500 text-center">
-                      Generating QR code...
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <QrCode className="h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-sm text-gray-500 text-center">
-                      Click Generate to create QR
-                    </p>
-                  </>
+
+              {/* Join link */}
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Join Link</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={qrJoinUrl}
+                    readOnly
+                    className="text-xs bg-gray-50 font-mono h-8 truncate"
+                  />
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={copyJoinUrl}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">How it works</p>
+                <div className="space-y-1.5">
+                  {[
+                    "Customer scans the QR code",
+                    "They enter details or log in via app",
+                    "Position tracked live on their phone",
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="h-4 w-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="text-xs text-gray-600">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-auto">
+                <Button variant="outline" size="sm" onClick={shareQrCode} className="flex-1">
+                  <Share2 className="h-4 w-4 mr-1.5" />
+                  Share
+                </Button>
+                {qrCode && (
+                  <Button variant="outline" size="sm" onClick={downloadQrCode} className="flex-1">
+                    <Download className="h-4 w-4 mr-1.5" />
+                    Download
+                  </Button>
                 )}
-              </div>
-            )}
-
-            {/* Join URL */}
-            <div className="w-full space-y-2">
-              <label className="text-sm font-medium text-gray-700">Queue Join Link</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={qrJoinUrl}
-                  readOnly
-                  className="text-sm bg-gray-50"
-                />
-                <Button variant="outline" size="icon" onClick={copyJoinUrl} title="Copy link">
-                  <Copy className="h-4 w-4" />
+                <Button size="sm" onClick={() => window.open(qrJoinUrl, "_blank")} className="flex-1">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  Preview
                 </Button>
               </div>
             </div>
-
-            {/* Info box */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 w-full">
-              <p className="text-sm text-blue-700 text-center">
-                <span className="font-semibold">How it works:</span> Customers scan → Enter details → Get ticket number → Track their position in real-time
-              </p>
-            </div>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={shareQrCode} className="w-full sm:w-auto">
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-            {qrCode && (
-              <Button variant="outline" onClick={downloadQrCode} className="w-full sm:w-auto">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR
-              </Button>
-            )}
-            <Button
-              onClick={() => window.open(qrJoinUrl, "_blank")}
-              className="w-full sm:w-auto"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Preview Join Page
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Queue Type Create/Edit Dialog */}
-      <Dialog open={queueTypeDialogOpen} onOpenChange={(open) => {
+      <Dialog open={queueTypeDialogOpen} onOpenChange={(open: boolean) => {
         setQueueTypeDialogOpen(open);
         if (!open) resetQueueTypeForm();
       }}>
@@ -1557,7 +1527,7 @@ export default function QueueManagementPage() {
                 id="name"
                 placeholder="e.g., Haircut, Consultation, General"
                 value={newQueueType.name}
-                onChange={(e) => setNewQueueType({ ...newQueueType, name: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
@@ -1566,7 +1536,7 @@ export default function QueueManagementPage() {
                 id="description"
                 placeholder="Brief description of this queue type"
                 value={newQueueType.description}
-                onChange={(e) => setNewQueueType({ ...newQueueType, description: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, description: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1577,12 +1547,12 @@ export default function QueueManagementPage() {
                     type="color"
                     id="color"
                     value={newQueueType.color}
-                    onChange={(e) => setNewQueueType({ ...newQueueType, color: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, color: e.target.value })}
                     className="w-12 h-10 rounded border cursor-pointer"
                   />
                   <Input
                     value={newQueueType.color}
-                    onChange={(e) => setNewQueueType({ ...newQueueType, color: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, color: e.target.value })}
                     className="flex-1"
                   />
                 </div>
@@ -1594,7 +1564,7 @@ export default function QueueManagementPage() {
                   type="number"
                   min={1}
                   value={newQueueType.estimated_service_time}
-                  onChange={(e) => setNewQueueType({ ...newQueueType, estimated_service_time: parseInt(e.target.value) || 5 })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, estimated_service_time: parseInt(e.target.value) || 5 })}
                 />
               </div>
             </div>
@@ -1605,7 +1575,7 @@ export default function QueueManagementPage() {
                 type="number"
                 min={1}
                 value={newQueueType.max_capacity}
-                onChange={(e) => setNewQueueType({ ...newQueueType, max_capacity: parseInt(e.target.value) || 50 })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setNewQueueType({ ...newQueueType, max_capacity: parseInt(e.target.value) || 50 })}
               />
               <p className="text-sm text-gray-500">Maximum number of customers allowed in this queue</p>
             </div>

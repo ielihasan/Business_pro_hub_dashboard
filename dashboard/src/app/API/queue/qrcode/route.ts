@@ -8,13 +8,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET - Generate QR code for a business
+// GET - Generate QR code for a business queue
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get("business_id");
-    const queueTypeId = searchParams.get("queue_type_id");
-    const format = searchParams.get("format") || "dataurl"; // dataurl, svg, or png
+    const format = searchParams.get("format") || "dataurl";
 
     if (!businessId) {
       return NextResponse.json(
@@ -25,9 +24,10 @@ export async function GET(req: Request) {
 
     // Verify business exists
     const { data: business, error: businessError } = await supabase
-      .from("businesses")
-      .select("id, business_name, owner_id")
+      .from("admins")
+      .select("id, business_name")
       .eq("id", businessId)
+      .eq("role", "business_owner")
       .single();
 
     if (businessError || !business) {
@@ -37,68 +37,15 @@ export async function GET(req: Request) {
       );
     }
 
-    // Get queue type info if provided
-    let queueTypeName: string | null = null;
-    if (queueTypeId && queueTypeId !== "all" && queueTypeId !== "default") {
-      const { data: queueType } = await supabase
-        .from("queue_types")
-        .select("name")
-        .eq("id", queueTypeId)
-        .single();
-
-      if (queueType) {
-        queueTypeName = queueType.name;
-      }
-    }
-
-    // Generate the queue join URL
-    // This URL will open the mobile app or web page for joining queue
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-    let queueJoinUrl = `${baseUrl}/join-queue/${businessId}`;
-
-    // Add queue_type parameter if specified
-    if (queueTypeId && queueTypeId !== "all" && queueTypeId !== "default") {
-      queueJoinUrl += `?queue_type=${queueTypeId}`;
-    }
-
-    // QR Code options for data URL
-    const qrDataUrlOptions = {
-      errorCorrectionLevel: "H" as const,
-      type: "image/png" as const,
-      quality: 0.92,
-      margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-      width: 400,
-    };
-
-    let qrCodeData: string;
-
-    if (format === "svg") {
-      qrCodeData = await QRCode.toString(queueJoinUrl, {
-        type: "svg",
-        errorCorrectionLevel: "H",
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-        width: 400,
-      });
-    } else {
-      qrCodeData = await QRCode.toDataURL(queueJoinUrl, qrDataUrlOptions);
-    }
+    // Generate QR code
+    const { qrCodeData, joinUrl } = await generateQr(businessId, format);
 
     return NextResponse.json({
       data: {
         qr_code: qrCodeData,
-        join_url: queueJoinUrl,
+        join_url: joinUrl,
         business_id: businessId,
         business_name: business.business_name,
-        queue_type_id: queueTypeId || null,
-        queue_type_name: queueTypeName,
         format,
       },
     });
@@ -106,4 +53,64 @@ export async function GET(req: Request) {
     console.error("QR code generation error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+// POST - Force regenerate QR code
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { business_id, format = "dataurl" } = body;
+
+    if (!business_id) {
+      return NextResponse.json(
+        { error: "Business ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Generate new QR code
+    const { qrCodeData, joinUrl } = await generateQr(business_id, format);
+
+    return NextResponse.json({
+      data: {
+        qr_code: qrCodeData,
+        join_url: joinUrl,
+        business_id,
+        format,
+      },
+      message: "QR code regenerated successfully",
+    });
+  } catch (err: any) {
+    console.error("QR code regeneration error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+async function generateQr(
+  businessId: string,
+  format: string
+): Promise<{ qrCodeData: string; joinUrl: string }> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+  const joinUrl = `${baseUrl}/join-queue/${businessId}`;
+
+  const qrOptions = {
+    errorCorrectionLevel: "H" as const,
+    margin: 2,
+    color: { dark: "#000000", light: "#FFFFFF" },
+    width: 400,
+  };
+
+  let qrCodeData: string;
+  if (format === "svg") {
+    qrCodeData = await QRCode.toString(joinUrl, {
+      type: "svg",
+      ...qrOptions,
+    });
+  } else {
+    qrCodeData = await QRCode.toDataURL(joinUrl, {
+      ...qrOptions,
+    });
+  }
+
+  return { qrCodeData, joinUrl };
 }

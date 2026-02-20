@@ -33,7 +33,18 @@
       "Bash(pkill:*)",
       "Bash(xargs basename:*)",
       "Bash(cat:*)",
-      "Bash([ -f .env.local ])"
+      "Bash([ -f .env.local ])",
+      "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__list_tables",
+      "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__execute_sql",
+      "Bash(node -e \"\nconst { createClient } = require\\(''@supabase/supabase-js''\\);\nconst s = createClient\\(''https://hjblbmmyfznxomsrxhme.supabase.co'', ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqYmxibW15ZnpueG9tc3J4aG1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODk4OTQwOCwiZXhwIjoyMDg0NTY1NDA4fQ.y5Pujuy6foMlFgZGxOsn11A4sDAFF3SjxombxDFPGTg''\\);\ns.rpc\\(''exec_sql'', { sql: \"\"SELECT table_name FROM information_schema.tables WHERE table_schema = ''public'' ORDER BY table_name\"\" }\\).then\\(r => console.log\\(JSON.stringify\\(r\\)\\)\\).catch\\(e => console.error\\(e\\)\\);\n\")",
+      "Bash(node -e \"\nconst { createClient } = require\\(''@supabase/supabase-js''\\);\nconst s = createClient\\(''https://hjblbmmyfznxomsrxhme.supabase.co'', ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqYmxibW15ZnpueG9tc3J4aG1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODk4OTQwOCwiZXhwIjoyMDg0NTY1NDA4fQ.y5Pujuy6foMlFgZGxOsn11A4sDAFF3SjxombxDFPGTg''\\);\n// Just try selecting from known tables to confirm they exist\nasync function check\\(\\) {\n  const tables = [''User'', ''users'', ''businesses'', ''admins'', ''queue_entries'', ''queue_types'', ''customers'', ''queue_qr_codes''];\n  for \\(const t of tables\\) {\n    const { data, error } = await s.from\\(t\\).select\\(''*''\\).limit\\(1\\);\n    console.log\\(t + '': '' + \\(error ? ''ERROR: '' + error.message : ''OK, cols='' + \\(data && data[0] ? Object.keys\\(data[0]\\).join\\('',''\\) : ''empty''\\)\\)\\);\n  }\n}\ncheck\\(\\);\n\")",
+      "Bash(node -e \"\nconst { createClient } = require\\(''@supabase/supabase-js''\\);\nconst s = createClient\\(''https://hjblbmmyfznxomsrxhme.supabase.co'', ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqYmxibW15ZnpueG9tc3J4aG1lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODk4OTQwOCwiZXhwIjoyMDg0NTY1NDA4fQ.y5Pujuy6foMlFgZGxOsn11A4sDAFF3SjxombxDFPGTg''\\);\nasync function check\\(\\) {\n  // Check admins with business_owner role\n  const { data: admins } = await s.from\\(''admins''\\).select\\(''id, business_name, email, role, is_approved''\\).eq\\(''role'', ''business_owner''\\).limit\\(3\\);\n  console.log\\(''Business owners:'', JSON.stringify\\(admins, null, 2\\)\\);\n  // Check User table\n  const { data: users } = await s.from\\(''User''\\).select\\(''*''\\).limit\\(3\\);\n  console.log\\(''Users:'', JSON.stringify\\(users, null, 2\\)\\);\n  // List all tables via pg_catalog\n  const { data, error } = await s.from\\(''admins''\\).select\\(''*''\\).limit\\(0\\);\n}\ncheck\\(\\);\n\")",
+      "Bash(node:*)",
+      "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__apply_migration",
+      "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__list_projects",
+      "Bash(nslookup:*)",
+      "Bash(tasklist:*)",
+      "Bash(python3:*)"
     ]
   }
 }

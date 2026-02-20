@@ -14,7 +14,6 @@ export async function GET(req: Request) {
     const businessId = searchParams.get("business_id");
     const status = searchParams.get("status"); // waiting, serving, completed, cancelled
     const date = searchParams.get("date"); // Filter by date (YYYY-MM-DD)
-    const queueTypeId = searchParams.get("queue_type_id"); // Filter by queue type
 
     if (!businessId) {
       return NextResponse.json(
@@ -24,18 +23,13 @@ export async function GET(req: Request) {
     }
 
     let query = supabase
-      .from("queue_entries")
+      .from("queues")
       .select(`
         *,
-        customer:customers(id, full_name, email, phone)
+        scanned_user:User(id, full_name, email, phone_number, avatar_url)
       `)
       .eq("business_id", businessId)
       .order("position", { ascending: true });
-
-    // Filter by queue type
-    if (queueTypeId && queueTypeId !== "all") {
-      query = query.eq("queue_type_id", queueTypeId);
-    }
 
     // Filter by status
     if (status && status !== "all") {
@@ -59,7 +53,6 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error("Queue fetch error:", error);
-      // If table doesn't exist, return empty data (will trigger demo mode on frontend)
       if (error.message?.includes("schema cache") || error.code === "42P01") {
         return NextResponse.json({
           data: [],
@@ -78,19 +71,19 @@ export async function GET(req: Request) {
       cancelled: data?.filter((e) => e.status === "cancelled").length || 0,
     };
 
-    // Calculate average wait time
+    // Calculate average wait time using started_at (when service started) and created_at
     const completedEntries = data?.filter(
-      (e) => e.status === "completed" && e.served_at && e.created_at
+      (e) => e.status === "completed" && e.started_at && e.created_at
     );
     let avgWaitTime = 0;
     if (completedEntries && completedEntries.length > 0) {
       const totalWaitTime = completedEntries.reduce((sum, entry) => {
         const waitTime =
-          new Date(entry.served_at).getTime() -
+          new Date(entry.started_at).getTime() -
           new Date(entry.created_at).getTime();
         return sum + waitTime;
       }, 0);
-      avgWaitTime = Math.round(totalWaitTime / completedEntries.length / 60000); // in minutes
+      avgWaitTime = Math.round(totalWaitTime / completedEntries.length / 60000);
     }
 
     return NextResponse.json({
@@ -113,8 +106,6 @@ export async function POST(req: Request) {
       customer_phone,
       customer_email,
       service_type,
-      queue_type_id,
-      queue_type_name,
       notes,
       priority = "normal",
     } = body;
@@ -126,47 +117,33 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the current max position for today (per queue type if specified)
+    // Get the current max position for today
     const today = new Date().toISOString().split("T")[0];
-    let positionQuery = supabase
-      .from("queue_entries")
+    const positionQuery = supabase
+      .from("queues")
       .select("position")
       .eq("business_id", business_id)
       .gte("created_at", `${today}T00:00:00.000Z`)
       .order("position", { ascending: false })
       .limit(1);
 
-    // Position can be per queue type or global
-    if (queue_type_id) {
-      positionQuery = positionQuery.eq("queue_type_id", queue_type_id);
-    }
-
     const { data: lastEntry } = await positionQuery.single();
     const nextPosition = (lastEntry?.position || 0) + 1;
 
-    // Generate unique ticket number with queue type prefix
-    const prefix = queue_type_name ? queue_type_name.charAt(0).toUpperCase() : "Q";
-    const ticketNumber = `${prefix}${today.replace(/-/g, "")}-${nextPosition
-      .toString()
-      .padStart(3, "0")}`;
-
-    // Create queue entry
+    // Create queue entry using existing queues table columns
     const { data: queueEntry, error } = await supabase
-      .from("queue_entries")
+      .from("queues")
       .insert({
         business_id,
         customer_name,
         customer_phone,
         customer_email,
         service_type,
-        queue_type_id,
-        queue_type_name,
         notes,
         priority,
         position: nextPosition,
-        ticket_number: ticketNumber,
         status: "waiting",
-        joined_via: "walk_in",
+        joined_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       })
       .select()
