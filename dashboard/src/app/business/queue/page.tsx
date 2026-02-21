@@ -83,6 +83,7 @@ import {
   Edit2,
   Share2,
   Layers,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
@@ -190,6 +191,8 @@ interface QueueLaneProps {
   queueType: QueueType | null;
   entries: QueueEntry[];
   loadingQr: boolean;
+  isActive: boolean;
+  onToggleActive: (queueTypeId: string | null, newValue: boolean) => void;
   onGenerateQr: (queueTypeId?: string) => void;
   onAddCustomer: (queueTypeId?: string) => void;
   onStatusChange: (entry: QueueEntry, status: "serving" | "completed" | "cancelled") => void;
@@ -197,22 +200,27 @@ interface QueueLaneProps {
 }
 
 function QueueLane({
-  queueType, entries, loadingQr,
-  onGenerateQr, onAddCustomer, onStatusChange, onCancelClick,
+  queueType, entries, loadingQr, isActive,
+  onToggleActive, onGenerateQr, onAddCustomer, onStatusChange, onCancelClick,
 }: QueueLaneProps) {
-  const waiting = entries.filter(e => e.status === "waiting").length;
-  const serving = entries.filter(e => e.status === "serving").length;
-  const color   = queueType?.color || "#6B7280";
-  const name    = queueType?.name  || "General Queue";
+  const [expanded, setExpanded] = useState(false);
+
+  const waiting  = entries.filter(e => e.status === "waiting").length;
+  const serving  = entries.filter(e => e.status === "serving").length;
+  const total    = entries.length;
+  const color    = isActive ? (queueType?.color || "#6B7280") : "#9CA3AF";
+  const name     = queueType?.name  || "General Queue";
 
   return (
-    <Card className="overflow-hidden">
-      {/* Lane header */}
+    <Card className={`overflow-hidden transition-opacity ${isActive ? "" : "opacity-70"}`}>
+      {/* ── Clickable header row (always visible) ── */}
       <div
-        className="px-5 py-3 flex items-center justify-between gap-3"
-        style={{ backgroundColor: color + "18", borderBottom: `2px solid ${color}40` }}
+        className="px-5 py-3 flex items-center justify-between gap-3 cursor-pointer select-none"
+        style={{ backgroundColor: color + "18", borderBottom: expanded ? `2px solid ${color}40` : "none" }}
+        onClick={() => setExpanded(prev => !prev)}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Left: avatar + name + stats */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base shrink-0"
             style={{ backgroundColor: color }}
@@ -220,13 +228,21 @@ function QueueLane({
             {queueType ? queueType.name.charAt(0).toUpperCase() : <Users className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-gray-900 leading-tight truncate">{name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-900 leading-tight truncate">{name}</p>
+              {!isActive && (
+                <Badge className="bg-gray-200 text-gray-500 border-0 text-[10px] px-1.5 py-0 h-4 shrink-0">
+                  Closed
+                </Badge>
+              )}
+            </div>
             {queueType?.description && (
               <p className="text-xs text-gray-500 truncate">{queueType.description}</p>
             )}
           </div>
-          {/* Mini stats */}
-          <div className="hidden sm:flex items-center gap-2 ml-1 shrink-0">
+
+          {/* Stats badges */}
+          <div className="flex items-center gap-2 ml-1 shrink-0 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
               <Clock className="h-3 w-3 mr-1" />{waiting} waiting
             </Badge>
@@ -235,15 +251,36 @@ function QueueLane({
                 <Play className="h-3 w-3 mr-1" />{serving} serving
               </Badge>
             )}
+            {total > 0 && (
+              <Badge className="bg-gray-100 text-gray-500 border-0 text-xs hidden sm:inline-flex">
+                {total} total
+              </Badge>
+            )}
           </div>
         </div>
 
-        {/* Lane actions */}
+        {/* Right: toggle + action buttons + chevron */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Open/Closed toggle */}
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border bg-white shrink-0"
+            onClick={e => { e.stopPropagation(); onToggleActive(queueType?.id ?? null, !isActive); }}
+            title={isActive ? "Close this queue" : "Open this queue"}
+          >
+            <Switch
+              checked={isActive}
+              onCheckedChange={v => { onToggleActive(queueType?.id ?? null, v); }}
+              className="scale-75 data-[state=checked]:bg-green-500"
+            />
+            <span className={`text-[11px] font-medium hidden sm:inline ${isActive ? "text-green-600" : "text-gray-400"}`}>
+              {isActive ? "Open" : "Closed"}
+            </span>
+          </div>
+
           <Button
             size="sm" variant="outline" className="h-8 text-xs gap-1"
-            onClick={() => onGenerateQr(queueType?.id)}
-            disabled={loadingQr}
+            onClick={e => { e.stopPropagation(); onGenerateQr(queueType?.id); }}
+            disabled={loadingQr || !isActive}
           >
             <QrCode className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">QR</span>
@@ -251,147 +288,158 @@ function QueueLane({
           <Button
             size="sm" className="h-8 text-xs gap-1 text-white"
             style={{ backgroundColor: color }}
-            onClick={() => onAddCustomer(queueType?.id)}
+            onClick={e => { e.stopPropagation(); onAddCustomer(queueType?.id); }}
+            disabled={!isActive}
           >
             <UserPlus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Add</span>
           </Button>
+
+          {/* Chevron */}
+          <div className="h-8 w-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-black/5 transition-colors shrink-0">
+            <ChevronDown
+              className="h-4 w-4 transition-transform duration-200"
+              style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Entries */}
-      <CardContent className="p-0">
-        {entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
-            <Users className="h-8 w-8 text-gray-200" />
-            <p className="text-sm font-medium text-gray-400">No customers yet</p>
-            <p className="text-xs text-gray-400 max-w-[280px]">
-              {queueType
-                ? `Share the ${queueType.name} QR code or add a customer manually`
-                : "Add a customer or share the general queue link"}
-            </p>
-            <div className="flex gap-2 mt-1">
-              <Button size="sm" variant="outline" className="text-xs h-7"
-                onClick={() => onGenerateQr(queueType?.id)} disabled={loadingQr}>
-                <QrCode className="h-3 w-3 mr-1" />QR Code
-              </Button>
-              <Button size="sm" className="text-xs h-7 text-white"
-                style={{ backgroundColor: color }}
-                onClick={() => onAddCustomer(queueType?.id)}>
-                <UserPlus className="h-3 w-3 mr-1" />Add Customer
-              </Button>
+      {/* ── Expandable body ── */}
+      {expanded && (
+        <CardContent className="p-0">
+          {entries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+              <Users className="h-8 w-8 text-gray-200" />
+              <p className="text-sm font-medium text-gray-400">No customers yet</p>
+              <p className="text-xs text-gray-400 max-w-[280px]">
+                {queueType
+                  ? `Share the ${queueType.name} QR code or add a customer manually`
+                  : "Add a customer or share the general queue link"}
+              </p>
+              <div className="flex gap-2 mt-1">
+                <Button size="sm" variant="outline" className="text-xs h-7"
+                  onClick={() => onGenerateQr(queueType?.id)} disabled={loadingQr}>
+                  <QrCode className="h-3 w-3 mr-1" />QR Code
+                </Button>
+                <Button size="sm" className="text-xs h-7 text-white"
+                  style={{ backgroundColor: color }}
+                  onClick={() => onAddCustomer(queueType?.id)}>
+                  <UserPlus className="h-3 w-3 mr-1" />Add Customer
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50/60">
-                  <TableHead className="w-[64px] pl-5">#</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="hidden sm:table-cell">Wait</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Source</TableHead>
-                  <TableHead className="text-right pr-4">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id} className={entry.status === "serving" ? "bg-blue-50/60" : ""}>
-                    <TableCell className="pl-5">
-                      <div className="font-mono font-bold text-sm" style={{ color }}>
-                        {String(entry.position).padStart(3, "0")}
-                      </div>
-                      <div className="text-[10px] text-gray-400">{formatTime(entry.created_at)}</div>
-                    </TableCell>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/60">
+                    <TableHead className="w-[64px] pl-5">#</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="hidden sm:table-cell">Wait</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden md:table-cell">Source</TableHead>
+                    <TableHead className="text-right pr-4">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => (
+                    <TableRow key={entry.id} className={entry.status === "serving" ? "bg-blue-50/60" : ""}>
+                      <TableCell className="pl-5">
+                        <div className="font-mono font-bold text-sm" style={{ color }}>
+                          {String(entry.position).padStart(3, "0")}
+                        </div>
+                        <div className="text-[10px] text-gray-400">{formatTime(entry.created_at)}</div>
+                      </TableCell>
 
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {entry.scanned_user?.avatar_url ? (
-                          <img src={entry.scanned_user.avatar_url} alt=""
-                            className="h-7 w-7 rounded-full object-cover shrink-0" />
-                        ) : entry.customer_id ? (
-                          <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                            <Users className="h-3.5 w-3.5 text-blue-600" />
-                          </div>
-                        ) : null}
-                        <div>
-                          <p className="font-medium text-sm leading-tight">
-                            {entry.scanned_user?.full_name || entry.customer_name}
-                          </p>
-                          {(entry.scanned_user?.phone_number || entry.customer_phone) && (
-                            <p className="text-xs text-gray-400 flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {entry.scanned_user?.phone_number || entry.customer_phone}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {entry.scanned_user?.avatar_url ? (
+                            <img src={entry.scanned_user.avatar_url} alt=""
+                              className="h-7 w-7 rounded-full object-cover shrink-0" />
+                          ) : entry.customer_id ? (
+                            <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                              <Users className="h-3.5 w-3.5 text-blue-600" />
+                            </div>
+                          ) : null}
+                          <div>
+                            <p className="font-medium text-sm leading-tight">
+                              {entry.scanned_user?.full_name || entry.customer_name}
                             </p>
-                          )}
-                          <div className="flex gap-1 mt-0.5">
-                            {entry.customer_id && (
-                              <Badge variant="secondary"
-                                className="text-[9px] px-1 py-0 h-3.5 bg-blue-50 text-blue-700 border-blue-200">
-                                App
-                              </Badge>
+                            {(entry.scanned_user?.phone_number || entry.customer_phone) && (
+                              <p className="text-xs text-gray-400 flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {entry.scanned_user?.phone_number || entry.customer_phone}
+                              </p>
                             )}
-                            {entry.priority === "high" && (
-                              <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5">High</Badge>
-                            )}
+                            <div className="flex gap-1 mt-0.5">
+                              {entry.customer_id && (
+                                <Badge variant="secondary"
+                                  className="text-[9px] px-1 py-0 h-3.5 bg-blue-50 text-blue-700 border-blue-200">
+                                  App
+                                </Badge>
+                              )}
+                              {entry.priority === "high" && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5">High</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
 
-                    <TableCell className="hidden sm:table-cell text-sm">
-                      {(entry.status === "waiting" || entry.status === "serving")
-                        ? <span className="font-medium">{getWaitTime(entry.created_at)}</span>
-                        : <span className="text-gray-400">—</span>}
-                    </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">
+                        {(entry.status === "waiting" || entry.status === "serving")
+                          ? <span className="font-medium">{getWaitTime(entry.created_at)}</span>
+                          : <span className="text-gray-400">—</span>}
+                      </TableCell>
 
-                    <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                      <TableCell>{getStatusBadge(entry.status)}</TableCell>
 
-                    <TableCell className="hidden md:table-cell">
-                      <Badge variant="outline" className="text-xs">
-                        {entry.customer_id ? "App / QR" : "Walk-in"}
-                      </Badge>
-                    </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs">
+                          {entry.customer_id ? "App / QR" : "Walk-in"}
+                        </Badge>
+                      </TableCell>
 
-                    <TableCell className="text-right pr-4">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {entry.status === "waiting" && (
-                            <DropdownMenuItem onClick={() => onStatusChange(entry, "serving")}>
-                              <Play className="h-4 w-4 mr-2 text-blue-600" />Start Serving
-                            </DropdownMenuItem>
-                          )}
-                          {entry.status === "serving" && (
-                            <DropdownMenuItem onClick={() => onStatusChange(entry, "completed")}>
-                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />Mark Complete
-                            </DropdownMenuItem>
-                          )}
-                          {(entry.status === "waiting" || entry.status === "serving") && (
-                            <DropdownMenuItem
-                              onClick={() => onCancelClick(entry)}
-                              className="text-red-600"
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />Cancel
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
+                      <TableCell className="text-right pr-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {entry.status === "waiting" && (
+                              <DropdownMenuItem onClick={() => onStatusChange(entry, "serving")}>
+                                <Play className="h-4 w-4 mr-2 text-blue-600" />Start Serving
+                              </DropdownMenuItem>
+                            )}
+                            {entry.status === "serving" && (
+                              <DropdownMenuItem onClick={() => onStatusChange(entry, "completed")}>
+                                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />Mark Complete
+                              </DropdownMenuItem>
+                            )}
+                            {(entry.status === "waiting" || entry.status === "serving") && (
+                              <DropdownMenuItem
+                                onClick={() => onCancelClick(entry)}
+                                className="text-red-600"
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />Cancel
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -406,7 +454,7 @@ export default function QueueManagementPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [isQueueActive, setIsQueueActive] = useState(true);
+  const [generalQueueActive, setGeneralQueueActive] = useState(true);
 
   // Add customer dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -594,6 +642,45 @@ export default function QueueManagementPage() {
     setCancelDialogOpen(true);
   }, []);
 
+  /* ── Toggle queue open/closed */
+  const handleToggleQueueType = useCallback(async (queueTypeId: string | null, newValue: boolean) => {
+    // General queue — local state only (no DB record)
+    if (queueTypeId === null) {
+      setGeneralQueueActive(newValue);
+      toast.success(`General queue ${newValue ? "opened" : "closed"}`);
+      return;
+    }
+    // Named queue type — optimistic update then persist via API
+    setQueueTypes(prev =>
+      prev.map(qt => qt.id === queueTypeId ? { ...qt, is_active: newValue } : qt)
+    );
+    try {
+      const qt = queueTypes.find(q => q.id === queueTypeId);
+      if (!qt) return;
+      const res = await fetch(`/API/queue-types/${queueTypeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: qt.name,
+          description: qt.description,
+          color: qt.color,
+          estimated_service_time: qt.estimated_service_time,
+          max_capacity: qt.max_capacity,
+          is_active: newValue,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success(`${qt.name} queue ${newValue ? "opened" : "closed"}`);
+    } catch (err: any) {
+      // Revert optimistic update on failure
+      setQueueTypes(prev =>
+        prev.map(qt => qt.id === queueTypeId ? { ...qt, is_active: !newValue } : qt)
+      );
+      toast.error(err.message || "Failed to update queue status");
+    }
+  }, [queueTypes]);
+
   /* ── QR helpers */
   const buildJoinUrl = (queueTypeId?: string) => {
     const bId = business?.id || "demo-business";
@@ -663,10 +750,6 @@ export default function QueueManagementPage() {
           <p className="mt-1 text-gray-500">Manage your customer queues in real-time</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch checked={isQueueActive} onCheckedChange={setIsQueueActive} />
-            <Label className="text-sm">Queue {isQueueActive ? "Open" : "Closed"}</Label>
-          </div>
           <Button onClick={() => openAddCustomer()}>
             <UserPlus className="h-4 w-4 mr-2" />Add Customer
           </Button>
@@ -780,6 +863,8 @@ export default function QueueManagementPage() {
                   queueType={qt}
                   entries={entriesForType(queueEntries, qt.id, statusFilter)}
                   loadingQr={loadingQr}
+                  isActive={qt.is_active}
+                  onToggleActive={handleToggleQueueType}
                   onGenerateQr={handleGenerateQrCode}
                   onAddCustomer={openAddCustomer}
                   onStatusChange={handleStatusChange}
@@ -793,6 +878,8 @@ export default function QueueManagementPage() {
                 queueType={null}
                 entries={entriesForType(queueEntries, null, statusFilter)}
                 loadingQr={loadingQr}
+                isActive={generalQueueActive}
+                onToggleActive={handleToggleQueueType}
                 onGenerateQr={handleGenerateQrCode}
                 onAddCustomer={openAddCustomer}
                 onStatusChange={handleStatusChange}
