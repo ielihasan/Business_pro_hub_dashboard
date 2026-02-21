@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       query = query
         .eq("customer_phone", phone)
         .eq("business_id", businessId)
-        .in("status", ["waiting", "serving"]);
+        .in("status", ["waiting", "in_progress", "called"]);
     }
 
     const { data: entry, error } = await query.single();
@@ -77,12 +77,12 @@ export async function GET(req: Request) {
       .lt("position", entry.position)
       .gte("created_at", `${today}T00:00:00.000Z`);
 
-    // Get current serving entry
+    // Get current serving entry (DB uses "in_progress" for "serving")
     const { data: currentServing } = await supabase
       .from("queues")
       .select("id, position, customer_name")
       .eq("business_id", entry.business_id)
-      .eq("status", "serving")
+      .in("status", ["in_progress", "called"])
       .order("started_at", { ascending: true })
       .limit(1)
       .single();
@@ -134,7 +134,8 @@ export async function GET(req: Request) {
         customer_name: entry.customer_name,
         customer_phone: entry.customer_phone,
         position: entry.position,
-        status: entry.status,
+        // Normalise DB status to UI status
+        status: (entry.status === "in_progress" || entry.status === "called") ? "serving" : entry.status,
         service_type: entry.service_type,
         created_at: entry.created_at,
         started_at: entry.started_at,

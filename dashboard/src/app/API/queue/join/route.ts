@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       .from("queues")
       .select("id, position")
       .eq("business_id", business_id)
-      .in("status", ["waiting", "serving"])
+      .in("status", ["waiting", "in_progress", "called"])
       .gte("created_at", `${today}T00:00:00.000Z`);
 
     // Check duplicates by customer_id (app users) or phone (web users)

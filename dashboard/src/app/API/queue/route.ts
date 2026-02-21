@@ -7,6 +7,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// ─── Status mapping ───────────────────────────────────────────
+// DB values: waiting | in_progress | called | no_show | completed | cancelled
+// UI values: waiting | serving                          | completed | cancelled
+function uiToDb(status: string): string {
+  if (status === "serving") return "in_progress";
+  return status;
+}
+function dbToUi(status: string): string {
+  if (status === "in_progress" || status === "called") return "serving";
+  if (status === "no_show") return "cancelled";
+  return status;
+}
+function normaliseEntry(entry: any) {
+  if (!entry) return entry;
+  return { ...entry, status: dbToUi(entry.status) };
+}
+
 // GET - Fetch queue entries for a business
 export async function GET(req: Request) {
   try {
@@ -32,9 +49,15 @@ export async function GET(req: Request) {
       .eq("business_id", businessId)
       .order("position", { ascending: true });
 
-    // Filter by status
+    // Filter by status — translate UI value to DB value
     if (status && status !== "all") {
-      query = query.eq("status", status);
+      const dbStatus = uiToDb(status);
+      // "serving" in DB is either "in_progress" or "called"
+      if (status === "serving") {
+        query = query.in("status", ["in_progress", "called"]);
+      } else {
+        query = query.eq("status", dbStatus);
+      }
     }
 
     // Filter by queue type (queue type ID is stored in the service_type column)
@@ -55,7 +78,7 @@ export async function GET(req: Request) {
       query = query.gte("created_at", startOfDay).lte("created_at", endOfDay);
     }
 
-    const { data, error } = await query;
+    const { data: rawData, error } = await query;
 
     if (error) {
       console.error("Queue fetch error:", error);
@@ -68,17 +91,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // Normalise DB status values → UI values
+    const data = (rawData || []).map(normaliseEntry);
+
     // Get full stats for the business today (not filtered by queue type, to show totals)
     const today = new Date().toISOString().split("T")[0];
-    const { data: allTodayData } = await supabase
+    const { data: allTodayRaw } = await supabase
       .from("queues")
       .select("status, started_at, created_at")
       .eq("business_id", businessId)
       .gte("created_at", `${today}T00:00:00.000Z`)
       .lte("created_at", `${today}T23:59:59.999Z`);
 
-    // Calculate stats
-    const statsSource = queueTypeId && queueTypeId !== "all" ? data : (allTodayData || []);
+    const allTodayData = (allTodayRaw || []).map(e => ({ ...e, status: dbToUi(e.status) }));
+
+    // Calculate stats using normalised UI status values
+    const statsSource = queueTypeId && queueTypeId !== "all" ? data : allTodayData;
     const stats = {
       total: statsSource?.length || 0,
       waiting: statsSource?.filter((e) => e.status === "waiting").length || 0,

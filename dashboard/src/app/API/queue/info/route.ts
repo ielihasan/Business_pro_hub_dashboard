@@ -46,11 +46,12 @@ export async function GET(req: NextRequest) {
 
     // Build queries for the queues table
     // Filter by queue_type_id if provided — stored in service_type field as the queue type ID
+    // DB uses "in_progress" (and "called") for "serving"
     let servingQuery = supabase
       .from("queues")
       .select("id, position, customer_name, service_type")
       .eq("business_id", businessId)
-      .eq("status", "serving")
+      .in("status", ["in_progress", "called"])
       .order("started_at", { ascending: true })
       .limit(1);
 

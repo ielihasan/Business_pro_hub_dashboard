@@ -953,8 +953,8 @@ export default function QueueManagementPage() {
 
       {/* QR Picker */}
       <Dialog open={qrPickerOpen} onOpenChange={setQrPickerOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[420px] max-h-[90dvh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5 text-primary" />Generate Queue QR Code
             </DialogTitle>
@@ -962,7 +962,7 @@ export default function QueueManagementPage() {
               Choose which queue this QR is for. Customers who scan it join that queue automatically.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
             <button onClick={() => setQrPickerSelection("general")}
               className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${qrPickerSelection === "general" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"}`}>
               <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
@@ -997,7 +997,7 @@ export default function QueueManagementPage() {
               ))
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setQrPickerOpen(false)}>Cancel</Button>
             <Button disabled={!qrPickerSelection || loadingQr}
               onClick={() => { setQrPickerOpen(false); handleGenerateQrCode(qrPickerSelection === "general" ? undefined : qrPickerSelection); }}>
@@ -1010,8 +1010,8 @@ export default function QueueManagementPage() {
 
       {/* QR Display */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="sm:max-w-2xl gap-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+        <DialogContent className="sm:max-w-2xl gap-0 p-0 overflow-hidden max-h-[90dvh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg shrink-0"
                 style={{ backgroundColor: selectedQrQueueType ? selectedQrQueueType.color + "20" : "hsl(var(--primary)/0.1)" }}>
@@ -1029,7 +1029,7 @@ export default function QueueManagementPage() {
               </div>
             </div>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-col sm:flex-row flex-1 overflow-y-auto">
             <div className="flex flex-col items-center justify-center gap-3 p-6 bg-gray-50 sm:w-64 shrink-0 border-b sm:border-b-0 sm:border-r">
               {qrCode ? (
                 <>
@@ -1094,14 +1094,17 @@ export default function QueueManagementPage() {
 
       {/* Add Customer */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[480px] max-h-[90dvh] flex flex-col p-0 gap-0">
+          {/* Pinned header */}
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-blue-600" />Add Customer to Queue
             </DialogTitle>
             <DialogDescription>Add a walk-in customer manually</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 grid gap-4">
             <div className="grid gap-2">
               <Label>Queue Type</Label>
               <Select value={newCustomer.queue_type_id}
@@ -1153,7 +1156,9 @@ export default function QueueManagementPage() {
                 onChange={e => setNewCustomer(p => ({ ...p, notes: e.target.value }))} />
             </div>
           </div>
-          <DialogFooter>
+
+          {/* Pinned footer */}
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleAddCustomer} disabled={addingCustomer}>
               {addingCustomer ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
@@ -1166,14 +1171,17 @@ export default function QueueManagementPage() {
       {/* Queue Type Create/Edit */}
       <Dialog open={queueTypeDialogOpen}
         onOpenChange={open => { setQueueTypeDialogOpen(open); if (!open) resetQueueTypeForm(); }}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[500px] max-h-[90dvh] flex flex-col p-0 gap-0">
+          {/* Pinned header */}
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle>{editingQueueType ? "Edit Queue Type" : "Create Queue Type"}</DialogTitle>
             <DialogDescription>
               {editingQueueType ? "Update this queue type" : "A new lane will appear in the Queue tab immediately after saving"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             <div className="space-y-2">
               <Label>Queue Name *</Label>
               <Input placeholder="e.g., Haircut, Consultation, General"
@@ -1211,7 +1219,9 @@ export default function QueueManagementPage() {
               <p className="text-xs text-gray-400">Maximum customers allowed in this queue at once</p>
             </div>
           </div>
-          <DialogFooter>
+
+          {/* Pinned footer */}
+          <DialogFooter className="px-6 py-4 border-t shrink-0">
             <Button variant="outline" onClick={() => setQueueTypeDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveQueueType} disabled={savingQueueType}>
               {savingQueueType && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

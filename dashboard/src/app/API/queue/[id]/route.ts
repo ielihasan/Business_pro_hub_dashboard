@@ -7,6 +7,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// ─── Status mapping ───────────────────────────────────────────
+// The DB constraint only allows: waiting | in_progress | called | no_show | completed | cancelled
+// Our UI uses:                   waiting | serving                          | completed | cancelled
+// Map UI → DB on write, DB → UI on read
+
+function uiToDb(status: string): string {
+  if (status === "serving") return "in_progress";
+  return status;
+}
+
+function dbToUi(status: string): string {
+  if (status === "in_progress" || status === "called") return "serving";
+  if (status === "no_show") return "cancelled";
+  return status;
+}
+
+function normaliseEntry(entry: any) {
+  if (!entry) return entry;
+  return { ...entry, status: dbToUi(entry.status) };
+}
+
 // GET - Fetch single queue entry
 export async function GET(
   req: Request,
@@ -28,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: normaliseEntry(data) });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -49,11 +70,11 @@ export async function PATCH(
     };
 
     if (status) {
-      updateData.status = status;
+      const dbStatus = uiToDb(status);
+      updateData.status = dbStatus;
 
       // Update timestamps based on status
-      // queues table uses: called_at, started_at, completed_at, cancelled_at
-      if (status === "serving") {
+      if (dbStatus === "in_progress") {
         updateData.started_at = new Date().toISOString();
         updateData.called_at = new Date().toISOString();
       } else if (status === "completed") {
@@ -80,7 +101,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({
-      data,
+      data: normaliseEntry(data),
       message: "Queue entry updated successfully",
     });
   } catch (err: any) {
