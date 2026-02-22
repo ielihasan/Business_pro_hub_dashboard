@@ -63,7 +63,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, notes, service_type, priority } = body;
+    const { status, notes, service_type, priority, customer_name, customer_phone, customer_email } = body;
 
     const updateData: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -87,6 +87,9 @@ export async function PATCH(
     if (notes !== undefined) updateData.notes = notes;
     if (service_type !== undefined) updateData.service_type = service_type;
     if (priority !== undefined) updateData.priority = priority;
+    if (customer_name !== undefined) updateData.customer_name = customer_name;
+    if (customer_phone !== undefined) updateData.customer_phone = customer_phone;
+    if (customer_email !== undefined) updateData.customer_email = customer_email;
 
     const { data, error } = await supabase
       .from("queues")
