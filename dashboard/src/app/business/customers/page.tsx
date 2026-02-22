@@ -397,7 +397,7 @@ export default function CustomersPage() {
         );
       case "waiting":
         return (
-          <Badge className="bg-yellow-100 text-yellow-700">
+          <Badge className="bg-gray-100 text-gray-700">
             <Clock className="h-3 w-3 mr-1" />
             Waiting
           </Badge>
@@ -415,7 +415,7 @@ export default function CustomersPage() {
   };
 
   const getCustomerTier = (visits: number) => {
-    if (visits >= 10) return { label: "VIP", color: "bg-purple-100 text-purple-700" };
+    if (visits >= 10) return { label: "VIP", color: "bg-black text-white" };
     if (visits >= 5) return { label: "Regular", color: "bg-blue-100 text-blue-700" };
     if (visits > 1) return { label: "Returning", color: "bg-green-100 text-green-700" };
     return { label: "New", color: "bg-gray-100 text-gray-700" };
@@ -536,11 +536,11 @@ export default function CustomersPage() {
 
       {/* Demo Mode Banner */}
       {useMockData && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-sm font-medium text-yellow-800">Demo Mode</p>
-            <p className="text-xs text-yellow-600">
+            <p className="text-sm font-medium text-blue-800">Demo Mode</p>
+            <p className="text-xs text-blue-600">
               Showing sample data. Customers are automatically added when they scan your QR code.
             </p>
           </div>
@@ -586,12 +586,12 @@ export default function CustomersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Repeat Customers</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-blue-600">
                   {stats.repeat_customers}
                 </p>
               </div>
-              <div className="bg-purple-100 p-3 rounded-full">
-                <Repeat className="h-5 w-5 text-purple-600" />
+              <div className="bg-blue-100 p-3 rounded-full">
+                <Repeat className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -602,12 +602,12 @@ export default function CustomersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Visits</p>
-                <p className="text-2xl font-bold text-amber-600">
+                <p className="text-2xl font-bold text-gray-900">
                   {stats.total_visits}
                 </p>
               </div>
-              <div className="bg-amber-100 p-3 rounded-full">
-                <QrCode className="h-5 w-5 text-amber-600" />
+              <div className="bg-gray-100 p-3 rounded-full">
+                <QrCode className="h-5 w-5 text-gray-600" />
               </div>
             </div>
           </CardContent>
@@ -777,7 +777,7 @@ export default function CustomersPage() {
                         </TableCell>
                         <TableCell>
                           {customer.total_visits >= 10 && (
-                            <Badge className="bg-purple-100 text-purple-700">
+                            <Badge className="bg-black text-white">
                               <Star className="h-3 w-3 mr-1" />
                               VIP
                             </Badge>

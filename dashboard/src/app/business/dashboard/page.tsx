@@ -130,7 +130,7 @@ export default function BusinessDashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "waiting": return "bg-yellow-100 text-yellow-800";
+      case "waiting": return "bg-gray-100 text-gray-800";
       case "in_progress": return "bg-blue-100 text-blue-800";
       case "completed": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
@@ -180,7 +180,7 @@ export default function BusinessDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Pending Orders
             </CardTitle>
-            <Package className="h-5 w-5 text-yellow-600" />
+            <Package className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.pendingOrders}</div>
@@ -196,7 +196,7 @@ export default function BusinessDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Total Customers
             </CardTitle>
-            <Users className="h-5 w-5 text-purple-600" />
+            <Users className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</div>
@@ -212,7 +212,7 @@ export default function BusinessDashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-600">
               Average Rating
             </CardTitle>
-            <Star className="h-5 w-5 text-yellow-500" />
+            <Star className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">
@@ -226,12 +226,12 @@ export default function BusinessDashboardPage() {
       </div>
 
       {/* Queue Management CTA */}
-      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+      <Card className="border-2 border-gray-200 bg-gray-50">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-xl">
-                <QrCode className="h-8 w-8 text-primary" />
+              <div className="p-3 bg-black rounded-xl">
+                <QrCode className="h-8 w-8 text-white" />
               </div>
               <div>
                 <CardTitle className="text-xl">Queue Management</CardTitle>
@@ -241,7 +241,7 @@ export default function BusinessDashboardPage() {
               </div>
             </div>
             <Link href="/business/queue">
-              <Button size="lg" className="hidden sm:flex">
+              <Button size="lg" className="hidden sm:flex bg-black hover:bg-gray-800 text-white">
                 Go to Queue Management
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
@@ -269,8 +269,8 @@ export default function BusinessDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <QrCode className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <QrCode className="h-5 w-5 text-gray-600" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">QR Codes</p>
@@ -280,7 +280,7 @@ export default function BusinessDashboardPage() {
           </div>
           {/* Mobile button */}
           <Link href="/business/queue">
-            <Button size="lg" className="w-full mt-4 sm:hidden">
+            <Button size="lg" className="w-full mt-4 sm:hidden bg-black hover:bg-gray-800 text-white">
               Go to Queue Management
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
@@ -298,7 +298,7 @@ export default function BusinessDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Link href="/business/queue">
-              <Button variant="outline" className="w-full justify-start text-primary border-primary/50 hover:bg-primary/5">
+              <Button variant="outline" className="w-full justify-start hover:bg-black hover:text-white transition-colors">
                 <QrCode className="mr-2 h-4 w-4" />
                 Manage Queue & QR Codes
                 {stats.activeQueues > 0 && (
@@ -313,7 +313,7 @@ export default function BusinessDashboardPage() {
                 <Package className="mr-2 h-4 w-4" />
                 View Orders
                 {stats.pendingOrders > 0 && (
-                  <Badge variant="destructive" className="ml-auto">
+                  <Badge className="ml-auto bg-red-100 text-red-700 border-0">
                     {stats.pendingOrders}
                   </Badge>
                 )}
@@ -357,7 +357,7 @@ export default function BusinessDashboardPage() {
                 <p>No queue activity yet</p>
                 <p className="text-sm mt-1">Customers will appear here when they join your queue</p>
                 <Link href="/business/queue">
-                  <Button className="mt-4">
+                  <Button className="mt-4 bg-black hover:bg-gray-800 text-white">
                     <QrCode className="h-4 w-4 mr-2" />
                     Set Up Your Queue
                   </Button>
@@ -368,7 +368,7 @@ export default function BusinessDashboardPage() {
                 {recentQueues.map((queue) => (
                   <div
                     key={queue.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-100"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -432,7 +432,7 @@ export default function BusinessDashboardPage() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Pending</span>
-              <span className="font-semibold text-yellow-600">{stats.pendingOrders}</span>
+              <span className="font-semibold text-gray-600">{stats.pendingOrders}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Completed</span>

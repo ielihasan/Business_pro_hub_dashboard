@@ -465,11 +465,11 @@ export default function BusinessHoursPage() {
 
       {/* Demo Mode Banner */}
       {useMockData && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-sm font-medium text-yellow-800">Demo Mode</p>
-            <p className="text-xs text-yellow-600">
+            <p className="text-sm font-medium text-blue-800">Demo Mode</p>
+            <p className="text-xs text-blue-600">
               Changes will be saved locally. Connect to database for persistence.
             </p>
           </div>
@@ -586,7 +586,7 @@ export default function BusinessHoursPage() {
                     <div className="flex flex-wrap items-center gap-3">
                       {/* Open/Close Times */}
                       <div className="flex items-center gap-2">
-                        <Sun className="h-4 w-4 text-yellow-500" />
+                        <Sun className="h-4 w-4 text-gray-500" />
                         <Select
                           value={day.open_time}
                           onValueChange={(value) =>
@@ -627,7 +627,7 @@ export default function BusinessHoursPage() {
 
                       {/* Break Time */}
                       <div className="flex items-center gap-2 border-l pl-3">
-                        <Coffee className="h-4 w-4 text-amber-500" />
+                        <Coffee className="h-4 w-4 text-gray-500" />
                         <Select
                           value={day.break_start || "none"}
                           onValueChange={(value) =>
@@ -815,19 +815,19 @@ export default function BusinessHoursPage() {
                   className={`flex items-center justify-between p-4 border rounded-lg ${
                     special.is_closed
                       ? "border-red-200 bg-red-50"
-                      : "border-yellow-200 bg-yellow-50"
+                      : "border-gray-200 bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center gap-4">
                     <div
                       className={`p-2 rounded-full ${
-                        special.is_closed ? "bg-red-100" : "bg-yellow-100"
+                        special.is_closed ? "bg-red-100" : "bg-gray-100"
                       }`}
                     >
                       {special.is_closed ? (
                         <CalendarOff className="h-5 w-5 text-red-600" />
                       ) : (
-                        <Clock className="h-5 w-5 text-yellow-600" />
+                        <Clock className="h-5 w-5 text-gray-600" />
                       )}
                     </div>
                     <div>
@@ -859,9 +859,9 @@ export default function BusinessHoursPage() {
 
       {/* Unsaved Changes Warning */}
       {hasChanges && (
-        <div className="fixed bottom-4 right-4 bg-amber-100 border border-amber-300 rounded-lg p-4 shadow-lg flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600" />
-          <span className="text-sm font-medium text-amber-800">
+        <div className="fixed bottom-4 right-4 bg-black border border-gray-700 rounded-lg p-4 shadow-lg flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-white" />
+          <span className="text-sm font-medium text-white">
             You have unsaved changes
           </span>
           <Button size="sm" onClick={handleSaveHours} disabled={saving}>

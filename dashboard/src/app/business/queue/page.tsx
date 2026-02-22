@@ -174,7 +174,7 @@ function getWaitTime(createdAt: string) {
 function getStatusBadge(status: string) {
   switch (status) {
     case "waiting":
-      return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100"><Clock className="h-3 w-3 mr-1" />Waiting</Badge>;
+      return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100"><Clock className="h-3 w-3 mr-1" />Waiting</Badge>;
     case "serving":
       return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100"><Play className="h-3 w-3 mr-1" />Serving</Badge>;
     case "completed":
@@ -243,7 +243,7 @@ function QueueLane({
 
           {/* Stats badges */}
           <div className="flex items-center gap-2 ml-1 shrink-0 flex-wrap">
-            <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
+            <Badge className="bg-gray-100 text-gray-700 border-0 text-xs">
               <Clock className="h-3 w-3 mr-1" />{waiting} waiting
             </Badge>
             {serving > 0 && (
@@ -762,7 +762,7 @@ export default function QueueManagementPage() {
           <TabsTrigger value="queue" className="flex items-center gap-2">
             <Users className="h-4 w-4" />Queue
             {stats.waiting > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-yellow-500 text-white rounded-full">
+              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-gray-600 text-white rounded-full">
                 {stats.waiting}
               </Badge>
             )}
@@ -788,11 +788,11 @@ export default function QueueManagementPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-yellow-200 bg-yellow-50">
+            <Card className="border-gray-200 bg-gray-50">
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div><p className="text-xs text-yellow-700">Waiting</p><p className="text-2xl font-bold text-yellow-800">{stats.waiting}</p></div>
-                  <Clock className="h-6 w-6 text-yellow-500" />
+                  <div><p className="text-xs text-gray-600">Waiting</p><p className="text-2xl font-bold text-gray-900">{stats.waiting}</p></div>
+                  <Clock className="h-6 w-6 text-gray-500" />
                 </div>
               </CardContent>
             </Card>
@@ -820,11 +820,11 @@ export default function QueueManagementPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-purple-200 bg-purple-50">
+            <Card className="border-blue-200 bg-blue-50">
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-center justify-between">
-                  <div><p className="text-xs text-purple-700">Avg Wait</p><p className="text-2xl font-bold text-purple-800">{stats.avgWaitTime}m</p></div>
-                  <Timer className="h-6 w-6 text-purple-500" />
+                  <div><p className="text-xs text-blue-700">Avg Wait</p><p className="text-2xl font-bold text-blue-800">{stats.avgWaitTime}m</p></div>
+                  <Timer className="h-6 w-6 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -943,7 +943,7 @@ export default function QueueManagementPage() {
                   <div><p className="font-semibold text-gray-900">Real-time Updates</p><p className="text-sm text-gray-500">Live queue position tracking</p></div>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-purple-100 rounded-lg"><Share2 className="h-5 w-5 text-purple-600" /></div>
+                  <div className="p-2 bg-blue-100 rounded-lg"><Share2 className="h-5 w-5 text-blue-600" /></div>
                   <div><p className="font-semibold text-gray-900">Per-Queue QR</p><p className="text-sm text-gray-500">Separate QR per queue type</p></div>
                 </div>
               </div>
@@ -1012,7 +1012,7 @@ export default function QueueManagementPage() {
                         <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min</span>
                           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />Max {qt.max_capacity}</span>
-                          <span className="text-yellow-600 font-medium">{waiting} waiting</span>
+                          <span className="text-gray-600 font-medium">{waiting} waiting</span>
                           {serving > 0 && <span className="text-blue-600 font-medium">{serving} serving</span>}
                         </div>
                         <div className="mt-3 flex gap-2">
@@ -1146,9 +1146,9 @@ export default function QueueManagementPage() {
                   <p className="text-xl font-bold text-green-600 leading-none">{stats.completed}</p>
                   <p className="text-[11px] text-green-500 mt-1">Served Today</p>
                 </div>
-                <div className="rounded-lg bg-purple-50 px-3 py-2 text-center">
-                  <p className="text-xl font-bold text-purple-600 leading-none">~{stats.avgWaitTime}m</p>
-                  <p className="text-[11px] text-purple-500 mt-1">Avg Wait</p>
+                <div className="rounded-lg bg-blue-50 px-3 py-2 text-center">
+                  <p className="text-xl font-bold text-blue-600 leading-none">~{stats.avgWaitTime}m</p>
+                  <p className="text-[11px] text-blue-500 mt-1">Avg Wait</p>
                 </div>
               </div>
               <div className="space-y-1">

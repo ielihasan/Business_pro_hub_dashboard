@@ -492,7 +492,7 @@ export default function OrdersPage() {
     switch (status) {
       case "pending":
         return (
-          <Badge className="bg-yellow-100 text-yellow-700">
+          <Badge className="bg-gray-100 text-gray-700">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
@@ -769,11 +769,11 @@ export default function OrdersPage() {
 
       {/* Demo Mode Banner */}
       {useMockData && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-sm font-medium text-yellow-800">Demo Mode</p>
-            <p className="text-xs text-yellow-600">
+            <p className="text-sm font-medium text-blue-800">Demo Mode</p>
+            <p className="text-xs text-blue-600">
               Showing sample data. Connect to database for real orders.
             </p>
           </div>
@@ -803,12 +803,12 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">
+                <p className="text-2xl font-bold text-gray-700">
                   {stats.pending}
                 </p>
               </div>
-              <div className="bg-yellow-100 p-3 rounded-full">
-                <Clock className="h-5 w-5 text-yellow-600" />
+              <div className="bg-gray-100 p-3 rounded-full">
+                <Clock className="h-5 w-5 text-gray-600" />
               </div>
             </div>
           </CardContent>

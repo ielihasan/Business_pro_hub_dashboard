@@ -36,7 +36,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Customer Growth</CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-600" />
+            <TrendingUp className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">0%</div>
@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Repeat Customers</CardTitle>
-            <Users className="h-5 w-5 text-yellow-600" />
+            <Users className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">0%</div>

@@ -538,9 +538,9 @@ export default function PricingPage() {
       case "starter":
         return "from-blue-500 to-blue-600";
       case "professional":
-        return "from-purple-500 to-purple-600";
+        return "from-blue-600 to-blue-700";
       case "enterprise":
-        return "from-amber-500 to-amber-600";
+        return "from-gray-800 to-black";
       default:
         return "from-gray-500 to-gray-600";
     }
@@ -569,7 +569,7 @@ export default function PricingPage() {
         );
       case "pending":
         return (
-          <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
@@ -1151,8 +1151,8 @@ export default function PricingPage() {
                           <p className="text-[10px] sm:text-xs text-red-500">{errors.mobileNumber}</p>
                         )}
                       </div>
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2.5 sm:p-3">
-                        <p className="text-xs sm:text-sm text-yellow-700">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3">
+                        <p className="text-xs sm:text-sm text-blue-700">
                           <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1" />
                           You will receive a payment confirmation request on your JazzCash app.
                         </p>
