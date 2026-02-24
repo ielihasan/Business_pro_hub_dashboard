@@ -99,6 +99,15 @@ export default function JoinQueuePage({
     customer_email: "",
   });
 
+  // Logged-in app user (from Supabase auth)
+  const [appUser, setAppUser] = useState<{
+    id: string;
+    full_name?: string;
+    email?: string;
+    phone_number?: string;
+  } | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
   // Build storage key for this business + queue type
   const getStorageKey = useCallback((queueTypeId?: string) => {
     return queueTypeId && queueTypeId !== "default"
@@ -181,6 +190,45 @@ export default function JoinQueuePage({
     }
   }, [ticket?.queue_type_id, getStorageKey]);
 
+  // Check for logged-in app user via Supabase auth
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Fetch their User profile record
+          const { data: profile } = await supabase
+            .from("User")
+            .select("id, full_name, email, phone_number")
+            .eq("id", user.id)
+            .single();
+
+          if (profile) {
+            setAppUser(profile);
+            // Pre-fill form with their info
+            setFormData(prev => ({
+              customer_name: profile.full_name || prev.customer_name,
+              customer_phone: profile.phone_number || prev.customer_phone,
+              customer_email: profile.email || prev.customer_email,
+            }));
+          } else {
+            // User is in auth but no profile yet — use auth metadata
+            setAppUser({ id: user.id, email: user.email ?? undefined });
+            setFormData(prev => ({
+              ...prev,
+              customer_email: user.email || prev.customer_email,
+            }));
+          }
+        }
+      } catch {
+        // Not logged in or error — fall through to guest form
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    checkUser();
+  }, []);
+
   // Fetch queue types on mount
   useEffect(() => {
     fetchQueueTypes();
@@ -258,8 +306,13 @@ export default function JoinQueuePage({
   }, [joined, ticket?.id, businessId, refreshTicketStatus]);
 
   const handleJoinQueue = async () => {
-    if (!formData.customer_name || !formData.customer_phone) {
+    // App users don't need phone — the join API fetches it from their User record
+    if (!appUser && (!formData.customer_name || !formData.customer_phone)) {
       toast.error("Please enter your name and phone number");
+      return;
+    }
+    if (!formData.customer_name && !appUser?.full_name) {
+      toast.error("Please enter your name");
       return;
     }
 
@@ -281,6 +334,8 @@ export default function JoinQueuePage({
           ...formData,
           queue_type_id: selectedQueueType || undefined,
           queue_type_name: selectedType?.name || undefined,
+          // Pass user_id if this is a logged-in app user
+          user_id: appUser?.id || undefined,
         }),
       });
 
@@ -340,7 +395,7 @@ export default function JoinQueuePage({
     });
   };
 
-  if (initialLoading) {
+  if (initialLoading || checkingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
         <div className="text-center">
@@ -627,6 +682,23 @@ export default function JoinQueuePage({
         )}
 
         <CardContent className="space-y-4">
+          {/* Logged-in app user banner */}
+          {appUser && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+              <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-green-800 truncate">
+                  {appUser.full_name || appUser.email || "Signed in"}
+                </p>
+                <p className="text-xs text-green-600">
+                  Your profile will be linked to this queue entry
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">
               Your Name <span className="text-red-500">*</span>
