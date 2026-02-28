@@ -24,10 +24,10 @@ export async function GET(req: Request) {
 
     // Verify business exists
     const { data: business, error: businessError } = await supabase
-      .from("admins")
+      .from("businesses")
       .select("id, business_name")
       .eq("id", businessId)
-      .eq("role", "business_owner")
+      .eq("is_active", true)
       .single();
 
     if (businessError || !business) {

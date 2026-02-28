@@ -34,15 +34,13 @@ export async function PATCH(req: Request) {
 
     // 2️⃣ Prepare update object for your table
     const updateData: Record<string, any> = {};
-    if (username) updateData.username = username;
     if (full_name) updateData.full_name = full_name;
-    if (phone_no) updateData.phone_no = phone_no;
-    if (status) updateData.status = status; // Remove this if "status" column does not exist
+    if (phone_no) updateData.phone_number = phone_no;
 
-    // 3️⃣ Update the table (change "profiles" to your actual table if needed)
+    // 3️⃣ Update users table
     if (Object.keys(updateData).length > 0) {
       const { error: dbError } = await supabaseAdmin
-        .from("profiles") // ✅ Replace with actual table name if different
+        .from("users")
         .update(updateData)
         .eq("id", id);
 

@@ -82,8 +82,10 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
-    // Create business record in admins table
-    const { data: businessData, error: businessError } = await supabase
+    const now = new Date().toISOString();
+
+    // Create role record in admins table (auth/role management)
+    const { error: adminError } = await supabase
       .from("admins")
       .insert({
         id: userId,
@@ -97,15 +99,39 @@ export async function POST(req: Request) {
         business_description: business_description || null,
         subscription_plan: subscription_plan || "free",
         is_approved: true,
-        approved_at: new Date().toISOString(),
+        approved_at: now,
+      });
+
+    if (adminError) {
+      await supabase.auth.admin.deleteUser(userId);
+      console.error("Admins insert error:", adminError);
+      return NextResponse.json({ error: adminError.message }, { status: 400 });
+    }
+
+    // Create canonical business record — FK target for queues, services, subscriptions
+    const { data: businessData, error: businessError } = await supabase
+      .from("businesses")
+      .insert({
+        id: userId,
+        full_name,
+        email,
+        business_name,
+        business_type,
+        business_address: business_address || null,
+        business_phone: business_phone || null,
+        business_description: business_description || null,
+        subscription_plan: subscription_plan || "free",
+        is_active: true,
+        approved_at: now,
       })
       .select()
       .single();
 
     if (businessError) {
-      // Rollback: delete auth user if business record creation fails
+      // Rollback admins row and auth user
+      await supabase.from("admins").delete().eq("id", userId).eq("role", "business_owner");
       await supabase.auth.admin.deleteUser(userId);
-      console.error("Business insert error:", businessError);
+      console.error("Businesses insert error:", businessError);
       return NextResponse.json({ error: businessError.message }, { status: 400 });
     }
 

@@ -18,10 +18,9 @@ export async function GET(req: Request) {
     const offset = (page - 1) * limit;
 
     let query = supabase
-      .from("admins")
+      .from("businesses")
       .select("*", { count: "exact" })
-      .eq("role", "business_owner")
-      .eq("is_approved", true)
+      .eq("is_active", true)
       .order("approved_at", { ascending: false });
 
     // Apply business type filter

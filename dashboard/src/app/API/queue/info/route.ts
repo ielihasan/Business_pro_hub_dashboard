@@ -20,12 +20,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get business info from admins table (business_owner role)
+    // Get business info from businesses table
     const { data: business, error: businessError } = await supabase
-      .from("admins")
+      .from("businesses")
       .select("id, business_name")
       .eq("id", businessId)
-      .eq("role", "business_owner")
+      .eq("is_active", true)
       .single();
 
     if (businessError || !business) {

@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       // 🔍 Check User table
       const { data: existingUserRow, error: fetchError } =
         await supabase
-          .from('User')
+          .from('users')
           .select("*")
           .eq("id", userId)
           .maybeSingle();
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       // ➕ If not exists → create
       if (!existingUserRow) {
         const { data, error } = await supabase
-          .from('User')
+          .from('users')
           .insert({
             id: userId,
             username,
@@ -108,13 +108,12 @@ export async function POST(req: Request) {
 
     const { data: createdUser, error: insertError } =
       await supabase
-        .from('User')
+        .from('users')
         .insert({
           id: userId,
-          username,
-          email,
           full_name,
-          phone_no,
+          email,
+          phone_number: phone_no,
         })
         .select()
         .single();

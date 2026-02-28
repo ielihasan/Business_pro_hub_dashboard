@@ -24,7 +24,7 @@ export async function DELETE(req: Request) {
 
     // 1️⃣ Delete from "User" table first
     const { error: tableError } = await supabaseAdmin
-      .from("User")   // 👈 IMPORTANT
+      .from("users")
       .delete()
       .in("id", ids);
 

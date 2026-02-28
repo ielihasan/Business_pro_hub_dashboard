@@ -1,15 +1,15 @@
-// middleware.ts (place at project root)
+// proxy.ts (place at project root or src/)
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "./middleware/auth-middleware";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // call authMiddleware from ./middleware/auth-middleware
   const response = authMiddleware(req);
   if (response) return response;
   return NextResponse.next();
 }
 
-// matcher: only run middleware for auth and dashboard routes (adjust if you need extra routes)
+// matcher: only run proxy for auth and dashboard routes (adjust if you need extra routes)
 export const config = {
   matcher: [
     "/app/main/dashboard/:path*",      // protect all dashboard routes

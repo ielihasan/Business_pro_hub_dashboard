@@ -41,15 +41,26 @@ export async function DELETE(req: Request) {
       }
     }
 
-    // Delete from admins table first
+    // Delete from businesses table first (queues FK cascades automatically)
+    const { error: bizTableError } = await supabase
+      .from("businesses")
+      .delete()
+      .in("id", ids);
+
+    if (bizTableError) {
+      console.error("Businesses table delete error:", bizTableError);
+      return NextResponse.json({ error: bizTableError.message }, { status: 400 });
+    }
+
+    // Delete from admins table
     const { error: tableError } = await supabase
       .from("admins")
       .delete()
       .in("id", ids);
 
     if (tableError) {
-      console.error("Business table delete error:", tableError);
-      return NextResponse.json({ error: tableError.message }, { status: 400 });
+      console.error("Admins table delete error:", tableError);
+      // Non-fatal: businesses row already deleted, continue to delete auth user
     }
 
     // Delete from Auth

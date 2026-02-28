@@ -38,15 +38,14 @@ export async function PATCH(req: Request) {
     // 2️⃣ Prepare update object for "User" table
     const updateData: Record<string, any> = {};
 
-    if (username !== undefined) updateData.username = username;
     if (full_name !== undefined) updateData.full_name = full_name;
-    if (phone_no !== undefined) updateData.phone_no = phone_no;
+    if (phone_no !== undefined) updateData.phone_number = phone_no;
     //if (status !== undefined) updateData.status = status;
 
     // 3️⃣ Update "User" table
     if (Object.keys(updateData).length > 0) {
       const { error: dbError } = await supabaseAdmin
-        .from('User') // 👈 IMPORTANT
+        .from('users')
         .update(updateData)
         .eq("id", id);
 

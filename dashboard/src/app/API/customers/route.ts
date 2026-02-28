@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
     // Get unique customers from queue entries
     let query = supabase
-      .from("queue_entries")
+      .from("queues")
       .select("customer_name, customer_phone, customer_email, service_type, created_at, status")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false });

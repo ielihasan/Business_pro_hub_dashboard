@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     }
 
     const { data, error } = await supabase
-      .from("User")
+      .from("users")
       .select("id, full_name, email, phone_number, avatar_url, created_at")
       .eq("id", userId)
       .single();
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     const { data, error } = await supabase
-      .from("User")
+      .from("users")
       .upsert(
         {
           id: user_id,
@@ -86,7 +86,7 @@ export async function PATCH(req: Request) {
     if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
 
     const { data, error } = await supabase
-      .from("User")
+      .from("users")
       .update(updateData)
       .eq("id", user_id)
       .select()

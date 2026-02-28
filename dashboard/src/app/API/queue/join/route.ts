@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     if (user_id) {
       const { data: userData, error: userError } = await supabase
-        .from("User")
+        .from("users")
         .select("id, full_name, email, phone_number")
         .eq("id", user_id)
         .single();
@@ -63,15 +63,15 @@ export async function POST(req: Request) {
 
     // Verify business exists and is active
     const { data: business, error: businessError } = await supabase
-      .from("admins")
-      .select("id, business_name, is_approved")
+      .from("businesses")
+      .select("id, business_name, is_active")
       .eq("id", business_id)
-      .eq("role", "business_owner")
+      .eq("is_active", true)
       .single();
 
     if (businessError || !business) {
       return NextResponse.json(
-        { error: "Business not found" },
+        { error: "Business not found or is inactive" },
         { status: 404 }
       );
     }

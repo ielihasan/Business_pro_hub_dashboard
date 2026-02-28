@@ -60,12 +60,11 @@ export async function GET(req: Request) {
       );
     }
 
-    // Get business name from admins table
+    // Get business name from businesses table
     const { data: business } = await supabase
-      .from("admins")
+      .from("businesses")
       .select("business_name")
       .eq("id", entry.business_id)
-      .eq("role", "business_owner")
       .single();
 
     // Get number of people ahead (waiting, with lower position)

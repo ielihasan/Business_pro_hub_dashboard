@@ -87,17 +87,40 @@ export async function PATCH(req: Request) {
       }
     }
 
-    // Update admins table
-    const { data: updatedBusiness, error: updateError } = await supabase
+    // Update admins table (role/auth record)
+    const { error: updateAdminError } = await supabase
       .from("admins")
       .update(updateData)
+      .eq("id", id)
+      .eq("role", "business_owner");
+
+    if (updateAdminError) {
+      console.error("Admins update error:", updateAdminError);
+      return NextResponse.json({ error: updateAdminError.message }, { status: 400 });
+    }
+
+    // Mirror changes to businesses table (canonical FK target)
+    const businessUpdateData: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (full_name !== undefined)            businessUpdateData.full_name = full_name;
+    if (email !== undefined)                businessUpdateData.email = email;
+    if (business_name !== undefined)        businessUpdateData.business_name = business_name;
+    if (business_type !== undefined)        businessUpdateData.business_type = business_type;
+    if (business_address !== undefined)     businessUpdateData.business_address = business_address;
+    if (business_phone !== undefined)       businessUpdateData.business_phone = business_phone;
+    if (business_description !== undefined) businessUpdateData.business_description = business_description;
+    if (subscription_plan !== undefined)    businessUpdateData.subscription_plan = subscription_plan;
+    if (is_approved !== undefined)          businessUpdateData.is_active = is_approved;
+
+    const { data: updatedBusiness, error: updateBusinessError } = await supabase
+      .from("businesses")
+      .update(businessUpdateData)
       .eq("id", id)
       .select()
       .single();
 
-    if (updateError) {
-      console.error("Business update error:", updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+    if (updateBusinessError) {
+      console.error("Businesses update error:", updateBusinessError);
+      return NextResponse.json({ error: updateBusinessError.message }, { status: 400 });
     }
 
     return NextResponse.json({

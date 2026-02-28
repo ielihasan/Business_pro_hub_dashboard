@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       .from("queues")
       .select(`
         *,
-        scanned_user:User(id, full_name, email, phone_number, avatar_url)
+        scanned_user:users(id, full_name, email, phone_number, avatar_url)
       `)
       .eq("business_id", businessId)
       .order("position", { ascending: true });
