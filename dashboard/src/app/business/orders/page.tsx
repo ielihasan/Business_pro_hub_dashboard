@@ -247,8 +247,11 @@ export default function OrdersPage() {
         params.append("status", statusFilter);
       }
 
-      const res = await fetch(`/API/orders?${params.toString()}`);
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders?${params.toString()}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);
@@ -349,9 +352,10 @@ export default function OrdersPage() {
         });
         toast.success("Order created successfully!");
       } else {
-        const res = await fetch("/API/orders", {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
           body: JSON.stringify({
             business_id: businessId,
             customer_name: newOrder.customer_name,
@@ -363,7 +367,7 @@ export default function OrdersPage() {
           }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
           throw new Error(data.error);
@@ -404,14 +408,15 @@ export default function OrdersPage() {
         return;
       }
 
-      const res = await fetch(`/API/orders/${orderId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({ status: newStatus }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error);
       }
 
@@ -441,14 +446,15 @@ export default function OrdersPage() {
         return;
       }
 
-      const res = await fetch(`/API/orders/${orderId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({ payment_status: paymentStatus }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error);
       }
 
@@ -472,12 +478,14 @@ export default function OrdersPage() {
         return;
       }
 
-      const res = await fetch(`/API/orders/${orderId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "DELETE",
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error);
       }
 
@@ -772,9 +780,9 @@ export default function OrdersPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-sm font-medium text-blue-800">Demo Mode</p>
+            <p className="text-sm font-medium text-blue-800">No Orders Yet</p>
             <p className="text-xs text-blue-600">
-              Showing sample data. Connect to database for real orders.
+              No orders found. Sample data shown for demonstration.
             </p>
           </div>
         </div>

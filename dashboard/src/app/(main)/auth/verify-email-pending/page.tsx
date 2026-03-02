@@ -36,7 +36,7 @@ export default function VerifyEmailPendingPage() {
 
     setIsResending(true);
     try {
-      const response = await fetch("/API/auth/resend-verification", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

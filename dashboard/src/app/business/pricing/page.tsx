@@ -301,13 +301,19 @@ export default function PricingPage() {
   const fetchPricingData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/API/pricing?business_id=${businessId}`);
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pricing?business_id=${businessId}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (data.data) {
         if (data.data.plans) setPlans(data.data.plans);
         if (data.data.subscription) setSubscription(data.data.subscription);
-        if (data.data.current_plan) setCurrentPlan(data.data.current_plan);
+        if (data.data.current_plan) {
+          const matched = mockPlans.find(p => p.id === data.data.current_plan);
+          if (matched) setCurrentPlan(matched);
+        }
         if (data.data.payments) setPayments(data.data.payments);
       }
     } catch (error: any) {
@@ -409,9 +415,10 @@ export default function PricingPage() {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // API call
-      const res = await fetch("/API/pricing", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pricing`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({
           business_id: businessId,
           plan_id: selectedPlan.id,
@@ -419,7 +426,7 @@ export default function PricingPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);
@@ -463,11 +470,13 @@ export default function PricingPage() {
     try {
       setCancelling(true);
 
-      const res = await fetch(`/API/pricing?business_id=${businessId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pricing?business_id=${businessId}`, {
         method: "DELETE",
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);

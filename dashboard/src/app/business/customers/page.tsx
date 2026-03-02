@@ -269,8 +269,11 @@ export default function CustomersPage() {
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
 
-      const res = await fetch(`/API/customers?${params.toString()}`);
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers?${params.toString()}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);
@@ -278,7 +281,12 @@ export default function CustomersPage() {
 
       if (data.data && data.data.length > 0) {
         setCustomers(data.data);
-        setStats(data.stats);
+        setStats(data.stats || {
+          total_customers: data.data.length,
+          new_customers_today: 0,
+          repeat_customers: data.data.filter((c: any) => (c.total_visits || 0) > 1).length,
+          total_visits: data.data.reduce((sum: number, c: any) => sum + (c.total_visits || 1), 0),
+        });
         setUseMockData(false);
       } else {
         setUseMockData(true);
@@ -325,16 +333,17 @@ export default function CustomersPage() {
         });
         toast.success("Customer added successfully!");
       } else {
-        const res = await fetch("/API/customers", {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
           body: JSON.stringify({
             business_id: businessId,
             ...newCustomer,
           }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
           throw new Error(data.error);

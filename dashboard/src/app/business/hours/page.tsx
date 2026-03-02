@@ -152,8 +152,11 @@ export default function BusinessHoursPage() {
   const fetchBusinessHours = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/API/business-hours?business_id=${businessId}`);
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours?business_id=${businessId}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);
@@ -236,9 +239,10 @@ export default function BusinessHoursPage() {
         return;
       }
 
-      const res = await fetch("/API/business-hours", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({
           business_id: businessId,
           weekly_hours: hours.map((h) => ({
@@ -252,7 +256,7 @@ export default function BusinessHoursPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(data.error);
@@ -288,9 +292,10 @@ export default function BusinessHoursPage() {
         setSpecialHours([...specialHours, newEntry]);
         toast.success("Special hours added!");
       } else {
-        const res = await fetch("/API/business-hours", {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
           body: JSON.stringify({
             business_id: businessId,
             special_hours: [newSpecialHour],
@@ -327,8 +332,10 @@ export default function BusinessHoursPage() {
         return;
       }
 
-      const res = await fetch(`/API/business-hours?id=${id}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours?id=${id}`, {
         method: "DELETE",
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
       if (!res.ok) {

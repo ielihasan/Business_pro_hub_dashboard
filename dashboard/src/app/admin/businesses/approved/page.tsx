@@ -186,17 +186,22 @@ export default function ApprovedBusinessesPage() {
         if (debouncedSearch) params.append("search", debouncedSearch);
         if (typeFilter !== "all") params.append("business_type", typeFilter);
 
-        const response = await fetch(`/API/businesses?${params.toString()}`);
-        const result = await response.json();
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/businesses?${params.toString()}`, {
+          headers: { "Authorization": `Bearer ${session?.access_token}` },
+        });
+        const result = await response.json().catch(() => ({}));
 
-        if (!response.ok) throw new Error(result.error);
+        if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
         setBusinesses(result.data || []);
-        setPagination((prev) => ({
-          ...prev,
-          total: result.pagination.total,
-          totalPages: result.pagination.totalPages,
-        }));
+        if (result.pagination) {
+          setPagination((prev) => ({
+            ...prev,
+            total: result.pagination.total,
+            totalPages: result.pagination.totalPages,
+          }));
+        }
       } catch (error: any) {
         console.error("Error fetching businesses:", error);
         toast.error(error.message || "Failed to load businesses");
@@ -264,14 +269,15 @@ export default function ApprovedBusinessesPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/API/businesses/create", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/businesses`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(formData),
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Business created successfully");
       setCreateDialogOpen(false);
@@ -290,13 +296,12 @@ export default function ApprovedBusinessesPage() {
     setSubmitting(true);
     try {
       const updateData: Record<string, any> = {
-        id: selectedBusiness.id,
         full_name: formData.full_name,
         email: formData.email,
         business_name: formData.business_name,
         business_type: formData.business_type,
-        business_address: formData.business_address,
-        business_phone: formData.business_phone,
+        address: formData.business_address,
+        phone: formData.business_phone,
         business_description: formData.business_description,
         subscription_plan: formData.subscription_plan,
       };
@@ -305,14 +310,15 @@ export default function ApprovedBusinessesPage() {
         updateData.password = formData.password;
       }
 
-      const response = await fetch("/API/businesses/update", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/businesses/${selectedBusiness.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(updateData),
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Business updated successfully");
       setEditDialogOpen(false);
@@ -331,14 +337,14 @@ export default function ApprovedBusinessesPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/API/businesses/delete", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/businesses/${selectedBusiness.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedBusiness.id }),
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Business deleted successfully");
       setDeleteDialogOpen(false);

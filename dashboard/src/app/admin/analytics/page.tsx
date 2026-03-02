@@ -62,6 +62,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase-client";
 
 interface Payment {
   id: string;
@@ -156,11 +157,14 @@ export default function AnalyticsPaymentsPage() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/API/admin/payments?type=stats");
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/payments?type=stats`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (data.error) throw new Error(data.error);
-      setStats(data.data);
+      setStats(data.data?.stats ?? null);
     } catch (error: any) {
       console.error("Stats error:", error);
       toast.error("Failed to load statistics");
@@ -179,12 +183,15 @@ export default function AnalyticsPaymentsPage() {
       if (planFilter !== "all") params.append("plan", planFilter);
       if (search) params.append("search", search);
 
-      const res = await fetch(`/API/admin/payments?${params}`);
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/payments?${params}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (data.error) throw new Error(data.error);
 
-      setPayments(data.data || []);
+      setPayments(Array.isArray(data.data?.payments) ? data.data.payments : []);
       setTotalPages(data.pagination?.totalPages || 1);
     } catch (error: any) {
       console.error("Payments error:", error);
@@ -197,11 +204,14 @@ export default function AnalyticsPaymentsPage() {
 
   const fetchSubscriptions = async () => {
     try {
-      const res = await fetch("/API/admin/payments?type=subscriptions");
-      const data = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/payments?type=subscriptions`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
 
       if (data.error) throw new Error(data.error);
-      setSubscriptions(data.data || []);
+      setSubscriptions(Array.isArray(data.data?.subscriptions) ? data.data.subscriptions : []);
     } catch (error: any) {
       console.error("Subscriptions error:", error);
     }

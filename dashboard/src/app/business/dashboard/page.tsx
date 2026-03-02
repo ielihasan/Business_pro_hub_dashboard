@@ -82,22 +82,9 @@ export default function BusinessDashboardPage() {
       const uniqueCustomers = new Set(queues?.map(q => q.customer_id).filter(Boolean));
       const totalCustomers = uniqueCustomers.size;
 
-      // Fetch staff count
-      const { count: staffCount } = await supabase
-        .from("staff")
-        .select("*", { count: "exact", head: true })
-        .eq("business_id", user.id)
-        .eq("is_active", true);
-
-      // Fetch average rating
-      const { data: feedback } = await supabase
-        .from("feedback")
-        .select("rating")
-        .eq("business_id", user.id);
-
-      const averageRating = feedback && feedback.length > 0
-        ? feedback.reduce((sum, f) => sum + (f.rating || 0), 0) / feedback.length
-        : 0;
+      // staff and feedback tables removed — default to 0
+      const staffCount = 0;
+      const averageRating = 0;
 
       setStats({
         activeQueues,

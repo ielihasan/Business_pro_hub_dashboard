@@ -68,76 +68,29 @@ export default function PendingBusinessesPage() {
     setProcessing(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      console.log("Approving business:", selectedBusiness.business_name);
-      console.log("User ID from application:", selectedBusiness.user_id);
-
-      // First, verify if the auth user still exists
-      const { data: authUser, error: authCheckError } = await supabase.auth.admin.getUserById(
-        selectedBusiness.user_id
-      );
-
-      console.log("Auth user check:", { authUser, authCheckError });
-
-      // If the auth user doesn't exist, we need to create a new one or handle differently
-      if (authCheckError || !authUser.user) {
-        console.warn("Auth user not found, this might be because email confirmation is required");
-        // For now, we'll still create the admin record without FK constraint
-      }
-
-      // Determine if this is an admin or business owner application
+      const { data: { session } } = await supabase.auth.getSession();
       const isAdminApplication = selectedBusiness.business_type === "Admin";
 
-      // Create admin record for the approved user
-      const { data: adminData, error: adminError } = await supabase
-        .from("admins")
-        .insert({
-          id: selectedBusiness.user_id,
-          full_name: selectedBusiness.full_name,
-          email: selectedBusiness.email,
-          role: isAdminApplication ? "admin" : "business_owner",
-          business_name: isAdminApplication ? null : selectedBusiness.business_name,
-          business_type: isAdminApplication ? null : selectedBusiness.business_type,
-          business_address: isAdminApplication ? null : selectedBusiness.business_address,
-          business_phone: isAdminApplication ? null : selectedBusiness.business_phone,
-          business_description: isAdminApplication ? null : selectedBusiness.business_description,
-          is_approved: true,
-          approved_at: new Date().toISOString(),
-          approved_by: user?.id,
-        })
-        .select();
+      // Route through Spring Boot backend — bypasses RLS, handles admin + business record creation
+      const approveRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/businesses/approve/${selectedBusiness.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+          },
+        }
+      );
 
-      console.log("Admin insert result:", { adminData, adminError });
-
-      if (adminError) {
-        console.error("Admin insert error details:", {
-          message: adminError.message,
-          details: adminError.details,
-          hint: adminError.hint,
-          code: adminError.code,
-        });
-        throw new Error(adminError.message || "Failed to create admin record");
-      }
-
-      // Update application status
-      const { error: appError } = await supabase
-        .from("business_applications")
-        .update({
-          is_approved: true,
-          approved_at: new Date().toISOString(),
-          approved_by: user?.id,
-        })
-        .eq("id", selectedBusiness.id);
-
-      if (appError) {
-        console.error("Application update error:", appError);
-        throw new Error(appError.message || "Failed to update application");
+      if (!approveRes.ok) {
+        const errBody = await approveRes.json().catch(() => ({}));
+        throw new Error(errBody?.error || errBody?.message || "Failed to approve business");
       }
 
       // Send approval notification email
       try {
-        await fetch("/API/auth/send-approval-notification", {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -193,7 +146,7 @@ export default function PendingBusinessesPage() {
       // Send rejection notification email
       const isAdminApplication = selectedBusiness.business_type === "Admin";
       try {
-        await fetch("/API/auth/send-approval-notification", {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

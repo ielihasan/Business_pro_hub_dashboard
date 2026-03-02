@@ -118,7 +118,7 @@ export default function JoinQueuePage({
   // Fetch queue types
   const fetchQueueTypes = useCallback(async () => {
     try {
-      const res = await fetch(`/API/queue-types?business_id=${businessId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types?business_id=${businessId}`);
       if (res.ok) {
         const data = await res.json();
         const types = data.data || [];
@@ -166,7 +166,7 @@ export default function JoinQueuePage({
   // Refresh ticket status using the entry's id
   const refreshTicketStatus = useCallback(async (entryId: string) => {
     try {
-      const res = await fetch(`/API/queue/status?ticket=${entryId}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/status?ticket=${entryId}`);
       const data = await res.json();
       if (res.ok && data.data) {
         setTicket(prev => ({ ...(prev || {}), ...data.data } as QueueTicket));
@@ -196,9 +196,9 @@ export default function JoinQueuePage({
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Fetch their User profile record
+          // Fetch their users table profile record
           const { data: profile } = await supabase
-            .from("User")
+            .from("users")
             .select("id, full_name, email, phone_number")
             .eq("id", user.id)
             .single();
@@ -212,8 +212,8 @@ export default function JoinQueuePage({
               customer_email: profile.email || prev.customer_email,
             }));
           } else {
-            // User is in auth but no profile yet — use auth metadata
-            setAppUser({ id: user.id, email: user.email ?? undefined });
+            // No users table profile (e.g. business owner / admin) — don't pass user_id
+            setAppUser(null);
             setFormData(prev => ({
               ...prev,
               customer_email: user.email || prev.customer_email,
@@ -326,7 +326,7 @@ export default function JoinQueuePage({
 
     try {
       setLoading(true);
-      const res = await fetch("/API/queue/join", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -371,7 +371,7 @@ export default function JoinQueuePage({
   const handleLeaveQueue = async () => {
     if (ticket?.id) {
       try {
-        await fetch(`/API/queue/${ticket.id}`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${ticket.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "cancelled" }),

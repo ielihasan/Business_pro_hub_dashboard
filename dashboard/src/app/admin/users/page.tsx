@@ -152,17 +152,22 @@ export default function AdminManagementPage() {
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (statusFilter !== "all") params.append("status", statusFilter);
 
-      const response = await fetch(`/API/admins?${params.toString()}`);
-      const result = await response.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admins?${params.toString()}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const result = await response.json().catch(() => ({}));
 
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       setAdmins(result.data || []);
-      setPagination((prev) => ({
-        ...prev,
-        total: result.pagination.total,
-        totalPages: result.pagination.totalPages,
-      }));
+      if (result.pagination) {
+        setPagination((prev) => ({
+          ...prev,
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages,
+        }));
+      }
     } catch (error: any) {
       console.error("Error fetching admins:", error);
       toast.error(error.message || "Failed to load admins");
@@ -210,14 +215,15 @@ export default function AdminManagementPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/API/admins/create", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admins`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(formData),
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Admin created successfully");
       setCreateDialogOpen(false);
@@ -236,7 +242,6 @@ export default function AdminManagementPage() {
     setSubmitting(true);
     try {
       const updateData: Record<string, any> = {
-        id: selectedAdmin.id,
         full_name: formData.full_name,
         email: formData.email,
       };
@@ -245,14 +250,15 @@ export default function AdminManagementPage() {
         updateData.password = formData.password;
       }
 
-      const response = await fetch("/API/admins/update", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admins/${selectedAdmin.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(updateData),
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Admin updated successfully");
       setEditDialogOpen(false);
@@ -271,14 +277,14 @@ export default function AdminManagementPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/API/admins/delete", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admins/${selectedAdmin.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedAdmin.id }),
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
       toast.success("Admin deleted successfully");
       setDeleteDialogOpen(false);

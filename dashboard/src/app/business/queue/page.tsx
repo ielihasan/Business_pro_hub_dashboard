@@ -592,8 +592,11 @@ export default function QueueManagementPage() {
   /* ── Fetch queue types */
   const fetchQueueTypes = useCallback(async (businessId: string) => {
     try {
-      const res = await fetch(`/API/queue-types?business_id=${businessId}`);
-      if (res.ok) { const j = await res.json(); setQueueTypes(j.data ?? []); }
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types?business_id=${businessId}`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      if (res.ok) { const j = await res.json().catch(() => ({})); setQueueTypes(j.data ?? []); }
     } catch (err) { console.error("Error fetching queue types:", err); }
   }, []);
 
@@ -602,9 +605,22 @@ export default function QueueManagementPage() {
     if (!business?.id) return;
     try {
       setRefreshing(true);
-      const res = await fetch(`/API/queue?business_id=${business.id}&status=all`);
-      const data = await res.json();
-      if (res.ok) { setQueueEntries(data.data || []); setStats(data.stats); }
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue?business_id=${business.id}&status=all`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const resp = await res.json().catch(() => ({}));
+      const inner = resp.data || {};
+      if (res.ok) {
+        // inner.data = List<Queue> entities (DB statuses); map in_progress/called → serving
+        const rawEntries: any[] = inner.data || [];
+        const mapped = rawEntries.map((e: any) => ({
+          ...e,
+          status: e.status === "in_progress" || e.status === "called" ? "serving" : e.status,
+        }));
+        setQueueEntries(mapped);
+        setStats(inner.stats);
+      }
     } catch (err) { console.error("Fetch queue error:", err); }
     finally { setLoading(false); setRefreshing(false); }
   }, [business?.id]);
@@ -627,10 +643,13 @@ export default function QueueManagementPage() {
     setSavingQueueType(true);
     try {
       const isEditing = !!editingQueueType;
-      const url = isEditing ? `/API/queue-types/${editingQueueType!.id}` : "/API/queue-types";
+      const url = isEditing
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${editingQueueType!.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types`;
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(url, {
         method: isEditing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({ ...newQueueType, business_id: business.id }),
       });
       const json = await res.json();
@@ -648,8 +667,12 @@ export default function QueueManagementPage() {
     if (!confirm("Delete this queue type?")) return;
     if (!business?.id) return;
     try {
-      const res = await fetch(`/API/queue-types/${id}`, { method: "DELETE" });
-      const json = await res.json();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error);
       toast.success("Queue type deleted!");
       await fetchQueueTypes(business.id);
@@ -683,9 +706,10 @@ export default function QueueManagementPage() {
     if (!business?.id) { toast.error("Business not loaded"); return; }
     try {
       setAddingCustomer(true);
-      const res = await fetch("/API/queue", {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({
           business_id: business.id,
           customer_name: newCustomer.customer_name,
@@ -696,7 +720,7 @@ export default function QueueManagementPage() {
           priority: newCustomer.priority,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error);
       const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
       toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
@@ -712,12 +736,13 @@ export default function QueueManagementPage() {
     entry: QueueEntry, newStatus: "serving" | "completed" | "cancelled"
   ) => {
     try {
-      const res = await fetch(`/API/queue/${entry.id}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${entry.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
       toast.success(`Status → ${newStatus}`);
       // optimistic update
       setQueueEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
@@ -759,12 +784,13 @@ export default function QueueManagementPage() {
           ? editForm.queue_type_id
           : null,
       };
-      const res = await fetch(`/API/queue/${editingEntry.id}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${editingEntry.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
       toast.success("Queue entry updated!");
       setEditDialogOpen(false);
       setEditingEntry(null);
@@ -783,8 +809,12 @@ export default function QueueManagementPage() {
   const handleDeleteEntry = async () => {
     if (!deletingEntry) return;
     try {
-      const res = await fetch(`/API/queue/${deletingEntry.id}`, { method: "DELETE" });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${deletingEntry.id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${session?.access_token}` },
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
       toast.success(`Removed ${deletingEntry.customer_name} from queue`);
       // optimistic remove
       setQueueEntries(prev => prev.filter(e => e.id !== deletingEntry.id));
@@ -811,9 +841,10 @@ export default function QueueManagementPage() {
     try {
       const qt = queueTypes.find(q => q.id === queueTypeId);
       if (!qt) return;
-      const res = await fetch(`/API/queue-types/${queueTypeId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${queueTypeId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({
           name: qt.name,
           description: qt.description,
@@ -823,7 +854,7 @@ export default function QueueManagementPage() {
           is_active: newValue,
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error);
       toast.success(`${qt.name} queue ${newValue ? "opened" : "closed"}`);
     } catch (err: any) {

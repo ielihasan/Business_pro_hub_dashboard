@@ -149,13 +149,13 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch("/API/settings/profile", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error);
 
       setProfile(data.data);
@@ -176,13 +176,13 @@ export default function AdminSettingsPage() {
       const token = await getAuthToken();
       if (!token) return;
 
-      const res = await fetch("/API/settings/system", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/system`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.data) {
         setSystemSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...data.data });
       }
@@ -202,7 +202,7 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch("/API/settings/profile", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +211,7 @@ export default function AdminSettingsPage() {
         body: JSON.stringify(profileForm),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error);
 
       setProfile(data.data);
@@ -250,7 +250,7 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch("/API/settings/password", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/password`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -262,7 +262,7 @@ export default function AdminSettingsPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error);
 
       // Clear password form
@@ -288,7 +288,7 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch("/API/settings/system", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/system`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -297,7 +297,7 @@ export default function AdminSettingsPage() {
         body: JSON.stringify(systemSettings),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error);
 
       toast.success("System settings updated successfully");
