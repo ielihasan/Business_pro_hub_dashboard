@@ -62,24 +62,33 @@ public class PricingController {
         subRepo.save(sub);
 
         // Record payment
+        String paymentMethod = body.get("payment_method") != null
+                ? body.get("payment_method").toString() : "card";
+        String planName = body.get("plan_name") != null
+                ? body.get("plan_name").toString() : sub.getPlanId();
+
         Payment payment = new Payment();
         payment.setBusinessId(businessId);
         payment.setPlanId(sub.getPlanId());
         payment.setAmount(planPrice);
         payment.setCurrency("PKR");
         payment.setStatus("completed");
-        payment.setDescription("Subscription: " + sub.getPlanId());
+        payment.setPaymentMethod(paymentMethod);
+        payment.setDescription(planName + " Plan - Monthly Subscription");
+        payment.setTransactionId("TXN-" + System.currentTimeMillis() + "-" + Integer.toHexString((int)(Math.random()*0xFFFFF)).toUpperCase());
         payment.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         paymentRepo.save(payment);
 
         return ResponseEntity.ok(ApiResponse.success(sub, "Subscribed successfully"));
     }
 
-    // DELETE /api/pricing?subscription_id=
+    // DELETE /api/pricing?business_id=
     @DeleteMapping
-    public ResponseEntity<ApiResponse<?>> cancel(@RequestParam("subscription_id") String id) {
-        Subscription sub = subRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
+    public ResponseEntity<ApiResponse<?>> cancel(@RequestParam("business_id") String businessId) {
+        Subscription sub = subRepo.findByBusinessId(businessId).stream()
+                .filter(s -> "active".equals(s.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("No active subscription found"));
         sub.setStatus("cancelled");
         sub.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         subRepo.save(sub);
