@@ -11,6 +11,9 @@ build/
 landing-page/.next/
 dashboard/.next/
 
+# Maven / Spring Boot build artifacts
+backend/target/
+
 # Environment files
 .env
 .env.local
