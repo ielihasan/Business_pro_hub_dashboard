@@ -936,6 +936,49 @@ export default function QueueManagementPage() {
         </div>
       </div>
 
+      {/* QR card */}
+      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <QrCode className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Generate QR Code</CardTitle>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Each queue type gets its own QR — customers scan and join instantly.
+                </p>
+              </div>
+            </div>
+            <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="hidden sm:flex">
+              {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
+              Generate QR
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+              <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
+              <div><p className="font-semibold text-gray-900">Easy Join</p><p className="text-sm text-gray-500">Customers scan &amp; join instantly</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+              <div className="p-2 bg-green-100 rounded-lg"><Clock className="h-5 w-5 text-green-600" /></div>
+              <div><p className="font-semibold text-gray-900">Real-time Updates</p><p className="text-sm text-gray-500">Live queue position tracking</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+              <div className="p-2 bg-blue-100 rounded-lg"><Share2 className="h-5 w-5 text-blue-600" /></div>
+              <div><p className="font-semibold text-gray-900">Per-Queue QR</p><p className="text-sm text-gray-500">Separate QR per queue type</p></div>
+            </div>
+          </div>
+          <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="sm:hidden mt-4 w-full">
+            {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
+            Generate QR Code
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Tabs */}
       <Tabs defaultValue="queue" className="space-y-6">
         <TabsList>
@@ -1109,49 +1152,6 @@ export default function QueueManagementPage() {
 
         {/* ══ QUEUE TYPES TAB ══ */}
         <TabsContent value="queue-types" className="space-y-6">
-
-          {/* QR card */}
-          <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <QrCode className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Generate QR Code</CardTitle>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      Each queue type gets its own QR — customers scan and join instantly.
-                    </p>
-                  </div>
-                </div>
-                <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="hidden sm:flex">
-                  {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
-                  Generate QR
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-blue-100 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
-                  <div><p className="font-semibold text-gray-900">Easy Join</p><p className="text-sm text-gray-500">Customers scan &amp; join instantly</p></div>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-green-100 rounded-lg"><Clock className="h-5 w-5 text-green-600" /></div>
-                  <div><p className="font-semibold text-gray-900">Real-time Updates</p><p className="text-sm text-gray-500">Live queue position tracking</p></div>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
-                  <div className="p-2 bg-blue-100 rounded-lg"><Share2 className="h-5 w-5 text-blue-600" /></div>
-                  <div><p className="font-semibold text-gray-900">Per-Queue QR</p><p className="text-sm text-gray-500">Separate QR per queue type</p></div>
-                </div>
-              </div>
-              <Button size="lg" onClick={openQrPicker} disabled={loadingQr} className="sm:hidden mt-4 w-full">
-                {loadingQr ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <QrCode className="h-5 w-5 mr-2" />}
-                Generate QR Code
-              </Button>
-            </CardContent>
-          </Card>
 
           {/* Queue types grid */}
           <Card>
