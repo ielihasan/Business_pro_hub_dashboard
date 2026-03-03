@@ -422,6 +422,8 @@ export default function PricingPage() {
         body: JSON.stringify({
           business_id: businessId,
           plan_id: selectedPlan.id,
+          plan_name: selectedPlan.name,
+          plan_price: getFinalPrice(),
           payment_method: paymentMethod,
         }),
       });

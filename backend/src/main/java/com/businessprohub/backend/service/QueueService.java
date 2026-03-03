@@ -85,7 +85,8 @@ public class QueueService {
         entry.setPosition(position);
 
         Queue saved = queueRepo.save(entry);
-        return buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position);
+        Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position);
+        return Map.of("data", data, "message", "Customer added to queue");
     }
 
     /** POST /api/queue/join — QR / mobile app join */

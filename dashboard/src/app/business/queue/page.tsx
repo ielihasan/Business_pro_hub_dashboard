@@ -934,11 +934,6 @@ export default function QueueManagementPage() {
           <h1 className="text-3xl font-bold text-gray-900">Queue Management</h1>
           <p className="mt-1 text-gray-500">Manage your customer queues in real-time</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => openAddCustomer()}>
-            <UserPlus className="h-4 w-4 mr-2" />Add Customer
-          </Button>
-        </div>
       </div>
 
       {/* Tabs */}
