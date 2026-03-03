@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -46,6 +47,12 @@ public class Queue {
 
     @Column(name = "status")
     private String status; // "waiting" | "in_progress" | "called" | "completed" | "cancelled" | "no_show"
+
+    @Column(name = "quantity")
+    private Integer quantity; // number of items/persons — from customer
+
+    @Column(name = "estimated_price", precision = 10, scale = 2)
+    private BigDecimal estimatedPrice; // price * quantity
 
     @Column(name = "joined_at")
     private OffsetDateTime joinedAt;

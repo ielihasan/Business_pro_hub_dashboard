@@ -29,6 +29,9 @@ import {
   Calendar,
   Hash,
   Layers,
+  Minus,
+  Plus,
+  Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
@@ -48,6 +51,9 @@ interface QueueTicket {
   queue_type_name?: string;
   created_at?: string;
   display_number?: string;
+  quantity?: number;
+  estimated_price?: number;
+  unit_price?: number;
 }
 
 interface QueueInfo {
@@ -69,6 +75,7 @@ interface QueueType {
   estimated_service_time: number;
   max_capacity: number;
   is_active: boolean;
+  price?: number;
 }
 
 export default function JoinQueuePage({
@@ -98,6 +105,7 @@ export default function JoinQueuePage({
     customer_phone: "",
     customer_email: "",
   });
+  const [quantity, setQuantity] = useState(1);
 
   // Logged-in app user (from Supabase auth)
   const [appUser, setAppUser] = useState<{
@@ -334,6 +342,7 @@ export default function JoinQueuePage({
           ...formData,
           queue_type_id: selectedQueueType || undefined,
           queue_type_name: selectedType?.name || undefined,
+          quantity,
           // Pass user_id if this is a logged-in app user
           user_id: appUser?.id || undefined,
         }),
@@ -540,6 +549,19 @@ export default function JoinQueuePage({
                   <span className="text-gray-600">Joined at {formatTime(ticket.created_at)}</span>
                 </div>
               )}
+              {(ticket.estimated_price ?? 0) > 0 && (
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <Banknote className="h-4 w-4 text-emerald-500" />
+                    <span className="text-gray-600">
+                      Qty: {ticket.quantity ?? 1} × Rs.{Number(ticket.unit_price ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="font-bold text-emerald-700">
+                    Rs.{Number(ticket.estimated_price).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Instructions */}
@@ -651,6 +673,47 @@ export default function JoinQueuePage({
               style={{ borderColor: selectedTypeDetails.color, backgroundColor: selectedTypeDetails.color + "10" }}
             >
               <p className="text-sm text-gray-600">{selectedTypeDetails.description}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Price + Quantity — shown when selected queue type has a price */}
+        {selectedTypeDetails && (selectedTypeDetails.price ?? 0) > 0 && (
+          <div className="px-6 pb-4">
+            <div className="p-4 rounded-xl border bg-emerald-50 border-emerald-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Banknote className="h-5 w-5 text-emerald-600" />
+                  <span className="font-semibold text-emerald-800">
+                    Rs. {Number(selectedTypeDetails.price).toLocaleString()} / item
+                  </span>
+                </div>
+                <span className="text-xs text-emerald-600">Price per item</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 font-medium">Quantity</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  >
+                    <Minus className="h-4 w-4 text-gray-600" />
+                  </button>
+                  <span className="w-8 text-center font-bold text-lg">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(q => q + 1)}
+                    className="w-8 h-8 rounded-full border border-emerald-500 bg-emerald-500 flex items-center justify-center hover:bg-emerald-600 transition-colors"
+                  >
+                    <Plus className="h-4 w-4 text-white" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-emerald-200">
+                <span className="text-sm font-semibold text-gray-700">Estimated Total</span>
+                <span className="text-lg font-bold text-emerald-700">
+                  Rs. {(Number(selectedTypeDetails.price) * quantity).toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
         )}

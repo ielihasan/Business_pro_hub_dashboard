@@ -85,6 +85,7 @@ import {
   Layers,
   ChevronRight,
   ArrowLeft,
+  Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
@@ -126,6 +127,7 @@ interface QueueStats {
   completed: number;
   cancelled: number;
   avgWaitTime: number;
+  estimated_revenue?: number;
 }
 
 interface BusinessData {
@@ -143,6 +145,7 @@ interface QueueType {
   estimated_service_time: number;
   max_capacity: number;
   is_active: boolean;
+  price?: number;
 }
 
 /* ─── Pure helpers (outside component) ──────────────────────── */
@@ -520,7 +523,7 @@ export default function QueueManagementPage() {
   const [business, setBusiness] = useState<BusinessData | null>(null);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const [stats, setStats] = useState<QueueStats>({
-    total: 0, waiting: 0, serving: 0, completed: 0, cancelled: 0, avgWaitTime: 0,
+    total: 0, waiting: 0, serving: 0, completed: 0, cancelled: 0, avgWaitTime: 0, estimated_revenue: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -571,7 +574,7 @@ export default function QueueManagementPage() {
   const [savingQueueType, setSavingQueueType] = useState(false);
   const [newQueueType, setNewQueueType] = useState({
     name: "", description: "", color: "#3B82F6",
-    estimated_service_time: 5, max_capacity: 50,
+    estimated_service_time: 5, max_capacity: 50, price: 0,
   });
 
   /* ── Fetch business */
@@ -682,13 +685,13 @@ export default function QueueManagementPage() {
   const handleEditQueueType = (qt: QueueType) => {
     setEditingQueueType(qt);
     setNewQueueType({ name: qt.name, description: qt.description || "", color: qt.color,
-      estimated_service_time: qt.estimated_service_time, max_capacity: qt.max_capacity });
+      estimated_service_time: qt.estimated_service_time, max_capacity: qt.max_capacity, price: qt.price ?? 0 });
     setQueueTypeDialogOpen(true);
   };
 
   const resetQueueTypeForm = () => {
     setEditingQueueType(null);
-    setNewQueueType({ name: "", description: "", color: "#3B82F6", estimated_service_time: 5, max_capacity: 50 });
+    setNewQueueType({ name: "", description: "", color: "#3B82F6", estimated_service_time: 5, max_capacity: 50, price: 0 });
   };
 
   /* ── Add customer */
@@ -1079,6 +1082,19 @@ export default function QueueManagementPage() {
                     </div>
                   </CardContent>
                 </Card>
+                <Card className="border-emerald-200 bg-emerald-50 col-span-2 sm:col-span-1">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-emerald-700">Est. Revenue</p>
+                        <p className="text-2xl font-bold text-emerald-800">
+                          Rs.{Number(stats.estimated_revenue ?? 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <Banknote className="h-6 w-6 text-emerald-500" />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Filter + refresh */}
@@ -1211,6 +1227,11 @@ export default function QueueManagementPage() {
                         <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min</span>
                           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />Max {qt.max_capacity}</span>
+                          {(qt.price ?? 0) > 0 && (
+                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                              <Banknote className="h-3.5 w-3.5" />Rs.{Number(qt.price).toLocaleString()}
+                            </span>
+                          )}
                           <span className="text-gray-600 font-medium">{waiting} waiting</span>
                           {serving > 0 && <span className="text-blue-600 font-medium">{serving} serving</span>}
                         </div>
@@ -1503,6 +1524,16 @@ export default function QueueManagementPage() {
               <Input type="number" min={1} value={newQueueType.max_capacity}
                 onChange={e => setNewQueueType(p => ({ ...p, max_capacity: parseInt(e.target.value) || 50 }))} />
               <p className="text-xs text-gray-400">Maximum customers allowed in this queue at once</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Price per Item (Rs.)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rs.</span>
+                <Input type="number" min={0} step={0.01} value={newQueueType.price}
+                  onChange={e => setNewQueueType(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
+                  className="pl-10" placeholder="0.00" />
+              </div>
+              <p className="text-xs text-gray-400">Charge per customer/item — used to estimate queue revenue</p>
             </div>
           </div>
 

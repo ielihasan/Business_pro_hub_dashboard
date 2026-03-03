@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -25,6 +26,9 @@ public class ServiceEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description; // JSON blob: {label, color, max_capacity, is_queue_type, estimated_service_time}
+
+    @Column(name = "price", precision = 10, scale = 2)
+    private BigDecimal price;
 
     @Column(name = "is_active")
     private Boolean isActive;

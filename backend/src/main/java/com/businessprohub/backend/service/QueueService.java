@@ -3,13 +3,16 @@ package com.businessprohub.backend.service;
 import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.entity.Business;
 import com.businessprohub.backend.entity.Queue;
+import com.businessprohub.backend.entity.ServiceEntity;
 import com.businessprohub.backend.exception.BadRequestException;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AppUserRepository;
 import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.repository.QueueRepository;
+import com.businessprohub.backend.repository.ServiceEntityRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -20,13 +23,16 @@ public class QueueService {
     private final QueueRepository queueRepo;
     private final BusinessRepository businessRepo;
     private final AppUserRepository appUserRepo;
+    private final ServiceEntityRepository serviceRepo;
 
     public QueueService(QueueRepository queueRepo,
                         BusinessRepository businessRepo,
-                        AppUserRepository appUserRepo) {
+                        AppUserRepository appUserRepo,
+                        ServiceEntityRepository serviceRepo) {
         this.queueRepo = queueRepo;
         this.businessRepo = businessRepo;
         this.appUserRepo = appUserRepo;
+        this.serviceRepo = serviceRepo;
     }
 
     /** GET /api/queue?business_id=&status=&date= */
@@ -44,15 +50,20 @@ public class QueueService {
         long waiting = entries.stream().filter(q -> "waiting".equals(q.getStatus())).count();
         long serving = entries.stream().filter(q -> List.of("in_progress", "called").contains(q.getStatus())).count();
         long completed = entries.stream().filter(q -> "completed".equals(q.getStatus())).count();
+        BigDecimal estimatedRevenue = entries.stream()
+                .map(q -> q.getEstimatedPrice() != null ? q.getEstimatedPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total", entries.size());
+        stats.put("waiting", waiting);
+        stats.put("serving", serving);
+        stats.put("completed", completed);
+        stats.put("estimated_revenue", estimatedRevenue);
 
         Map<String, Object> result = new HashMap<>();
         result.put("data", entries);
-        result.put("stats", Map.of(
-                "total", entries.size(),
-                "waiting", waiting,
-                "serving", serving,
-                "completed", completed
-        ));
+        result.put("stats", stats);
         return result;
     }
 
@@ -63,9 +74,14 @@ public class QueueService {
         String customerPhone = (String) body.get("customer_phone");
         String queueTypeId = (String) body.get("queue_type_id");
         String queueTypeName = (String) body.get("queue_type_name");
+        int quantity = body.get("quantity") != null ? Integer.parseInt(body.get("quantity").toString()) : 1;
 
         Business business = businessRepo.findByIdAndIsActive(businessId, true)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found or inactive"));
+
+        // Look up price from service/queue-type
+        BigDecimal unitPrice = resolvePrice(queueTypeId);
+        BigDecimal estimatedPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
         Queue entry = new Queue();
         entry.setBusinessId(businessId);
@@ -76,6 +92,8 @@ public class QueueService {
         entry.setNotes(buildNotes(queueTypeName, (String) body.get("notes")));
         entry.setPriority("normal");
         entry.setStatus("waiting");
+        entry.setQuantity(quantity);
+        entry.setEstimatedPrice(estimatedPrice);
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         entry.setJoinedAt(now);
@@ -95,6 +113,7 @@ public class QueueService {
         String userId = (String) body.get("user_id");
         String queueTypeId = (String) body.get("queue_type_id");
         String queueTypeName = (String) body.get("queue_type_name");
+        int quantity = body.get("quantity") != null ? Integer.parseInt(body.get("quantity").toString()) : 1;
 
         Business business = businessRepo.findByIdAndIsActive(businessId, true)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found or is inactive"));
@@ -151,6 +170,8 @@ public class QueueService {
         entry.setPriority("normal");
         entry.setPosition(position);
         entry.setStatus("waiting");
+        entry.setQuantity(quantity);
+        entry.setEstimatedPrice(resolvePrice(queueTypeId).multiply(BigDecimal.valueOf(quantity)));
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         entry.setJoinedAt(now);
         entry.setCreatedAt(now);
@@ -318,7 +339,18 @@ public class QueueService {
         data.put("queue_type_name", queueTypeName);
         data.put("customer_name", entry.getCustomerName());
         data.put("customer_phone", entry.getCustomerPhone());
+        data.put("quantity", entry.getQuantity() != null ? entry.getQuantity() : 1);
+        data.put("estimated_price", entry.getEstimatedPrice() != null ? entry.getEstimatedPrice() : BigDecimal.ZERO);
+        data.put("unit_price", resolvePrice(queueTypeId));
         return data;
+    }
+
+    /** Look up the unit price for a queue type (service). Returns ZERO if not found or no price. */
+    private BigDecimal resolvePrice(String queueTypeId) {
+        if (queueTypeId == null || queueTypeId.isBlank()) return BigDecimal.ZERO;
+        return serviceRepo.findById(queueTypeId)
+                .map(s -> s.getPrice() != null ? s.getPrice() : BigDecimal.ZERO)
+                .orElse(BigDecimal.ZERO);
     }
 
     private OffsetDateTime todayStart(String date) {

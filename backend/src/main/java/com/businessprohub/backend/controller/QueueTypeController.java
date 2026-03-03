@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -53,6 +54,10 @@ public class QueueTypeController {
             svc.setDescription(objectMapper.writeValueAsString(desc));
         } catch (Exception ignored) {}
 
+        if (body.get("price") != null) {
+            svc.setPrice(new BigDecimal(body.get("price").toString()));
+        }
+
         serviceRepo.save(svc);
         return ResponseEntity.ok(ApiResponse.success(toDto(svc), "Queue type created"));
     }
@@ -66,6 +71,7 @@ public class QueueTypeController {
                 .orElseThrow(() -> new ResourceNotFoundException("Queue type not found"));
 
         if (body.containsKey("name")) svc.setName((String) body.get("name"));
+        if (body.get("price") != null) svc.setPrice(new BigDecimal(body.get("price").toString()));
         svc.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
 
         // Merge description JSON
@@ -97,6 +103,7 @@ public class QueueTypeController {
         dto.put("business_id", svc.getBusinessId());
         dto.put("name", svc.getName());
         dto.put("is_active", svc.getIsActive());
+        dto.put("price", svc.getPrice() != null ? svc.getPrice() : BigDecimal.ZERO);
         try {
             if (svc.getDescription() != null) {
                 Map<?, ?> desc = objectMapper.readValue(svc.getDescription(), Map.class);
