@@ -7,4 +7,4 @@ set -a
 source .env
 set +a
 export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot"
-exec /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn spring-boot:run
+exec /c/maven/apache-maven-3.9.6/bin/mvn spring-boot:run
