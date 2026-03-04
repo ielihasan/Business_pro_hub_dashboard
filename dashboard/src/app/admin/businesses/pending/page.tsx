@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle, MailCheck, MailX } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle, MailCheck, MailX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface PendingBusiness {
@@ -35,7 +35,7 @@ export default function PendingBusinessesPage() {
   const [businesses, setBusinesses] = useState<PendingBusiness[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBusiness, setSelectedBusiness] = useState<PendingBusiness | null>(null);
-  const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+  const [actionType, setActionType] = useState<"approve" | "reject" | "remove" | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
 
@@ -175,7 +175,33 @@ export default function PendingBusinessesPage() {
     }
   };
 
-  const openDialog = (business: PendingBusiness, type: "approve" | "reject") => {
+  const handleRemove = async () => {
+    if (!selectedBusiness) return;
+    setProcessing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/businesses/application/${selectedBusiness.id}`,
+        {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${session?.access_token}` },
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Failed to remove application");
+      }
+      toast.success(`Application for ${selectedBusiness.business_name || selectedBusiness.full_name} removed`);
+      closeDialog();
+      fetchPendingBusinesses();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to remove application");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const openDialog = (business: PendingBusiness, type: "approve" | "reject" | "remove") => {
     setSelectedBusiness(business);
     setActionType(type);
   };
@@ -318,11 +344,21 @@ export default function PendingBusinessesPage() {
                       </Button>
                     </>
                   ) : (
-                    <div className="flex-1 text-center py-2 px-4 bg-amber-50 border border-amber-200 rounded-md">
-                      <p className="text-sm text-amber-800">
-                        <AlertCircle className="h-4 w-4 inline mr-1" />
-                        Waiting for email verification before approval
-                      </p>
+                    <div className="flex gap-3 flex-1">
+                      <div className="flex-1 text-center py-2 px-4 bg-amber-50 border border-amber-200 rounded-md">
+                        <p className="text-sm text-amber-800">
+                          <AlertCircle className="h-4 w-4 inline mr-1" />
+                          Waiting for email verification
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => openDialog(business, "remove")}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -365,6 +401,48 @@ export default function PendingBusinessesPage() {
             </Button>
             <Button onClick={handleApprove} disabled={processing}>
               {processing ? "Approving..." : "Confirm Approval"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Unverified Application Dialog */}
+      <Dialog open={actionType === "remove"} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Remove Application
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete the application and the associated user account. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBusiness && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Business:</span> {selectedBusiness.business_name || "—"}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Owner:</span> {selectedBusiness.full_name}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Email:</span> {selectedBusiness.email}
+                </p>
+                <p className="text-sm text-amber-700 mt-2">
+                  <AlertCircle className="h-4 w-4 inline mr-1" />
+                  Email has not been verified yet
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog} disabled={processing}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRemove} disabled={processing}>
+              {processing ? "Removing..." : "Remove Application"}
             </Button>
           </DialogFooter>
         </DialogContent>

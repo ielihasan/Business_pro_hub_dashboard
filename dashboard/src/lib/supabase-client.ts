@@ -19,7 +19,7 @@ if (typeof window !== "undefined") {
     if (event === "SIGNED_OUT") {
       const onAuthPage = window.location.pathname.startsWith("/auth/");
       if (!onAuthPage) {
-        window.location.href = "/auth/login";
+        window.location.href = "/auth/v1/login";
       }
     }
   });

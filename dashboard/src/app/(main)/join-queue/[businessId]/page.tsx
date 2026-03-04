@@ -86,6 +86,7 @@ export default function JoinQueuePage({
   const { businessId } = use(params);
   const searchParams = useSearchParams();
   const queueTypeFromUrl = searchParams.get("queue_type");
+  const priceFromUrl = parseFloat(searchParams.get("price") || "0") || 0;
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -129,7 +130,15 @@ export default function JoinQueuePage({
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types?business_id=${businessId}`);
       if (res.ok) {
         const data = await res.json();
-        const types = data.data || [];
+        const types: QueueType[] = data.data || [];
+        // If the URL contains a price param, inject it into the matching queue type
+        // so the price/qty UI is always correct even if the DB has no price set yet
+        if (priceFromUrl > 0 && queueTypeFromUrl) {
+          const idx = types.findIndex((t) => t.id === queueTypeFromUrl);
+          if (idx !== -1 && !(types[idx].price && types[idx].price! > 0)) {
+            types[idx] = { ...types[idx], price: priceFromUrl };
+          }
+        }
         setQueueTypes(types);
 
         // If queue_type was provided in URL, validate it exists

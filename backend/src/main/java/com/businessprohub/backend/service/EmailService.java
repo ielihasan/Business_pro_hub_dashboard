@@ -55,7 +55,7 @@ public class EmailService {
         String html = "<h2>Application Approved!</h2>" +
                 "<p>Congratulations " + businessName + "!</p>" +
                 "<p>Your BusinessHub Pro application has been approved. You can now log in to your dashboard.</p>" +
-                "<a href='" + appUrl + "/login' style='background:#16a34a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;'>Log In</a>";
+                "<a href='" + appUrl + "/auth/v1/login' style='background:#16a34a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;'>Log In to Dashboard</a>";
         sendEmail(to, "Your BusinessHub Pro application is approved", html);
     }
 

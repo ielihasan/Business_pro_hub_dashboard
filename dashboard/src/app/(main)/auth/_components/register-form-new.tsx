@@ -51,19 +51,22 @@ export function RegisterFormNew() {
   const [activeTab, setActiveTab] = useState<"admin" | "business">("business");
   const [businessTypes, setBusinessTypes] = useState<any[]>([]);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [customBusinessType, setCustomBusinessType] = useState("");
 
-  // Load business types on mount
+  // Static business types (business_types table was removed)
   useState(() => {
-    const loadBusinessTypes = async () => {
-      const { data } = await supabase
-        .from("business_types")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-
-      if (data) setBusinessTypes(data);
-    };
-    loadBusinessTypes();
+    setBusinessTypes([
+      { id: "1", name: "Coffee Shop" },
+      { id: "2", name: "Restaurant" },
+      { id: "3", name: "Retail Store" },
+      { id: "4", name: "Clinic / Healthcare" },
+      { id: "5", name: "Salon / Barbershop" },
+      { id: "6", name: "Bank / Finance" },
+      { id: "7", name: "Government Office" },
+      { id: "8", name: "Pharmacy" },
+      { id: "9", name: "Bakery" },
+      { id: "10", name: "Other" },
+    ]);
   });
 
   // Admin Form
@@ -129,6 +132,11 @@ export function RegisterFormNew() {
   const onBusinessSubmit = async (data: z.infer<typeof BusinessOwnerFormSchema>) => {
     setIsLoading(true);
     try {
+      const resolvedType =
+        data.businessType === "Other"
+          ? customBusinessType.trim() || "Other"
+          : data.businessType;
+
       const result = await registerUser({
         email: data.email,
         password: data.password,
@@ -136,7 +144,7 @@ export function RegisterFormNew() {
         role: "business_owner",
         businessData: {
           businessName: data.businessName,
-          businessType: data.businessType,
+          businessType: resolvedType,
           businessAddress: data.businessAddress,
           businessPhone: data.businessPhone,
           businessDescription: data.businessDescription || "",
@@ -278,7 +286,7 @@ export function RegisterFormNew() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={(val) => { field.onChange(val); if (val !== "Other") setCustomBusinessType(""); }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select business type" />
@@ -292,6 +300,14 @@ export function RegisterFormNew() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {field.value === "Other" && (
+                    <Input
+                      placeholder="Enter your business type"
+                      value={customBusinessType}
+                      onChange={(e) => setCustomBusinessType(e.target.value)}
+                      className="mt-2"
+                    />
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

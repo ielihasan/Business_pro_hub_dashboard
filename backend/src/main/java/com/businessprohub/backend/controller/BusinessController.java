@@ -8,6 +8,7 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AdminRepository;
 import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.repository.BusinessRepository;
+import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,15 +27,18 @@ public class BusinessController {
     private final AdminRepository adminRepo;
     private final BusinessApplicationRepository applicationRepo;
     private final SupabaseAuthAdminService authAdmin;
+    private final EmailService emailService;
 
     public BusinessController(BusinessRepository businessRepo,
                                AdminRepository adminRepo,
                                BusinessApplicationRepository applicationRepo,
-                               SupabaseAuthAdminService authAdmin) {
+                               SupabaseAuthAdminService authAdmin,
+                               EmailService emailService) {
         this.businessRepo = businessRepo;
         this.adminRepo = adminRepo;
         this.applicationRepo = applicationRepo;
         this.authAdmin = authAdmin;
+        this.emailService = emailService;
     }
 
     // GET /api/businesses
@@ -132,24 +136,27 @@ public class BusinessController {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         boolean isBusinessOwner = !"Admin".equals(app.getBusinessType());
 
-        // Create admins row for the existing auth user
-        Admin admin = new Admin();
+        // Upsert admins row — update existing row if already present, else insert
+        String role = isBusinessOwner ? "business_owner" : "admin";
+        Admin admin = adminRepo.findByIdAndRole(app.getUserId(), role)
+                .orElseGet(Admin::new);
         admin.setId(app.getUserId());
         admin.setFullName(app.getFullName());
         admin.setEmail(app.getEmail());
-        admin.setRole(isBusinessOwner ? "business_owner" : "admin");
+        admin.setRole(role);
         admin.setIsApproved(true);
         admin.setBusinessName(isBusinessOwner ? app.getBusinessName() : null);
         admin.setBusinessType(isBusinessOwner ? app.getBusinessType() : null);
         admin.setBusinessPhone(isBusinessOwner ? app.getBusinessPhone() : null);
         admin.setBusinessAddress(isBusinessOwner ? app.getBusinessAddress() : null);
         admin.setBusinessDescription(isBusinessOwner ? app.getBusinessDescription() : null);
-        admin.setCreatedAt(now);
+        if (admin.getCreatedAt() == null) admin.setCreatedAt(now);
         adminRepo.save(admin);
 
         if (isBusinessOwner) {
-            // Create businesses row
-            Business business = new Business();
+            // Upsert businesses row — update if trigger already created it, else insert
+            Business business = businessRepo.findById(app.getUserId())
+                    .orElseGet(Business::new);
             business.setId(app.getUserId());
             business.setFullName(app.getFullName());
             business.setEmail(app.getEmail());
@@ -161,7 +168,7 @@ public class BusinessController {
             business.setIsActive(true);
             business.setApprovedAt(now);
             business.setApprovedBy(approvedBy);
-            business.setCreatedAt(now);
+            if (business.getCreatedAt() == null) business.setCreatedAt(now);
             businessRepo.save(business);
         }
 
@@ -170,7 +177,32 @@ public class BusinessController {
         app.setUpdatedAt(now);
         applicationRepo.save(app);
 
+        // Send approval email to the applicant
+        try {
+            emailService.sendApprovalEmail(app.getEmail(), app.getBusinessName() != null ? app.getBusinessName() : app.getFullName());
+        } catch (Exception e) {
+            // Log but don't fail the approval if email sending fails
+            System.err.println("Warning: failed to send approval email to " + app.getEmail() + ": " + e.getMessage());
+        }
+
         return ResponseEntity.ok(ApiResponse.success(null, "Business approved successfully"));
+    }
+
+    // DELETE /api/businesses/application/{applicationId} — remove a pre-approval (unverified) application
+    @DeleteMapping("/application/{applicationId}")
+    public ResponseEntity<ApiResponse<?>> deleteApplication(@PathVariable String applicationId) {
+        BusinessApplication app = applicationRepo.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
+        // Delete auth user if one was created (may not exist if registration never completed)
+        if (app.getUserId() != null) {
+            try { authAdmin.deleteUser(app.getUserId()); } catch (Exception ignored) {}
+            // Also clean up any stale admins row created during registration
+            adminRepo.findByIdAndRole(app.getUserId(), "business_owner").ifPresent(adminRepo::delete);
+        }
+
+        applicationRepo.delete(app);
+        return ResponseEntity.ok(ApiResponse.success(null, "Application removed successfully"));
     }
 
     // DELETE /api/businesses/{id}

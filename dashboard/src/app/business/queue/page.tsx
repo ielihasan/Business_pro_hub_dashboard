@@ -870,10 +870,12 @@ export default function QueueManagementPage() {
   }, [queueTypes]);
 
   /* ── QR helpers */
-  const buildJoinUrl = (queueTypeId?: string) => {
+  const buildJoinUrl = (queueTypeId?: string, price?: number) => {
     const bId = business?.id || "demo-business";
     const base = `${window.location.origin}/join-queue/${bId}`;
-    return queueTypeId ? `${base}?queue_type=${queueTypeId}` : base;
+    if (!queueTypeId) return base;
+    const priceParam = price && price > 0 ? `&price=${price}` : "";
+    return `${base}?queue_type=${queueTypeId}${priceParam}`;
   };
 
   const generateQrCodeClientSide = async (url: string) => {
@@ -890,16 +892,40 @@ export default function QueueManagementPage() {
   const handleGenerateQrCode = useCallback(async (queueTypeId?: string) => {
     setLoadingQr(true);
     setSelectedQueueTypeForQr(queueTypeId || "all");
-    const joinUrl = buildJoinUrl(queueTypeId);
+    const qt = queueTypes.find(q => q.id === queueTypeId);
+    const joinUrl = buildJoinUrl(queueTypeId, qt?.price);
     try {
       setQrCode(await generateQrCodeClientSide(joinUrl));
       setQrJoinUrl(joinUrl);
     } catch (e) { console.error(e); }
     finally { setQrDialogOpen(true); setLoadingQr(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [business?.id]);
+  }, [business?.id, queueTypes]);
 
-  const copyJoinUrl = () => { navigator.clipboard.writeText(qrJoinUrl); toast.success("Link copied!"); };
+  const copyJoinUrl = () => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(qrJoinUrl).then(() => toast.success("Link copied!")).catch(() => fallbackCopy(qrJoinUrl));
+    } else {
+      fallbackCopy(qrJoinUrl);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand("copy");
+      toast.success("Link copied!");
+    } catch {
+      toast.error("Copy failed — please copy the link manually.");
+    }
+    document.body.removeChild(ta);
+  };
 
   const downloadQrCode = () => {
     if (!qrCode) return;
