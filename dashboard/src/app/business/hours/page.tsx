@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DayHours {
   day_of_week: number;
@@ -198,7 +199,7 @@ export default function BusinessHoursPage() {
 
       setUseMockData(false);
     } catch (error: any) {
-      console.error("Fetch hours error:", error);
+      console.warn("Business hours API unavailable, using mock data");
       setUseMockData(true);
     } finally {
       setLoading(false);
@@ -555,8 +556,22 @@ export default function BusinessHoursPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-3">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-6 w-10 rounded-full" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-24 rounded" />
+                    <Skeleton className="h-4 w-6" />
+                    <Skeleton className="h-8 w-24 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-4">

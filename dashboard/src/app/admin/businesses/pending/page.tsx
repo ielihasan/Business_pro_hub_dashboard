@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle, MailCheck, MailX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PendingBusiness {
   id: string;
@@ -65,11 +66,21 @@ export default function PendingBusinessesPage() {
 
   const handleApprove = async () => {
     if (!selectedBusiness) return;
-    setProcessing(true);
+
+    // Optimistic UI — instantly remove from list, assume success
+    const optimisticSnapshot = businesses;
+    const isAdminApplication = selectedBusiness.business_type === "Admin";
+    const approvalMessage = isAdminApplication
+      ? `Admin ${selectedBusiness.full_name} has been approved!`
+      : `${selectedBusiness.business_name} has been approved!`;
+
+    setBusinesses((prev) => prev.filter((b) => b.id !== selectedBusiness.id));
+    closeDialog();
+    toast.success(approvalMessage);
 
     try {
+      setProcessing(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const isAdminApplication = selectedBusiness.business_type === "Admin";
 
       // Route through Spring Boot backend — bypasses RLS, handles admin + business record creation
       const approveRes = await fetch(
@@ -88,32 +99,20 @@ export default function PendingBusinessesPage() {
         throw new Error(errBody?.error || errBody?.message || "Failed to approve business");
       }
 
-      // Send approval notification email
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: selectedBusiness.email,
-            fullName: selectedBusiness.full_name,
-            businessName: isAdminApplication ? undefined : selectedBusiness.business_name,
-            isApproved: true,
-          }),
-        });
-      } catch (emailError) {
-        console.error("Failed to send approval email:", emailError);
-        // Don't fail the approval if email fails
-      }
-
-      const approvalMessage = isAdminApplication
-        ? `Admin ${selectedBusiness.full_name} has been approved!`
-        : `${selectedBusiness.business_name} has been approved!`;
-
-      toast.success(approvalMessage);
-      setSelectedBusiness(null);
-      setActionType(null);
-      fetchPendingBusinesses();
+      // Send approval notification email (fire-and-forget)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: selectedBusiness.email,
+          fullName: selectedBusiness.full_name,
+          businessName: isAdminApplication ? undefined : selectedBusiness.business_name,
+          isApproved: true,
+        }),
+      }).catch(() => {});
     } catch (error: any) {
+      // Revert optimistic update on failure
+      setBusinesses(optimisticSnapshot);
       console.error("Error approving business:", error);
       toast.error(error.message || "Failed to approve business");
     } finally {
@@ -126,48 +125,48 @@ export default function PendingBusinessesPage() {
       toast.error("Please provide a rejection reason");
       return;
     }
-    setProcessing(true);
+
+    // Optimistic UI — instantly remove from list, assume success
+    const optimisticSnapshot = businesses;
+    const rejectedBusiness = selectedBusiness;
+    const reason = rejectionReason;
+
+    setBusinesses((prev) => prev.filter((b) => b.id !== rejectedBusiness.id));
+    closeDialog();
+    toast.success(`${rejectedBusiness.business_name} has been rejected`);
 
     try {
+      setProcessing(true);
       const { data: { user } } = await supabase.auth.getUser();
 
       const { error } = await supabase
         .from("business_applications")
         .update({
           is_rejected: true,
-          rejection_reason: rejectionReason,
+          rejection_reason: reason,
           rejected_at: new Date().toISOString(),
           rejected_by: user?.id,
         })
-        .eq("id", selectedBusiness.id);
+        .eq("id", rejectedBusiness.id);
 
       if (error) throw error;
 
-      // Send rejection notification email
-      const isAdminApplication = selectedBusiness.business_type === "Admin";
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: selectedBusiness.email,
-            fullName: selectedBusiness.full_name,
-            businessName: isAdminApplication ? undefined : selectedBusiness.business_name,
-            isApproved: false,
-            rejectionReason: rejectionReason,
-          }),
-        });
-      } catch (emailError) {
-        console.error("Failed to send rejection email:", emailError);
-        // Don't fail the rejection if email fails
-      }
-
-      toast.success(`${selectedBusiness.business_name} has been rejected`);
-      setSelectedBusiness(null);
-      setActionType(null);
-      setRejectionReason("");
-      fetchPendingBusinesses();
+      // Send rejection notification email (fire-and-forget)
+      const isAdminApplication = rejectedBusiness.business_type === "Admin";
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/send-approval-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: rejectedBusiness.email,
+          fullName: rejectedBusiness.full_name,
+          businessName: isAdminApplication ? undefined : rejectedBusiness.business_name,
+          isApproved: false,
+          rejectionReason: reason,
+        }),
+      }).catch(() => {});
     } catch (error) {
+      // Revert optimistic update on failure
+      setBusinesses(optimisticSnapshot);
       console.error("Error rejecting business:", error);
       toast.error("Failed to reject business");
     } finally {
@@ -177,11 +176,20 @@ export default function PendingBusinessesPage() {
 
   const handleRemove = async () => {
     if (!selectedBusiness) return;
-    setProcessing(true);
+
+    // Optimistic UI — instantly remove from list, assume success
+    const optimisticSnapshot = businesses;
+    const removedBusiness = selectedBusiness;
+
+    setBusinesses((prev) => prev.filter((b) => b.id !== removedBusiness.id));
+    closeDialog();
+    toast.success(`Application for ${removedBusiness.business_name || removedBusiness.full_name} removed`);
+
     try {
+      setProcessing(true);
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/businesses/application/${selectedBusiness.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/businesses/application/${removedBusiness.id}`,
         {
           method: "DELETE",
           headers: { "Authorization": `Bearer ${session?.access_token}` },
@@ -191,10 +199,9 @@ export default function PendingBusinessesPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to remove application");
       }
-      toast.success(`Application for ${selectedBusiness.business_name || selectedBusiness.full_name} removed`);
-      closeDialog();
-      fetchPendingBusinesses();
     } catch (error: any) {
+      // Revert optimistic update on failure
+      setBusinesses(optimisticSnapshot);
       toast.error(error.message || "Failed to remove application");
     } finally {
       setProcessing(false);
@@ -214,8 +221,49 @@ export default function PendingBusinessesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        {/* Page heading */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-52" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-9 w-24 rounded-full" />
+        </div>
+        {/* Application cards grid — 2 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border p-6 space-y-4">
+              {/* Card header */}
+              <div className="flex items-start justify-between">
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-6 w-44" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-5 w-28 rounded-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+              {/* Info rows */}
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded flex-shrink-0" />
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                ))}
+              </div>
+              {/* Description */}
+              <Skeleton className="h-12 w-full rounded-md" />
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-2">
+                <Skeleton className="h-9 flex-1 rounded-md" />
+                <Skeleton className="h-9 flex-1 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

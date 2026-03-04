@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Building2, Mail, Phone, MapPin } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -83,8 +84,44 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-8">
+        {/* Page heading */}
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-52" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        {/* Form card */}
+        <div className="bg-white rounded-xl border p-6 space-y-6">
+          <Skeleton className="h-6 w-40" />
+          {/* Two-column grid of form fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+          {/* Textarea-style field */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-24 w-full rounded-md" />
+          </div>
+          {/* Save button */}
+          <Skeleton className="h-10 w-32 rounded-md" />
+        </div>
+        {/* Contact info card */}
+        <div className="bg-white rounded-xl border p-6 space-y-4">
+          <Skeleton className="h-6 w-36" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-5 w-5 rounded flex-shrink-0" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

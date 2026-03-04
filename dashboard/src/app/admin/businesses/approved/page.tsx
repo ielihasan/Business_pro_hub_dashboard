@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -502,8 +503,24 @@ export default function ApprovedBusinessesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 border-b last:border-0">
+                  <div className="flex items-center gap-3 min-w-[200px]">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-8" />
+                  <Skeleton className="h-4 w-24 ml-auto" />
+                  <Skeleton className="h-7 w-7" />
+                </div>
+              ))}
             </div>
           ) : businesses.length === 0 ? (
             <div className="text-center py-12">

@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderItem {
   id?: string;
@@ -267,7 +268,7 @@ export default function OrdersPage() {
         loadMockData();
       }
     } catch (error: any) {
-      console.error("Fetch orders error:", error);
+      console.warn("Orders API unavailable, using mock data");
       // Fall back to mock data
       setUseMockData(true);
       loadMockData();
@@ -924,8 +925,18 @@ export default function OrdersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 border-b last:border-0">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-4 w-24 ml-auto" />
+                  <Skeleton className="h-7 w-7" />
+                </div>
+              ))}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="text-center py-12 text-gray-500">

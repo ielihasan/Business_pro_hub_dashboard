@@ -71,6 +71,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CustomerVisit {
   date: string;
@@ -293,7 +294,7 @@ export default function CustomersPage() {
         loadMockData();
       }
     } catch (error: any) {
-      console.error("Fetch customers error:", error);
+      console.warn("Customers API unavailable, using mock data");
       setUseMockData(true);
       loadMockData();
     } finally {
@@ -682,8 +683,30 @@ export default function CustomersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-3 border-b last:border-0">
+                  <div className="flex items-center gap-3 min-w-[160px]">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-12 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="space-y-1 min-w-[140px]">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                  <Skeleton className="h-6 w-8 mx-4" />
+                  <div className="flex gap-1 min-w-[120px]">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-12 rounded-full ml-auto" />
+                  <Skeleton className="h-7 w-7" />
+                </div>
+              ))}
             </div>
           ) : filteredCustomers.length === 0 ? (
             <div className="text-center py-12 text-gray-500">

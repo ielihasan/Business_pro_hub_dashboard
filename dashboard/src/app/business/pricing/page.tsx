@@ -74,12 +74,14 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Plan {
   id: string;
   name: string;
   description: string;
   price: number;
+  originalPrice?: number; // Anchoring Bias — brain sees this first
   currency: string;
   interval: string;
   features: string[];
@@ -89,6 +91,7 @@ interface Plan {
     customers: number;
   };
   popular?: boolean;
+  popularCount?: number; // Social Proof — "+X chose this month"
 }
 
 interface Subscription {
@@ -145,6 +148,7 @@ const mockPlans: Plan[] = [
     name: "Starter",
     description: "For small businesses",
     price: 2999,
+    originalPrice: 4999, // Anchoring Bias
     currency: "PKR",
     interval: "month",
     features: [
@@ -162,12 +166,14 @@ const mockPlans: Plan[] = [
       customers: 500,
     },
     popular: true,
+    popularCount: 847, // Social Proof
   },
   {
     id: "professional",
     name: "Professional",
     description: "For growing businesses",
     price: 5999,
+    originalPrice: 9999, // Anchoring Bias
     currency: "PKR",
     interval: "month",
     features: [
@@ -192,6 +198,7 @@ const mockPlans: Plan[] = [
     name: "Enterprise",
     description: "For large organizations",
     price: 14999,
+    originalPrice: 24999, // Anchoring Bias
     currency: "PKR",
     interval: "month",
     features: [
@@ -317,7 +324,7 @@ export default function PricingPage() {
         if (data.data.payments) setPayments(data.data.payments);
       }
     } catch (error: any) {
-      console.error("Fetch pricing error:", error);
+      console.warn("Pricing API unavailable, using mock data");
     } finally {
       setLoading(false);
     }
@@ -768,8 +775,29 @@ export default function PricingPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          /* Skeleton plan cards — 4 columns matching the real layout */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border p-6 space-y-4">
+                <Skeleton className="h-14 w-14 rounded-full mx-auto" />
+                <Skeleton className="h-5 w-24 mx-auto" />
+                <Skeleton className="h-4 w-32 mx-auto" />
+                <div className="flex flex-col items-center gap-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-9 w-28" />
+                  <Skeleton className="h-6 w-32 rounded-full" />
+                </div>
+                <div className="space-y-2 pt-2">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <div key={j} className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4 rounded flex-shrink-0" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  ))}
+                </div>
+                <Skeleton className="h-10 w-full rounded-md mt-2" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -778,12 +806,16 @@ export default function PricingPage() {
                 key={plan.id}
                 className={cn(
                   "relative transition-all duration-300 hover:shadow-xl",
-                  plan.popular && "border-2 border-primary shadow-lg scale-105",
+                  plan.popular && "border-2 border-primary shadow-lg scale-105 mt-4",
                   plan.id === currentPlan.id && "ring-2 ring-green-500"
                 )}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1">
+                    {/* Loss Aversion — "Don't lose this!" urgency */}
+                    <div className="flex items-center gap-1 bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md whitespace-nowrap">
+                      ⚠️ Don&apos;t lose this deal!
+                    </div>
                     <Badge className="bg-primary text-white shadow-lg">
                       <Star className="h-3 w-3 mr-1" />
                       Most Popular
@@ -798,7 +830,7 @@ export default function PricingPage() {
                     </Badge>
                   </div>
                 )}
-                <CardHeader className="text-center pt-8 pb-4">
+                <CardHeader className="text-center pt-10 pb-4">
                   <div
                     className={cn(
                       "mx-auto p-4 rounded-full mb-3 bg-gradient-to-br text-white",
@@ -809,9 +841,30 @@ export default function PricingPage() {
                   </div>
                   <CardTitle className="text-xl">{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
-                    <span className="text-gray-500">/month</span>
+                  <div className="mt-4 flex flex-col items-center gap-1">
+                    {/* Anchoring Bias — show higher original price first, brain compares automatically */}
+                    {plan.originalPrice && plan.price > 0 && (
+                      <span className="text-sm text-gray-400 line-through">
+                        {formatCurrency(plan.originalPrice)}/month
+                      </span>
+                    )}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
+                      <span className="text-gray-500">/month</span>
+                    </div>
+                    {/* Loss Aversion — frame savings as something to avoid losing */}
+                    {plan.originalPrice && plan.price > 0 && (
+                      <div className="mt-1 inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">
+                        💰 Save {formatCurrency((plan.originalPrice - plan.price) * 12)}/year
+                      </div>
+                    )}
+                    {/* Social Proof — remove decision paralysis */}
+                    {plan.popularCount && (
+                      <div className="flex items-center justify-center gap-1 text-xs text-blue-600 mt-0.5">
+                        <Users className="h-3 w-3" />
+                        +{plan.popularCount} businesses chose this month
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pb-4">
@@ -990,8 +1043,16 @@ export default function PricingPage() {
                       </div>
                     </div>
                     <div className="text-left sm:text-right pl-11 sm:pl-0">
+                      {selectedPlan.originalPrice && selectedPlan.price > 0 && (
+                        <p className="text-sm text-gray-400 line-through">{formatCurrency(selectedPlan.originalPrice)}/mo</p>
+                      )}
                       <p className="text-xl sm:text-2xl font-bold">{formatCurrency(selectedPlan.price)}</p>
                       <p className="text-xs sm:text-sm text-gray-500">per month</p>
+                      {selectedPlan.originalPrice && selectedPlan.price > 0 && (
+                        <p className="text-xs text-green-600 font-medium mt-0.5">
+                          💰 Save {formatCurrency((selectedPlan.originalPrice - selectedPlan.price) * 12)}/year
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

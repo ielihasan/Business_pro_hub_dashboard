@@ -19,6 +19,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface BusinessData {
   id: string;
@@ -86,8 +87,87 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar skeleton — matches the white sidebar with black header */}
+        <aside className="hidden lg:flex flex-col w-64 border-r border-gray-200 bg-white">
+          {/* Black header bar */}
+          <div className="flex items-center h-16 px-6 bg-black">
+            <Skeleton className="h-5 w-5 mr-2 bg-white/20" />
+            <Skeleton className="h-5 w-28 bg-white/20" />
+          </div>
+          {/* Business details row */}
+          <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+          {/* Nav items — 9 links */}
+          <nav className="flex-1 p-4 space-y-1">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full rounded-md" />
+            ))}
+          </nav>
+          {/* Logout */}
+          <div className="p-4 border-t border-gray-200">
+            <Skeleton className="h-9 w-full rounded-md" />
+          </div>
+          {/* Branding */}
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <Skeleton className="h-3 w-36 mx-auto" />
+          </div>
+        </aside>
+
+        {/* Main content skeleton */}
+        <div className="flex-1 flex flex-col">
+          {/* Black top bar */}
+          <header className="h-16 bg-black flex items-center justify-between px-6">
+            <Skeleton className="h-5 w-6 bg-white/20 lg:hidden" />
+            <div className="flex-1" />
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block space-y-1">
+                <Skeleton className="h-3.5 w-28 bg-white/20" />
+                <Skeleton className="h-3 w-36 bg-white/20" />
+              </div>
+              <Skeleton className="w-8 h-8 rounded-full bg-white/20" />
+            </div>
+          </header>
+          {/* Page content area */}
+          <main className="flex-1 p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-9 w-24 rounded-md" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-white rounded-xl border p-6 space-y-4">
+              <Skeleton className="h-6 w-40" />
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
