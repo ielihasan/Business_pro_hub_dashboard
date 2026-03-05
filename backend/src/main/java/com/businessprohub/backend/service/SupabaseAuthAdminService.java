@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -94,5 +95,30 @@ public class SupabaseAuthAdminService {
                 .retrieve()
                 .toBodilessEntity()
                 .block();
+    }
+
+    /**
+     * Find the auth user ID for a given email, or null if not found.
+     * Used to detect orphaned auth users after a failed registration.
+     */
+    @SuppressWarnings("unchecked")
+    public String findUserIdByEmail(String email) {
+        try {
+            Map<?, ?> result = webClient.get()
+                    .uri(supabaseUrl + "/auth/v1/admin/users?filter=email%3D" + email + "&per_page=1")
+                    .header("Authorization", "Bearer " + serviceRoleKey)
+                    .header("apikey", serviceRoleKey)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            if (result == null) return null;
+            List<?> users = (List<?>) result.get("users");
+            if (users != null && !users.isEmpty()) {
+                return (String) ((Map<?, ?>) users.get(0)).get("id");
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

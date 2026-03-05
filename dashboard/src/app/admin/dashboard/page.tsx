@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
       setRecentBusinesses(recentBiz || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.warn("Dashboard API unavailable, backend may be offline");
       setLoading(false);
     }
   };

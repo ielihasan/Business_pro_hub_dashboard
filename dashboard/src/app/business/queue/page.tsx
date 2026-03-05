@@ -905,7 +905,9 @@ export default function QueueManagementPage() {
 
   const copyJoinUrl = () => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(qrJoinUrl).then(() => toast.success("Link copied!")).catch(() => fallbackCopy(qrJoinUrl));
+      navigator.clipboard.writeText(qrJoinUrl)
+        .then(() => toast.success("Link copied!"))
+        .catch(() => fallbackCopy(qrJoinUrl));
     } else {
       fallbackCopy(qrJoinUrl);
     }

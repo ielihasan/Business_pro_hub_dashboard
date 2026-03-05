@@ -170,7 +170,7 @@ export default function AdminManagementPage() {
         }));
       }
     } catch (error: any) {
-      console.error("Error fetching admins:", error);
+      console.warn("Admins API unavailable, backend may be offline");
       toast.error(error.message || "Failed to load admins");
     } finally {
       setLoading(false);

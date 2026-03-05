@@ -167,7 +167,7 @@ export default function AnalyticsPaymentsPage() {
       if (data.error) throw new Error(data.error);
       setStats(data.data?.stats ?? null);
     } catch (error: any) {
-      console.error("Stats error:", error);
+      console.warn("Stats API unavailable, backend may be offline");
       toast.error("Failed to load statistics");
     }
   };
@@ -195,7 +195,7 @@ export default function AnalyticsPaymentsPage() {
       setPayments(Array.isArray(data.data?.payments) ? data.data.payments : []);
       setTotalPages(data.pagination?.totalPages || 1);
     } catch (error: any) {
-      console.error("Payments error:", error);
+      console.warn("Payments API unavailable, backend may be offline");
       setPayments([]);
     } finally {
       setPaymentsLoading(false);
@@ -214,7 +214,7 @@ export default function AnalyticsPaymentsPage() {
       if (data.error) throw new Error(data.error);
       setSubscriptions(Array.isArray(data.data?.subscriptions) ? data.data.subscriptions : []);
     } catch (error: any) {
-      console.error("Subscriptions error:", error);
+      console.warn("Subscriptions API unavailable, backend may be offline");
     }
   };
 

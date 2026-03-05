@@ -58,7 +58,7 @@ export default function PendingBusinessesPage() {
       setBusinesses(data || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching pending businesses:", error);
+      console.warn("Pending businesses API unavailable, backend may be offline");
       toast.error("Failed to load pending businesses");
       setLoading(false);
     }

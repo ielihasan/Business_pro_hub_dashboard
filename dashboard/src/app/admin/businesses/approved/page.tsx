@@ -157,20 +157,19 @@ export default function ApprovedBusinessesPage() {
     fetchBusinesses();
   }, [pagination.page, debouncedSearch, typeFilter]);
 
-  const fetchBusinessTypes = async () => {
-    try {
-      const { data } = await supabase
-        .from("business_types")
-        .select("name")
-        .eq("is_active", true)
-        .order("name");
-
-      if (data) {
-        setBusinessTypes(data.map((t) => t.name));
-      }
-    } catch (error) {
-      console.error("Error fetching business types:", error);
-    }
+  const fetchBusinessTypes = () => {
+    setBusinessTypes([
+      "Coffee Shop",
+      "Restaurant",
+      "Retail Store",
+      "Clinic / Healthcare",
+      "Salon / Barbershop",
+      "Bank / Finance",
+      "Government Office",
+      "Pharmacy",
+      "Bakery",
+      "Other",
+    ]);
   };
 
   const fetchBusinesses = useCallback(
@@ -204,8 +203,11 @@ export default function ApprovedBusinessesPage() {
           }));
         }
       } catch (error: any) {
-        console.error("Error fetching businesses:", error);
-        toast.error(error.message || "Failed to load businesses");
+        console.warn("Businesses API unavailable, backend may be offline");
+        const msg = error instanceof TypeError && error.message === "Failed to fetch"
+          ? "Backend server offline. Start it via start-dev.bat."
+          : error.message || "Failed to load businesses";
+        toast.error(msg);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -271,10 +273,21 @@ export default function ApprovedBusinessesPage() {
     setSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const payload = {
+        full_name: formData.full_name,
+        email: formData.email,
+        password: formData.password,
+        business_name: formData.business_name,
+        business_type: formData.business_type,
+        phone: formData.business_phone,
+        address: formData.business_address,
+        business_description: formData.business_description,
+        subscription_plan: formData.subscription_plan,
+      };
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/businesses`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json().catch(() => ({}));
@@ -285,7 +298,10 @@ export default function ApprovedBusinessesPage() {
       resetForm();
       fetchBusinesses(true);
     } catch (error: any) {
-      toast.error(error.message || "Failed to create business");
+      const msg = error instanceof TypeError && error.message === "Failed to fetch"
+        ? "Cannot reach backend server. Please start the backend (run start-dev.bat) and try again."
+        : error.message || "Failed to create business";
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

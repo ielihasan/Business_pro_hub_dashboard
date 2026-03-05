@@ -55,38 +55,75 @@ public class BusinessController {
         String password = (String) body.get("password");
         String businessName = (String) body.get("business_name");
 
-        // Create auth user
-        Map<?, ?> authUser = authAdmin.createUserWithMeta(email, password,
-                Map.of("role", "business_owner", "business_name", businessName));
-        String userId = (String) authUser.get("id");
+        // Create auth user — if 422, auto-cleanup orphaned auth user from a prior failed attempt and retry
+        Map<?, ?> authUser;
+        String userId;
+        try {
+            authUser = authAdmin.createUserWithMeta(email, password,
+                    Map.of("role", "business_owner", "business_name", businessName));
+            userId = (String) authUser.get("id");
+        } catch (Exception ex) {
+            String msg = ex.getMessage() != null ? ex.getMessage() : "";
+            if (msg.contains("422") || msg.contains("already registered") || msg.contains("already been registered")) {
+                // Check if this is an orphaned auth user (auth exists but no businesses row)
+                String orphanId = authAdmin.findUserIdByEmail(email);
+                if (orphanId != null && !businessRepo.existsById(orphanId)) {
+                    // Safe to delete — no approved business linked to this auth user
+                    try { authAdmin.deleteUser(orphanId); } catch (Exception ignored) {}
+                    // Retry creation with a clean slate
+                    authUser = authAdmin.createUserWithMeta(email, password,
+                            Map.of("role", "business_owner", "business_name", businessName));
+                    userId = (String) authUser.get("id");
+                } else {
+                    return ResponseEntity.status(422)
+                            .body(ApiResponse.error("Email is already registered as an active business."));
+                }
+            } else {
+                throw ex;
+            }
+        }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
-        // Create businesses row
-        Business business = new Business();
-        business.setId(userId);
-        business.setBusinessName(businessName);
-        business.setBusinessType((String) body.get("business_type"));
-        business.setEmail(email);
-        business.setBusinessPhone((String) body.get("phone"));
-        business.setBusinessAddress((String) body.get("address"));
-        business.setIsActive(true);
-        business.setCreatedAt(now);
-        businessRepo.save(business);
+        // Create businesses + admins rows — rollback auth user if DB fails
+        try {
+            Business business = new Business();
+            business.setId(userId);
+            business.setFullName((String) body.get("full_name"));
+            business.setBusinessName(businessName);
+            business.setBusinessType((String) body.get("business_type"));
+            business.setEmail(email);
+            business.setBusinessPhone((String) body.get("phone"));
+            business.setBusinessAddress((String) body.get("address"));
+            business.setIsActive(true);
+            business.setSubscriptionPlan((String) body.getOrDefault("subscription_plan", "free"));
+            business.setSubscriptionStatus("active");
+            business.setCreatedAt(now);
+            business.setUpdatedAt(now);
+            businessRepo.save(business);
 
-        // Create admins row
-        Admin admin = new Admin();
-        admin.setId(userId);
-        admin.setFullName((String) body.get("full_name"));
-        admin.setEmail(email);
-        admin.setRole("business_owner");
-        admin.setIsApproved(true);
-        admin.setBusinessName(businessName);
-        admin.setBusinessType((String) body.get("business_type"));
-        admin.setCreatedAt(now);
-        adminRepo.save(admin);
+            Admin admin = new Admin();
+            admin.setId(userId);
+            admin.setFullName((String) body.get("full_name"));
+            admin.setEmail(email);
+            admin.setRole("business_owner");
+            admin.setIsApproved(true);
+            admin.setBusinessName(businessName);
+            admin.setBusinessType((String) body.get("business_type"));
+            admin.setBusinessPhone((String) body.get("phone"));
+            admin.setBusinessAddress((String) body.get("address"));
+            admin.setSubscriptionPlan((String) body.getOrDefault("subscription_plan", "free"));
+            admin.setSubscriptionStatus("active");
+            admin.setCreatedAt(now);
+            admin.setUpdatedAt(now);
+            adminRepo.save(admin);
 
-        return ResponseEntity.ok(ApiResponse.success(business, "Business created successfully"));
+            return ResponseEntity.ok(ApiResponse.success(business, "Business created successfully"));
+        } catch (Exception dbEx) {
+            // Rollback: delete the auth user we just created so the email can be reused
+            try { authAdmin.deleteUser(userId); } catch (Exception ignored) {}
+            throw dbEx;
+        }
     }
 
     // PATCH /api/businesses/{id}
@@ -151,6 +188,9 @@ public class BusinessController {
         admin.setBusinessAddress(isBusinessOwner ? app.getBusinessAddress() : null);
         admin.setBusinessDescription(isBusinessOwner ? app.getBusinessDescription() : null);
         if (admin.getCreatedAt() == null) admin.setCreatedAt(now);
+        admin.setUpdatedAt(now);
+        if (admin.getSubscriptionPlan() == null) admin.setSubscriptionPlan("free");
+        if (admin.getSubscriptionStatus() == null) admin.setSubscriptionStatus("active");
         adminRepo.save(admin);
 
         if (isBusinessOwner) {
@@ -166,9 +206,12 @@ public class BusinessController {
             business.setBusinessAddress(app.getBusinessAddress());
             business.setBusinessDescription(app.getBusinessDescription());
             business.setIsActive(true);
+            if (business.getSubscriptionPlan() == null) business.setSubscriptionPlan("free");
+            if (business.getSubscriptionStatus() == null) business.setSubscriptionStatus("active");
             business.setApprovedAt(now);
             business.setApprovedBy(approvedBy);
             if (business.getCreatedAt() == null) business.setCreatedAt(now);
+            business.setUpdatedAt(now);
             businessRepo.save(business);
         }
 

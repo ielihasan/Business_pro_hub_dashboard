@@ -188,7 +188,7 @@ export default function AdminSettingsPage() {
         setSystemSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...data.data });
       }
     } catch (error: any) {
-      console.error("Failed to fetch system settings:", error);
+      console.warn("Settings API unavailable, backend may be offline");
     } finally {
       setSystemLoading(false);
     }
