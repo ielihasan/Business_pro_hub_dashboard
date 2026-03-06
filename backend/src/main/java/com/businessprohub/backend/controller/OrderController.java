@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,18 +25,32 @@ public class OrderController {
         this.orderRepo = orderRepo;
     }
 
-    // GET /api/orders?business_id=
+    // GET /api/orders?business_id=&status=&page=1&page_size=20
     @GetMapping
     public ResponseEntity<ApiResponse<?>> list(
             @RequestParam("business_id") String businessId,
-            @RequestParam(required = false) String status) {
-        List<Order> orders;
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(value = "page_size", defaultValue = "20") int pageSize) {
+        List<Order> all;
         if (status != null) {
-            orders = orderRepo.findByBusinessIdAndStatus(businessId, status);
+            all = orderRepo.findByBusinessIdAndStatus(businessId, status);
         } else {
-            orders = orderRepo.findByBusinessId(businessId);
+            all = orderRepo.findByBusinessId(businessId);
         }
-        return ResponseEntity.ok(ApiResponse.success(orders));
+        int total = all.size();
+        int fromIndex = Math.max(0, (page - 1) * pageSize);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<Order> paged = fromIndex >= total ? List.of() : all.subList(fromIndex, toIndex);
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("data", paged);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("page_size", pageSize);
+        result.put("total_pages", totalPages);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     // POST /api/orders

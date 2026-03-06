@@ -334,7 +334,7 @@ export default function BusinessHoursPage() {
       }
 
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours?id=${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/business-hours?special_id=${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${session?.access_token}` },
       });

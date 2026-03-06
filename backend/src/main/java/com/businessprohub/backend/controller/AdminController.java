@@ -78,10 +78,13 @@ public class AdminController {
 
         // Update auth email/password if provided
         if (body.containsKey("email") || body.containsKey("password")) {
-            authAdmin.updateUser(id, Map.of(
-                    "email", body.getOrDefault("email", admin.getEmail()),
-                    "password", body.getOrDefault("password", "")
-            ));
+            Map<String, Object> authUpdate = new java.util.HashMap<>();
+            authUpdate.put("email", body.getOrDefault("email", admin.getEmail()));
+            String newPassword = (String) body.get("password");
+            if (newPassword != null && !newPassword.isBlank()) {
+                authUpdate.put("password", newPassword);
+            }
+            authAdmin.updateUser(id, authUpdate);
         }
 
         return ResponseEntity.ok(ApiResponse.success(admin, "Admin updated"));

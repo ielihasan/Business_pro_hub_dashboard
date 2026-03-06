@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, Package, CheckCircle, Star, QrCode, ArrowRight } from "lucide-react";
@@ -28,7 +28,7 @@ interface RecentQueue {
   status: string;
   position: number;
   joined_at: string;
-  queue_type_name?: string;
+  created_at: string;
 }
 
 export default function BusinessDashboardPage() {
@@ -46,80 +46,93 @@ export default function BusinessDashboardPage() {
   });
   const [recentQueues, setRecentQueues] = useState<RecentQueue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [businessId, setBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setBusinessId(user.id);
+    };
+    init();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    if (!businessId) return;
     try {
-      // Get current business user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {};
 
-      // Fetch queue statistics
-      const { data: queues } = await supabase
-        .from("queues")
-        .select("*")
-        .eq("business_id", user.id);
+      const [queueRes, ordersRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue?business_id=${businessId}`, { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders?business_id=${businessId}`, { headers }),
+      ]);
 
-      const today = new Date().toISOString().split('T')[0];
-      const activeQueues = queues?.filter(q => q.status === "waiting" || q.status === "in_progress").length || 0;
-      const totalQueuesToday = queues?.filter(q => q.joined_at?.startsWith(today)).length || 0;
-      const completedToday = queues?.filter(q => q.status === "completed" && q.completed_at?.startsWith(today)).length || 0;
+      const today = new Date().toISOString().split("T")[0];
 
-      // Fetch order statistics
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("business_id", user.id);
+      // Queue stats
+      if (queueRes.ok) {
+        const queueJson = await queueRes.json();
+        const inner = queueJson.data || {};
+        const rawEntries: any[] = inner.data || [];
 
-      const totalOrders = orders?.length || 0;
-      const pendingOrders = orders?.filter(o => o.status === "pending" || o.status === "processing").length || 0;
-      const completedOrders = orders?.filter(o => o.status === "completed").length || 0;
-      const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+        const activeQueues = rawEntries.filter(
+          (q) => q.status === "waiting" || q.status === "in_progress" || q.status === "serving"
+        ).length;
+        const totalQueuesToday = rawEntries.filter(
+          (q) => (q.joined_at || q.created_at || "").startsWith(today)
+        ).length;
+        const completedToday = rawEntries.filter(
+          (q) => q.status === "completed" && (q.completed_at || "").startsWith(today)
+        ).length;
 
-      // Fetch unique customers
-      const uniqueCustomers = new Set(queues?.map(q => q.customer_id).filter(Boolean));
-      const totalCustomers = uniqueCustomers.size;
+        const uniqueCustomers = new Set(rawEntries.map((q) => q.customer_id).filter(Boolean));
 
-      // staff and feedback tables removed — default to 0
-      const staffCount = 0;
-      const averageRating = 0;
+        const recent = [...rawEntries]
+          .sort((a, b) => new Date(b.joined_at || b.created_at).getTime() - new Date(a.joined_at || a.created_at).getTime())
+          .slice(0, 5);
+        setRecentQueues(recent);
 
-      setStats({
-        activeQueues,
-        totalQueuesToday,
-        completedToday,
-        totalOrders,
-        pendingOrders,
-        completedOrders,
-        totalCustomers,
-        totalStaff: staffCount || 0,
-        averageRating: Math.round(averageRating * 10) / 10,
-        totalRevenue,
-      });
+        setStats((prev) => ({
+          ...prev,
+          activeQueues,
+          totalQueuesToday,
+          completedToday,
+          totalCustomers: uniqueCustomers.size,
+        }));
+      }
 
-      // Fetch recent queues
-      const { data: recentQueueData } = await supabase
-        .from("queues")
-        .select("*")
-        .eq("business_id", user.id)
-        .order("joined_at", { ascending: false })
-        .limit(5);
+      // Orders stats
+      if (ordersRes.ok) {
+        const ordersJson = await ordersRes.json();
+        const orders: any[] = ordersJson.data || [];
 
-      setRecentQueues(recentQueueData || []);
-      setLoading(false);
+        const totalOrders = orders.length;
+        const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "processing").length;
+        const completedOrders = orders.filter((o) => o.status === "completed").length;
+        const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+
+        setStats((prev) => ({ ...prev, totalOrders, pendingOrders, completedOrders, totalRevenue }));
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+    } finally {
       setLoading(false);
     }
-  };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!businessId) return;
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, [businessId, fetchDashboardData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "waiting": return "bg-gray-100 text-gray-800";
-      case "in_progress": return "bg-blue-100 text-blue-800";
+      case "in_progress":
+      case "serving": return "bg-blue-100 text-blue-800";
       case "completed": return "bg-green-100 text-green-800";
       case "cancelled": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
@@ -129,12 +142,10 @@ export default function BusinessDashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        {/* Page heading */}
         <div className="space-y-2">
           <Skeleton className="h-9 w-56" />
           <Skeleton className="h-4 w-72" />
         </div>
-        {/* Stat cards — 2 rows of 3 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl border p-6 space-y-3">
@@ -147,7 +158,6 @@ export default function BusinessDashboardPage() {
             </div>
           ))}
         </div>
-        {/* Recent activity / quick-links panel */}
         <div className="bg-white rounded-xl border p-6 space-y-4">
           <Skeleton className="h-6 w-40" />
           <div className="space-y-3">
@@ -179,12 +189,9 @@ export default function BusinessDashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Active Queues */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Active Queues
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Active Queues</CardTitle>
             <Clock className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -195,53 +202,38 @@ export default function BusinessDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Pending Orders */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Pending Orders
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Pending Orders</CardTitle>
             <Package className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.pendingOrders}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.totalOrders} total orders
-            </p>
+            <p className="text-xs text-gray-500 mt-1">{stats.totalOrders} total orders</p>
           </CardContent>
         </Card>
 
-        {/* Total Customers */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Customers
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Customers</CardTitle>
             <Users className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.totalCustomers}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              Unique customers
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Unique customers</p>
           </CardContent>
         </Card>
 
-        {/* Average Rating */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Average Rating
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Average Rating</CardTitle>
             <Star className="h-5 w-5 text-gray-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">
               {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "N/A"}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Customer satisfaction
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Customer satisfaction</p>
           </CardContent>
         </Card>
       </div>
@@ -299,7 +291,6 @@ export default function BusinessDashboardPage() {
               </div>
             </div>
           </div>
-          {/* Mobile button */}
           <Link href="/business/queue">
             <Button size="lg" className="w-full mt-4 sm:hidden bg-black hover:bg-gray-800 text-white">
               Go to Queue Management
@@ -311,7 +302,6 @@ export default function BusinessDashboardPage() {
 
       {/* Quick Actions & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
@@ -323,9 +313,7 @@ export default function BusinessDashboardPage() {
                 <QrCode className="mr-2 h-4 w-4" />
                 Manage Queue & QR Codes
                 {stats.activeQueues > 0 && (
-                  <Badge variant="default" className="ml-auto">
-                    {stats.activeQueues}
-                  </Badge>
+                  <Badge variant="default" className="ml-auto">{stats.activeQueues}</Badge>
                 )}
               </Button>
             </Link>
@@ -334,9 +322,7 @@ export default function BusinessDashboardPage() {
                 <Package className="mr-2 h-4 w-4" />
                 View Orders
                 {stats.pendingOrders > 0 && (
-                  <Badge className="ml-auto bg-red-100 text-red-700 border-0">
-                    {stats.pendingOrders}
-                  </Badge>
+                  <Badge className="ml-auto bg-red-100 text-red-700 border-0">{stats.pendingOrders}</Badge>
                 )}
               </Button>
             </Link>
@@ -355,7 +341,6 @@ export default function BusinessDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Queue Activity */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -393,24 +378,18 @@ export default function BusinessDashboardPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900">
-                          {queue.customer_name}
-                        </p>
-                        <Badge className={getStatusColor(queue.status)}>
-                          {queue.status}
-                        </Badge>
+                        <p className="font-medium text-gray-900">{queue.customer_name}</p>
+                        <Badge className={getStatusColor(queue.status)}>{queue.status}</Badge>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {queue.service_type || "General service"} • Position #{queue.position}
+                        {queue.service_type || "General service"} · Position #{queue.position}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {new Date(queue.joined_at).toLocaleString()}
+                        {new Date(queue.joined_at || queue.created_at).toLocaleString()}
                       </p>
                     </div>
                     <Link href="/business/queue">
-                      <Button size="sm" variant="outline">
-                        Manage
-                      </Button>
+                      <Button size="sm" variant="outline">Manage</Button>
                     </Link>
                   </div>
                 ))}

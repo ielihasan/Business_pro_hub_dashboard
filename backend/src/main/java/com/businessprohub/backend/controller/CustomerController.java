@@ -24,9 +24,12 @@ public class CustomerController {
         this.customerRepo = customerRepo;
     }
 
-    // GET /api/customers?business_id= — aggregated from queues
+    // GET /api/customers?business_id=&page=1&page_size=20 — aggregated from queues
     @GetMapping
-    public ResponseEntity<ApiResponse<?>> list(@RequestParam("business_id") String businessId) {
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestParam("business_id") String businessId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(value = "page_size", defaultValue = "20") int pageSize) {
         List<Queue> allEntries = queueRepo.findByBusinessIdAndCreatedAtAfterOrderByPositionAsc(
                 businessId, OffsetDateTime.now(ZoneOffset.UTC).minusYears(1));
 
@@ -54,7 +57,20 @@ public class CustomerController {
             }
         }
 
-        return ResponseEntity.ok(ApiResponse.success(new ArrayList<>(customerMap.values())));
+        List<Map<String, Object>> all = new ArrayList<>(customerMap.values());
+        int total = all.size();
+        int fromIndex = Math.max(0, (page - 1) * pageSize);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<Map<String, Object>> paged = fromIndex >= total ? List.of() : all.subList(fromIndex, toIndex);
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("data", paged);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("page_size", pageSize);
+        result.put("total_pages", totalPages);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     // POST /api/customers — add manual customer

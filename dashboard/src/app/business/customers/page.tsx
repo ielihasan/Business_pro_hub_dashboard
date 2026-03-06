@@ -100,88 +100,6 @@ interface CustomerStats {
   total_visits: number;
 }
 
-// Mock data for demo
-const mockCustomers: Customer[] = [
-  {
-    id: "1",
-    name: "Ali Hassan",
-    phone: "+92 300 1234567",
-    email: "ali.hassan@example.com",
-    total_visits: 8,
-    completed_visits: 7,
-    cancelled_visits: 1,
-    first_visit: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    last_visit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    services_used: ["Haircut", "Beard Trim", "Hair Color"],
-    visit_history: [
-      { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), service: "Haircut", status: "completed" },
-      { date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), service: "Beard Trim", status: "completed" },
-      { date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), service: "Hair Color", status: "completed" },
-    ],
-  },
-  {
-    id: "2",
-    name: "Ahmed Khan",
-    phone: "+92 321 7654321",
-    email: "ahmed.khan@example.com",
-    total_visits: 5,
-    completed_visits: 5,
-    cancelled_visits: 0,
-    first_visit: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-    last_visit: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    services_used: ["Full Service", "Haircut"],
-    visit_history: [
-      { date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), service: "Full Service", status: "completed" },
-      { date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), service: "Haircut", status: "completed" },
-    ],
-  },
-  {
-    id: "3",
-    name: "Usman Ali",
-    phone: "+92 333 9876543",
-    total_visits: 3,
-    completed_visits: 2,
-    cancelled_visits: 1,
-    first_visit: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    last_visit: new Date().toISOString(),
-    services_used: ["Haircut", "Beard Trim"],
-    visit_history: [
-      { date: new Date().toISOString(), service: "Haircut", status: "waiting" },
-      { date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), service: "Beard Trim", status: "completed" },
-    ],
-  },
-  {
-    id: "4",
-    name: "Bilal Malik",
-    phone: "+92 345 1122334",
-    email: "bilal@example.com",
-    total_visits: 1,
-    completed_visits: 1,
-    cancelled_visits: 0,
-    first_visit: new Date().toISOString(),
-    last_visit: new Date().toISOString(),
-    services_used: ["Haircut"],
-    visit_history: [
-      { date: new Date().toISOString(), service: "Haircut", status: "completed" },
-    ],
-  },
-  {
-    id: "5",
-    name: "Farhan Ahmed",
-    phone: "+92 312 5566778",
-    total_visits: 12,
-    completed_visits: 11,
-    cancelled_visits: 1,
-    first_visit: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    last_visit: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    services_used: ["Haircut", "Beard Trim", "Full Service", "Hair Treatment"],
-    visit_history: [
-      { date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), service: "Full Service", status: "completed" },
-      { date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), service: "Haircut", status: "completed" },
-      { date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(), service: "Hair Treatment", status: "completed" },
-    ],
-  },
-];
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -197,7 +115,10 @@ export default function CustomersPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [useMockData, setUseMockData] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // View customer dialog
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -218,85 +139,70 @@ export default function CustomersPage() {
   }, []);
 
   useEffect(() => {
-    if (businessId) {
-      fetchCustomers();
-    }
-  }, [businessId, sortBy, dateFrom, dateTo]);
+    if (businessId) fetchCustomers();
+  }, [businessId, sortBy, dateFrom, dateTo, page]);
 
   const getBusinessId = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: admin } = await supabase
-          .from("admins")
-          .select("id")
-          .eq("id", user.id)
-          .eq("role", "business_owner")
-          .single();
-
-        if (admin) {
-          setBusinessId(admin.id);
-        }
+        setBusinessId(user.id);
+      } else {
+        setApiError("Not authenticated");
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error getting business ID:", error);
-      setUseMockData(true);
-      loadMockData();
+      setApiError("Failed to load business data");
+      setLoading(false);
     }
-  };
-
-  const loadMockData = () => {
-    setCustomers(mockCustomers);
-    setStats({
-      total_customers: mockCustomers.length,
-      new_customers_today: mockCustomers.filter((c) => {
-        const today = new Date().toISOString().split("T")[0];
-        return c.first_visit.startsWith(today);
-      }).length,
-      repeat_customers: mockCustomers.filter((c) => c.total_visits > 1).length,
-      total_visits: mockCustomers.reduce((sum, c) => sum + c.total_visits, 0),
-    });
-    setLoading(false);
   };
 
   const fetchCustomers = async () => {
     try {
       setLoading(true);
+      setApiError(null);
       const params = new URLSearchParams();
       params.append("business_id", businessId!);
       params.append("sort_by", sortBy);
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
+      params.append("page", String(page));
+      params.append("page_size", "20");
 
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers?${params.toString()}`, {
         headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
-      const data = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error(json.error || "Failed to load customers");
 
-      if (data.data && data.data.length > 0) {
-        setCustomers(data.data);
-        setStats(data.stats || {
-          total_customers: data.data.length,
-          new_customers_today: 0,
-          repeat_customers: data.data.filter((c: any) => (c.total_visits || 0) > 1).length,
-          total_visits: data.data.reduce((sum: number, c: any) => sum + (c.total_visits || 1), 0),
-        });
-        setUseMockData(false);
-      } else {
-        setUseMockData(true);
-        loadMockData();
-      }
+      const inner = json.data || {};
+      const list: Customer[] = (inner.data || []).map((c: any) => ({
+        id: c.customer_id || c.customer_phone || Math.random().toString(),
+        name: c.customer_name || "Unknown",
+        phone: c.customer_phone || "",
+        email: c.customer_email,
+        total_visits: c.visit_count || 1,
+        completed_visits: c.visit_count || 1,
+        cancelled_visits: 0,
+        first_visit: c.last_visit || new Date().toISOString(),
+        last_visit: c.last_visit || new Date().toISOString(),
+        services_used: [],
+        visit_history: [],
+      }));
+      setCustomers(list);
+      setTotalCount(inner.total || 0);
+      setTotalPages(inner.total_pages || 1);
+      setStats({
+        total_customers: inner.total || list.length,
+        new_customers_today: 0,
+        repeat_customers: list.filter((c) => c.total_visits > 1).length,
+        total_visits: list.reduce((sum, c) => sum + c.total_visits, 0),
+      });
     } catch (error: any) {
-      console.warn("Customers API unavailable, using mock data");
-      setUseMockData(true);
-      loadMockData();
+      setApiError(error.message || "Failed to load customers");
     } finally {
       setLoading(false);
     }
@@ -311,48 +217,18 @@ export default function CustomersPage() {
     try {
       setSubmitting(true);
 
-      if (useMockData) {
-        // Demo mode
-        const newEntry: Customer = {
-          id: Date.now().toString(),
-          name: newCustomer.name,
-          phone: newCustomer.phone,
-          email: newCustomer.email,
-          total_visits: 0,
-          completed_visits: 0,
-          cancelled_visits: 0,
-          first_visit: new Date().toISOString(),
-          last_visit: new Date().toISOString(),
-          services_used: [],
-          visit_history: [],
-        };
-        setCustomers([newEntry, ...customers]);
-        setStats({
-          ...stats,
-          total_customers: stats.total_customers + 1,
-          new_customers_today: stats.new_customers_today + 1,
-        });
-        toast.success("Customer added successfully!");
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
-          body: JSON.stringify({
-            business_id: businessId,
-            ...newCustomer,
-          }),
-        });
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ business_id: businessId, ...newCustomer }),
+      });
 
-        const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error);
 
-        if (!res.ok) {
-          throw new Error(data.error);
-        }
-
-        toast.success("Customer added successfully!");
-        fetchCustomers();
-      }
+      toast.success("Customer added successfully!");
+      fetchCustomers();
 
       setNewCustomer({ name: "", phone: "", email: "", notes: "" });
       setIsAddDialogOpen(false);
@@ -454,7 +330,7 @@ export default function CustomersPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => (useMockData ? loadMockData() : fetchCustomers())}
+            onClick={() => fetchCustomers()}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -544,16 +420,17 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* Demo Mode Banner */}
-      {useMockData && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-600" />
+      {/* Error Banner */}
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600" />
           <div>
-            <p className="text-sm font-medium text-blue-800">Demo Mode</p>
-            <p className="text-xs text-blue-600">
-              Showing sample data. Customers are automatically added when they scan your QR code.
-            </p>
+            <p className="text-sm font-medium text-red-800">Failed to load customers</p>
+            <p className="text-xs text-red-600">{apiError}</p>
           </div>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => fetchCustomers()}>
+            Retry
+          </Button>
         </div>
       )}
 
@@ -850,6 +727,34 @@ export default function CustomersPage() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <p className="text-sm text-gray-500">
+                Showing {((page - 1) * 20) + 1}–{Math.min(page * 20, totalCount)} of {totalCount} customers
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600 px-2">Page {page} of {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

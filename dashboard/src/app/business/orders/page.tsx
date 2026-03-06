@@ -99,64 +99,6 @@ interface OrderStats {
   today_revenue: number;
 }
 
-// Mock data for demo mode
-const mockOrders: Order[] = [
-  {
-    id: "1",
-    order_number: "ORD-20250125-0001",
-    customer_name: "Ali Hassan",
-    customer_phone: "+92 300 1234567",
-    customer_email: "ali@example.com",
-    items: [
-      { id: "1", name: "Premium Haircut", quantity: 1, price: 500 },
-      { id: "2", name: "Beard Trim", quantity: 1, price: 200 },
-    ],
-    total_amount: 700,
-    status: "completed",
-    payment_status: "paid",
-    notes: "Regular customer",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    order_number: "ORD-20250125-0002",
-    customer_name: "Ahmed Khan",
-    customer_phone: "+92 321 7654321",
-    items: [
-      { id: "1", name: "Hair Color", quantity: 1, price: 1500 },
-      { id: "2", name: "Hair Treatment", quantity: 1, price: 800 },
-    ],
-    total_amount: 2300,
-    status: "processing",
-    payment_status: "unpaid",
-    created_at: new Date(Date.now() - 30 * 60000).toISOString(),
-  },
-  {
-    id: "3",
-    order_number: "ORD-20250125-0003",
-    customer_name: "Usman Ali",
-    customer_phone: "+92 333 9876543",
-    items: [{ id: "1", name: "Full Service Package", quantity: 1, price: 2000 }],
-    total_amount: 2000,
-    status: "pending",
-    payment_status: "unpaid",
-    created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-  },
-  {
-    id: "4",
-    order_number: "ORD-20250125-0004",
-    customer_name: "Bilal Malik",
-    customer_phone: "+92 345 1122334",
-    items: [
-      { id: "1", name: "Haircut", quantity: 1, price: 400 },
-    ],
-    total_amount: 400,
-    status: "cancelled",
-    payment_status: "refunded",
-    notes: "Customer cancelled - couldn't wait",
-    created_at: new Date(Date.now() - 60 * 60000).toISOString(),
-  },
-];
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -176,7 +118,10 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [useMockData, setUseMockData] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // New order form state
   const [newOrder, setNewOrder] = useState({
@@ -194,84 +139,51 @@ export default function OrdersPage() {
   }, []);
 
   useEffect(() => {
-    if (businessId) {
-      fetchOrders();
-    }
-  }, [businessId, statusFilter]);
+    if (businessId) fetchOrders();
+  }, [businessId, statusFilter, page]);
 
   const getBusinessId = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: admin } = await supabase
-          .from("admins")
-          .select("id")
-          .eq("id", user.id)
-          .eq("role", "business_owner")
-          .single();
-
-        if (admin) {
-          setBusinessId(admin.id);
-        }
+        setBusinessId(user.id);
+      } else {
+        setApiError("Not authenticated");
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error getting business ID:", error);
-      // Use mock data if we can't get business ID
-      setUseMockData(true);
-      loadMockData();
+      setApiError("Failed to load business data");
+      setLoading(false);
     }
-  };
-
-  const loadMockData = () => {
-    setOrders(mockOrders);
-    setStats({
-      today_orders: mockOrders.length,
-      pending: mockOrders.filter((o) => o.status === "pending").length,
-      processing: mockOrders.filter((o) => o.status === "processing").length,
-      completed: mockOrders.filter((o) => o.status === "completed").length,
-      cancelled: mockOrders.filter((o) => o.status === "cancelled").length,
-      today_revenue: mockOrders
-        .filter((o) => o.status === "completed" && o.payment_status === "paid")
-        .reduce((sum, o) => sum + o.total_amount, 0),
-    });
-    setLoading(false);
   };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setApiError(null);
       const params = new URLSearchParams();
       params.append("business_id", businessId!);
-      if (statusFilter !== "all") {
-        params.append("status", statusFilter);
-      }
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      params.append("page", String(page));
+      params.append("page_size", "20");
 
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders?${params.toString()}`, {
         headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
-      const data = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error(json.error || "Failed to load orders");
 
-      if (data.data && data.data.length > 0) {
-        setOrders(data.data);
-        setStats(data.stats || calculateStats(data.data));
-        setUseMockData(false);
-      } else {
-        // No orders yet, show empty state or mock data for demo
-        setUseMockData(true);
-        loadMockData();
-      }
+      const inner = json.data || {};
+      const list: Order[] = inner.data || [];
+      setOrders(list);
+      setTotalCount(inner.total || 0);
+      setTotalPages(inner.total_pages || 1);
+      setStats(calculateStats(list));
     } catch (error: any) {
-      console.warn("Orders API unavailable, using mock data");
-      // Fall back to mock data
-      setUseMockData(true);
-      loadMockData();
+      setApiError(error.message || "Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -329,54 +241,26 @@ export default function OrdersPage() {
     try {
       setSubmitting(true);
 
-      if (useMockData) {
-        // Demo mode - add to local state
-        const newOrderData: Order = {
-          id: Date.now().toString(),
-          order_number: `ORD-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-${(orders.length + 1).toString().padStart(4, "0")}`,
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          business_id: businessId,
           customer_name: newOrder.customer_name,
           customer_phone: newOrder.customer_phone,
-          customer_email: newOrder.customer_email,
+          customer_email: newOrder.customer_email || undefined,
           items: validItems,
           total_amount: calculateTotal(),
-          status: "pending",
-          payment_status: "unpaid",
-          notes: newOrder.notes,
-          created_at: new Date().toISOString(),
-        };
+          notes: newOrder.notes || undefined,
+        }),
+      });
 
-        setOrders([newOrderData, ...orders]);
-        setStats({
-          ...stats,
-          today_orders: stats.today_orders + 1,
-          pending: stats.pending + 1,
-        });
-        toast.success("Order created successfully!");
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
-          body: JSON.stringify({
-            business_id: businessId,
-            customer_name: newOrder.customer_name,
-            customer_phone: newOrder.customer_phone,
-            customer_email: newOrder.customer_email || undefined,
-            items: validItems,
-            total_amount: calculateTotal(),
-            notes: newOrder.notes || undefined,
-          }),
-        });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error);
 
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          throw new Error(data.error);
-        }
-
-        toast.success("Order created successfully!");
-        fetchOrders();
-      }
+      toast.success("Order created successfully!");
+      fetchOrders();
 
       // Reset form
       setNewOrder({
@@ -399,16 +283,6 @@ export default function OrdersPage() {
     newStatus: Order["status"]
   ) => {
     try {
-      if (useMockData) {
-        // Demo mode
-        setOrders(
-          orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-        );
-        setStats(calculateStats(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))));
-        toast.success(`Order status updated to ${newStatus}`);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "PATCH",
@@ -433,20 +307,6 @@ export default function OrdersPage() {
     paymentStatus: Order["payment_status"]
   ) => {
     try {
-      if (useMockData) {
-        // Demo mode
-        setOrders(
-          orders.map((o) =>
-            o.id === orderId ? { ...o, payment_status: paymentStatus } : o
-          )
-        );
-        setStats(calculateStats(orders.map((o) =>
-          o.id === orderId ? { ...o, payment_status: paymentStatus } : o
-        )));
-        toast.success(`Payment marked as ${paymentStatus}`);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "PATCH",
@@ -470,15 +330,6 @@ export default function OrdersPage() {
     if (!confirm("Are you sure you want to delete this order?")) return;
 
     try {
-      if (useMockData) {
-        // Demo mode
-        const updatedOrders = orders.filter((o) => o.id !== orderId);
-        setOrders(updatedOrders);
-        setStats(calculateStats(updatedOrders));
-        toast.success("Order deleted successfully");
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
         method: "DELETE",
@@ -578,7 +429,7 @@ export default function OrdersPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => (useMockData ? loadMockData() : fetchOrders())}
+            onClick={() => fetchOrders()}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -776,16 +627,17 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Demo Mode Banner */}
-      {useMockData && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-600" />
+      {/* Error Banner */}
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600" />
           <div>
-            <p className="text-sm font-medium text-blue-800">No Orders Yet</p>
-            <p className="text-xs text-blue-600">
-              No orders found. Sample data shown for demonstration.
-            </p>
+            <p className="text-sm font-medium text-red-800">Failed to load orders</p>
+            <p className="text-xs text-red-600">{apiError}</p>
           </div>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => fetchOrders()}>
+            Retry
+          </Button>
         </div>
       )}
 
@@ -1091,6 +943,34 @@ export default function OrdersPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <p className="text-sm text-gray-500">
+                Showing {((page - 1) * 20) + 1}–{Math.min(page * 20, totalCount)} of {totalCount} orders
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600 px-2">Page {page} of {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

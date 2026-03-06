@@ -56,6 +56,10 @@ public class SettingsController {
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
         if (body.containsKey("full_name")) admin.setFullName((String) body.get("full_name"));
+        if (body.containsKey("business_name")) admin.setBusinessName((String) body.get("business_name"));
+        if (body.containsKey("business_phone")) admin.setBusinessPhone((String) body.get("business_phone"));
+        if (body.containsKey("business_address")) admin.setBusinessAddress((String) body.get("business_address"));
+        if (body.containsKey("business_description")) admin.setBusinessDescription((String) body.get("business_description"));
         admin.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         adminRepo.save(admin);
 

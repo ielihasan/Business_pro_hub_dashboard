@@ -22,22 +22,19 @@ export default function SettingsPage() {
     email: "",
   });
 
-  useEffect(() => {
-    fetchBusinessData();
-  }, []);
-
   const fetchBusinessData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      const { data, error } = await supabase
-        .from("admins")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error("Failed to load profile");
+
+      const json = await res.json();
+      const data = json.data;
 
       setBusinessData({
         business_name: data.business_name || "",
@@ -47,31 +44,42 @@ export default function SettingsPage() {
         business_description: data.business_description || "",
         email: data.email || "",
       });
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching business data:", error);
       toast.error("Failed to load business settings");
+    } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchBusinessData();
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      const { error } = await supabase
-        .from("admins")
-        .update({
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           business_name: businessData.business_name,
           business_address: businessData.business_address,
           business_phone: businessData.business_phone,
           business_description: businessData.business_description,
-        })
-        .eq("id", user.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update settings");
+      }
 
       toast.success("Business settings updated successfully!");
     } catch (error: any) {
@@ -85,15 +93,12 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="space-y-8">
-        {/* Page heading */}
         <div className="space-y-2">
           <Skeleton className="h-9 w-52" />
           <Skeleton className="h-4 w-72" />
         </div>
-        {/* Form card */}
         <div className="bg-white rounded-xl border p-6 space-y-6">
           <Skeleton className="h-6 w-40" />
-          {/* Two-column grid of form fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-2">
@@ -102,15 +107,12 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-          {/* Textarea-style field */}
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-24 w-full rounded-md" />
           </div>
-          {/* Save button */}
           <Skeleton className="h-10 w-32 rounded-md" />
         </div>
-        {/* Contact info card */}
         <div className="bg-white rounded-xl border p-6 space-y-4">
           <Skeleton className="h-6 w-36" />
           <div className="space-y-3">
