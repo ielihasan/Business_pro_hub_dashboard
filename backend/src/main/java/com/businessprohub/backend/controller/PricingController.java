@@ -1,7 +1,6 @@
 package com.businessprohub.backend.controller;
 
 import com.businessprohub.backend.dto.response.ApiResponse;
-import com.businessprohub.backend.entity.Business;
 import com.businessprohub.backend.entity.Payment;
 import com.businessprohub.backend.entity.Subscription;
 import com.businessprohub.backend.exception.ResourceNotFoundException;

@@ -5,7 +5,6 @@ import com.businessprohub.backend.entity.Business;
 import com.businessprohub.backend.entity.Payment;
 import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.repository.PaymentRepository;
-import com.businessprohub.backend.repository.SubscriptionRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +18,6 @@ import java.util.stream.Collectors;
 public class AdminPaymentsController {
 
     private final PaymentRepository paymentRepo;
-    private final SubscriptionRepository subRepo;
     private final BusinessRepository businessRepo;
 
     // Plan metadata: id → [displayName, monthlyPriceInPKR]
@@ -31,10 +29,8 @@ public class AdminPaymentsController {
     );
 
     public AdminPaymentsController(PaymentRepository paymentRepo,
-                                   SubscriptionRepository subRepo,
                                    BusinessRepository businessRepo) {
         this.paymentRepo = paymentRepo;
-        this.subRepo = subRepo;
         this.businessRepo = businessRepo;
     }
 

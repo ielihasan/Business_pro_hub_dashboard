@@ -9,6 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface QueueRepository extends JpaRepository<Queue, String> {
+    List<Queue> findByBusinessId(String businessId);
     List<Queue> findByBusinessIdAndCreatedAtAfterOrderByPositionAsc(String businessId, java.time.OffsetDateTime after);
     List<Queue> findByBusinessIdAndStatus(String businessId, String status);
     List<Queue> findByBusinessIdAndStatusIn(String businessId, List<String> statuses);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -66,7 +67,6 @@ import {
   Search,
   Filter,
   CheckCircle,
-  BarChart3,
   Plus,
   MoreHorizontal,
   Pencil,
@@ -101,6 +101,7 @@ interface Pagination {
 }
 
 export default function ApprovedBusinessesPage() {
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<ApprovedBusiness[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,7 +122,6 @@ export default function ApprovedBusinessesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<ApprovedBusiness | null>(null);
 
   // Form states
@@ -395,10 +395,6 @@ export default function ApprovedBusinessesPage() {
     setDeleteDialogOpen(true);
   };
 
-  const openViewDialog = (business: ApprovedBusiness) => {
-    setSelectedBusiness(business);
-    setViewDialogOpen(true);
-  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -612,7 +608,7 @@ export default function ApprovedBusinessesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => openViewDialog(business)}>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/businesses/${business.id}`)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
@@ -1043,117 +1039,6 @@ export default function ApprovedBusinessesPage() {
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Business Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedBusiness?.business_name}</DialogTitle>
-            <DialogDescription>Complete business information and details</DialogDescription>
-          </DialogHeader>
-          {selectedBusiness && (
-            <div className="space-y-6 py-4">
-              {/* Owner Information */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Owner Information
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">{selectedBusiness.full_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span>{selectedBusiness.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{selectedBusiness.business_phone || "N/A"}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Business Information */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Business Information
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Business Type:</span>
-                    <div className="mt-1">
-                      <Badge variant="outline">{selectedBusiness.business_type}</Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Address:</span>
-                    <p className="mt-1 text-gray-900">
-                      {selectedBusiness.business_address || "N/A"}
-                    </p>
-                  </div>
-                  {selectedBusiness.business_description && (
-                    <div>
-                      <span className="text-gray-500">Description:</span>
-                      <p className="mt-1 text-gray-900 leading-relaxed">
-                        {selectedBusiness.business_description}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Account Status */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                  Account Status
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Status:</span>
-                    <Badge className="flex items-center gap-1 bg-gray-100 text-gray-700">
-                      <CheckCircle className="h-3 w-3" />
-                      Approved
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Subscription Plan:</span>
-                    <Badge variant="secondary" className="capitalize">
-                      {selectedBusiness.subscription_plan || "Free"}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Registered:</span>
-                    <span className="text-gray-900">{formatDate(selectedBusiness.created_at)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Approved:</span>
-                    <span className="text-gray-900">{formatDate(selectedBusiness.approved_at)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="flex gap-3 pt-4 border-t">
-                <Button variant="outline" className="flex-1">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setViewDialogOpen(false);
-                    openEditDialog(selectedBusiness);
-                  }}
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit Business
-                </Button>
-              </div>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
 
