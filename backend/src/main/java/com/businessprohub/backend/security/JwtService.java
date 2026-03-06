@@ -11,7 +11,6 @@ import java.security.PublicKey;
 import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.ECParameterSpec;
-import java.security.interfaces.ECPublicKey;
 import java.util.Base64;
 import java.util.Date;
 

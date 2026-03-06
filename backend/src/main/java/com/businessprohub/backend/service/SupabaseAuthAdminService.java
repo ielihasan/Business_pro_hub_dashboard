@@ -101,7 +101,6 @@ public class SupabaseAuthAdminService {
      * Find the auth user ID for a given email, or null if not found.
      * Used to detect orphaned auth users after a failed registration.
      */
-    @SuppressWarnings("unchecked")
     public String findUserIdByEmail(String email) {
         try {
             Map<?, ?> result = webClient.get()

@@ -105,7 +105,7 @@ export default function BusinessDashboardPage() {
       // Orders stats
       if (ordersRes.ok) {
         const ordersJson = await ordersRes.json();
-        const orders: any[] = ordersJson.data || [];
+        const orders: any[] = ordersJson.data?.data || [];
 
         const totalOrders = orders.length;
         const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "processing").length;

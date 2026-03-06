@@ -3,7 +3,6 @@ package com.businessprohub.backend.service;
 import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.entity.Business;
 import com.businessprohub.backend.entity.Queue;
-import com.businessprohub.backend.entity.ServiceEntity;
 import com.businessprohub.backend.exception.BadRequestException;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AppUserRepository;

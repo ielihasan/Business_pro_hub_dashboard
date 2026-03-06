@@ -537,32 +537,44 @@ export default function AnalyticsPaymentsPage() {
           </CardHeader>
           <CardContent>
             {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-end justify-between h-48 gap-2">
+              <div>
+                {/* Bars */}
+                <div className="flex items-end gap-3" style={{ height: "180px" }}>
                   {stats.monthlyRevenue.map((item, index) => {
-                    const maxRevenue = Math.max(...stats.monthlyRevenue.map((m) => m.revenue));
-                    const height = maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
+                    const maxRevenue = Math.max(
+                      ...stats.monthlyRevenue.map((m) => Number(m.revenue) || 0)
+                    );
+                    const revenue = Number(item.revenue) || 0;
+                    const barH = maxRevenue > 0
+                      ? Math.max((revenue / maxRevenue) * 140, 4)
+                      : 4;
                     return (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div className="w-full flex flex-col items-center">
-                          <span className="text-xs text-gray-500 mb-1">
-                            {formatCurrency(item.revenue)}
-                          </span>
-                          <div
-                            className="w-full bg-black rounded-t transition-all duration-500"
-                            style={{ height: `${Math.max(height, 5)}%`, minHeight: "8px" }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-600 mt-2">{item.month}</span>
+                      <div
+                        key={index}
+                        className="flex-1 flex flex-col items-center justify-end h-full"
+                      >
+                        <span className="text-xs text-gray-500 mb-1 text-center leading-tight">
+                          {revenue > 0 ? formatCurrency(revenue) : "—"}
+                        </span>
+                        <div
+                          className="w-full bg-black rounded-t transition-all duration-500"
+                          style={{ height: `${barH}px` }}
+                        />
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-black rounded" />
-                    <span>Revenue</span>
-                  </div>
+                {/* X-axis labels */}
+                <div className="flex gap-3 mt-2 border-t pt-2">
+                  {stats.monthlyRevenue.map((item, index) => (
+                    <div key={index} className="flex-1 text-center">
+                      <span className="text-xs text-gray-600">{item.month}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-center gap-2 text-sm mt-3">
+                  <div className="w-3 h-3 bg-black rounded" />
+                  <span className="text-gray-600">Monthly Revenue (PKR)</span>
                 </div>
               </div>
             ) : (

@@ -12,7 +12,7 @@
       "name": "Backend (Spring Boot)",
       "runtimeExecutable": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
       "runtimeArgs": ["backend/start.sh"],
-      "port": 8080
+      "port": 8181
     }
   ]
 }
