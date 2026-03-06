@@ -68,19 +68,40 @@ public class AdminBusinessDetailController {
                 .filter(q -> q.getStatus() != null)
                 .collect(Collectors.groupingBy(Queue::getStatus, Collectors.counting()));
 
-        /* ── Customer count ──────────────────────────────────────────────── */
+        /* ── Customer count (walk-in records) ───────────────────────────── */
         long totalCustomers = customerRepo.countByBusinessId(id);
 
-        /* ── Order stats ─────────────────────────────────────────────────── */
+        // Customers actually served via queue (completed entries)
+        long customersServed = allQueues.stream()
+                .filter(q -> "completed".equals(q.getStatus()))
+                .count();
+
+        /* ── Order stats (business earns from customers) ─────────────────── */
         List<Order> orders = orderRepo.findByBusinessId(id);
         Map<String, Long> ordersByStatus = orders.stream()
                 .filter(o -> o.getStatus() != null)
                 .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
 
-        /* ── Payment / revenue stats ─────────────────────────────────────── */
+        // Revenue business earns from customers via orders (completed orders)
+        BigDecimal customerOrderRevenue = orders.stream()
+                .filter(o -> "completed".equals(o.getStatus()) && o.getTotalAmount() != null)
+                .map(Order::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Revenue business earns from customers via queue estimated prices
+        BigDecimal customerQueueRevenue = allQueues.stream()
+                .filter(q -> "completed".equals(q.getStatus()) && q.getEstimatedPrice() != null)
+                .map(Queue::getEstimatedPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Total what business earns FROM customers
+        BigDecimal customerRevenue = customerQueueRevenue.add(customerOrderRevenue);
+
+        /* ── Platform revenue FROM business (subscription payments) ─────── */
         List<Payment> payments = paymentRepo.findByBusinessId(id);
 
-        BigDecimal totalRevenue = payments.stream()
+        // What the PLATFORM earns from this business (subscription fees paid)
+        BigDecimal platformRevenue = payments.stream()
                 .filter(p -> "completed".equals(p.getStatus()) && p.getAmount() != null)
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -97,7 +118,7 @@ public class AdminBusinessDetailController {
         long activeServices = services.stream()
                 .filter(s -> Boolean.TRUE.equals(s.getIsActive())).count();
 
-        /* ── Monthly revenue (last 6 months) ─────────────────────────────── */
+        /* ── Monthly platform revenue trend (last 6 months) ──────────────── */
         DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("MMM yyyy");
         List<Map<String, Object>> monthlyRevenue = new ArrayList<>();
         for (int i = 5; i >= 0; i--) {
@@ -115,9 +136,28 @@ public class AdminBusinessDetailController {
                     .map(Payment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+            // Also compute customer-side revenue per month (queue + orders)
+            BigDecimal custRev = allQueues.stream()
+                    .filter(q -> "completed".equals(q.getStatus())
+                            && q.getCreatedAt() != null
+                            && !q.getCreatedAt().isBefore(start)
+                            && !q.getCreatedAt().isAfter(end)
+                            && q.getEstimatedPrice() != null)
+                    .map(Queue::getEstimatedPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .add(orders.stream()
+                            .filter(o -> "completed".equals(o.getStatus())
+                                    && o.getCreatedAt() != null
+                                    && !o.getCreatedAt().isBefore(start)
+                                    && !o.getCreatedAt().isAfter(end)
+                                    && o.getTotalAmount() != null)
+                            .map(Order::getTotalAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("month", label);
-            m.put("revenue", rev);
+            m.put("revenue", rev);           // platform revenue from business
+            m.put("customerRevenue", custRev); // business revenue from customers
             monthlyRevenue.add(m);
         }
 
@@ -174,18 +214,32 @@ public class AdminBusinessDetailController {
 
         /* ── Assemble response ───────────────────────────────────────────── */
         Map<String, Object> stats = new LinkedHashMap<>();
+
+        // Queue & activity
         stats.put("totalQueues", allQueues.size());
         stats.put("todayQueues", todayQueues);
         stats.put("queueByStatus", queueByStatus);
-        stats.put("totalCustomers", totalCustomers);
+        stats.put("customersServed", customersServed);   // completed queue entries
+        stats.put("totalCustomers", totalCustomers);      // walk-in customer records
         stats.put("totalOrders", orders.size());
         stats.put("ordersByStatus", ordersByStatus);
-        stats.put("totalRevenue", totalRevenue);
+
+        // What the PLATFORM earns FROM this business (subscription payments)
+        stats.put("platformRevenue", platformRevenue);
         stats.put("successfulPayments", successfulPayments);
         stats.put("pendingPayments", pendingPayments);
         stats.put("failedPayments", failedPayments);
+
+        // What this business earns FROM its customers (queue + order revenue)
+        stats.put("customerRevenue", customerRevenue);
+        stats.put("customerQueueRevenue", customerQueueRevenue);
+        stats.put("customerOrderRevenue", customerOrderRevenue);
+
+        // Services
         stats.put("activeServices", activeServices);
         stats.put("totalServices", services.size());
+
+        // Charts & history
         stats.put("monthlyRevenue", monthlyRevenue);
         stats.put("recentQueues", recentQueues);
         stats.put("recentPayments", recentPayments);

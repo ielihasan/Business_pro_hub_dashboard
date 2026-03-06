@@ -33,11 +33,14 @@ import {
   Clock,
   Layers,
   TrendingUp,
+  TrendingDown,
   CheckCircle,
   XCircle,
   AlertCircle,
   Calendar,
   Star,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,7 +65,8 @@ interface Business {
 
 interface MonthlyRevenue {
   month: string;
-  revenue: number;
+  revenue: number;           // platform earns FROM business
+  customerRevenue: number;   // business earns FROM customers
 }
 
 interface RecentQueue {
@@ -96,18 +100,31 @@ interface ServiceItem {
 }
 
 interface Stats {
+  // Queue / activity
   totalQueues: number;
   todayQueues: number;
   queueByStatus: Record<string, number>;
+  customersServed: number;
   totalCustomers: number;
   totalOrders: number;
   ordersByStatus: Record<string, number>;
-  totalRevenue: number;
+
+  // Platform ← Business (subscription payments)
+  platformRevenue: number;
   successfulPayments: number;
   pendingPayments: number;
   failedPayments: number;
+
+  // Business ← Customers (queue + order revenue)
+  customerRevenue: number;
+  customerQueueRevenue: number;
+  customerOrderRevenue: number;
+
+  // Services
   activeServices: number;
   totalServices: number;
+
+  // Charts & lists
   monthlyRevenue: MonthlyRevenue[];
   recentQueues: RecentQueue[];
   recentPayments: RecentPayment[];
@@ -133,6 +150,13 @@ const PLAN_COLORS: Record<string, string> = {
   starter: "bg-blue-100 text-blue-700",
   professional: "bg-purple-100 text-purple-700",
   enterprise: "bg-yellow-100 text-yellow-700",
+};
+
+const PLAN_PRICES: Record<string, number> = {
+  free: 0,
+  starter: 2999,
+  professional: 5999,
+  enterprise: 14999,
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -173,7 +197,53 @@ function formatDateTime(d: string | null) {
   });
 }
 
-/* ──────────────────────────── Sub-components ────────────────────────── */
+/* ────────────────────── Revenue Flow Card ───────────────────────────── */
+
+function FlowCard({
+  direction,
+  from,
+  to,
+  amount,
+  sub,
+  icon,
+  color,
+}: {
+  direction: "in" | "out";
+  from: string;
+  to: string;
+  amount: string;
+  sub: string;
+  icon: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <Card className={`border-l-4 ${color}`}>
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              {direction === "in" ? (
+                <ArrowDownLeft className="h-4 w-4 text-green-600" />
+              ) : (
+                <ArrowUpRight className="h-4 w-4 text-blue-600" />
+              )}
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {from} → {to}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{amount}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
+          </div>
+          <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ──────────────────────── Stat Card ─────────────────────────────────── */
 
 function StatCard({
   title,
@@ -206,13 +276,19 @@ function StatCard({
   );
 }
 
+/* ────────────────────────── Skeleton ────────────────────────────────── */
+
 function SkeletonPage() {
   return (
     <div className="p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-12 w-72" />
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
       </div>
@@ -280,9 +356,12 @@ export default function BusinessDetailPage() {
 
   const { business, stats } = data;
 
-  /* Revenue bar chart */
-  const maxRevenue = Math.max(
-    ...stats.monthlyRevenue.map((m) => Number(m.revenue) || 0),
+  /* Revenue bar chart — dual bars per month */
+  const maxBar = Math.max(
+    ...stats.monthlyRevenue.flatMap((m) => [
+      Number(m.revenue) || 0,
+      Number(m.customerRevenue) || 0,
+    ]),
     1
   );
 
@@ -292,18 +371,19 @@ export default function BusinessDetailPage() {
   );
   const totalStatusCount = queueStatusEntries.reduce((s, [, v]) => s + v, 0);
 
+  const planPrice = PLAN_PRICES[business.subscription_plan] || 0;
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
 
-      {/* ── Back + Header ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-      </div>
+      {/* ── Back ──────────────────────────────────────────────────── */}
+      <Button variant="ghost" size="sm" onClick={() => router.back()}>
+        <ArrowLeft className="h-4 w-4 mr-1" />
+        Back to Businesses
+      </Button>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             {business.business_name}
@@ -316,8 +396,8 @@ export default function BusinessDetailPage() {
                 "bg-gray-100 text-gray-700"
               }
             >
-              {PLAN_LABELS[business.subscription_plan] ||
-                business.subscription_plan}
+              {PLAN_LABELS[business.subscription_plan] || business.subscription_plan}
+              {planPrice > 0 && ` · ${formatCurrency(planPrice)}/mo`}
             </Badge>
             <Badge
               className={
@@ -330,54 +410,83 @@ export default function BusinessDetailPage() {
             </Badge>
           </div>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 shrink-0">
           Member since {formatDate(business.created_at)}
         </p>
       </div>
 
-      {/* ── Stats Grid ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard
-          title="Total Queues"
-          value={stats.totalQueues}
-          icon={<Activity className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Today's Queues"
-          value={stats.todayQueues}
-          icon={<Clock className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Customers"
-          value={stats.totalCustomers}
-          icon={<Users className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(stats.totalRevenue)}
-          icon={<CreditCard className="h-5 w-5" />}
-          sub={`${stats.successfulPayments} payments`}
-        />
-        <StatCard
-          title="Orders"
-          value={stats.totalOrders}
-          icon={<ShoppingBag className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Services"
-          value={`${stats.activeServices} / ${stats.totalServices}`}
-          icon={<Layers className="h-5 w-5" />}
-          sub="active / total"
-        />
+      {/* ── Revenue Flow ───────────────────────────────────────────
+           Two sides: what the platform gets FROM the business,
+           and what the business gets FROM its customers           */}
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+          Revenue Flow
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Platform ← Business */}
+          <FlowCard
+            direction="in"
+            from="Business"
+            to="Platform"
+            amount={formatCurrency(stats.platformRevenue)}
+            sub={`${stats.successfulPayments} subscription payment${stats.successfulPayments !== 1 ? "s" : ""} · ${stats.pendingPayments} pending`}
+            icon={<TrendingDown className="h-5 w-5" />}
+            color="border-blue-400"
+          />
+
+          {/* Business ← Customers */}
+          <FlowCard
+            direction="out"
+            from="Customers"
+            to="Business"
+            amount={formatCurrency(stats.customerRevenue)}
+            sub={`Queue: ${formatCurrency(stats.customerQueueRevenue)} · Orders: ${formatCurrency(stats.customerOrderRevenue)}`}
+            icon={<TrendingUp className="h-5 w-5" />}
+            color="border-green-400"
+          />
+        </div>
       </div>
 
-      {/* ── Business Info + Revenue Chart ─────────────────────────── */}
+      {/* ── Activity Stats ────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+          Activity
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Queues"
+            value={stats.totalQueues}
+            icon={<Activity className="h-5 w-5" />}
+            sub={`${stats.todayQueues} today`}
+          />
+          <StatCard
+            title="Customers Served"
+            value={stats.customersServed}
+            icon={<Users className="h-5 w-5" />}
+            sub={`${stats.totalCustomers} walk-in records`}
+          />
+          <StatCard
+            title="Total Orders"
+            value={stats.totalOrders}
+            icon={<ShoppingBag className="h-5 w-5" />}
+          />
+          <StatCard
+            title="Services"
+            value={`${stats.activeServices} / ${stats.totalServices}`}
+            icon={<Layers className="h-5 w-5" />}
+            sub="active / total"
+          />
+        </div>
+      </div>
+
+      {/* ── Business Info + Dual Revenue Chart ───────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Business Info */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Business Info
             </CardTitle>
           </CardHeader>
@@ -419,7 +528,7 @@ export default function BusinessDetailPage() {
               </div>
             )}
 
-            {/* Subscription */}
+            {/* Subscription block */}
             <div className="pt-3 border-t space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1">
                 <Star className="h-3 w-3" /> Subscription
@@ -432,10 +541,15 @@ export default function BusinessDetailPage() {
                     "bg-gray-100 text-gray-700"
                   }
                 >
-                  {PLAN_LABELS[business.subscription_plan] ||
-                    business.subscription_plan}
+                  {PLAN_LABELS[business.subscription_plan] || business.subscription_plan}
                 </Badge>
               </div>
+              {planPrice > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Monthly fee</span>
+                  <span className="font-medium">{formatCurrency(planPrice)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">Status</span>
                 <span className="font-medium capitalize">
@@ -449,54 +563,83 @@ export default function BusinessDetailPage() {
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Approved</span>
-                <span className="font-medium">
-                  {formatDate(business.approved_at)}
-                </span>
+                <span className="text-gray-500">Approved on</span>
+                <span className="font-medium">{formatDate(business.approved_at)}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Revenue Chart */}
+        {/* Dual Revenue Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <TrendingUp className="h-4 w-4" />
-              Revenue Overview (Last 6 Months)
+              Monthly Revenue (Last 6 Months)
             </CardTitle>
+            {/* Legend */}
+            <div className="flex gap-4 mt-1">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
+                Platform revenue (from business)
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="h-2.5 w-2.5 rounded-sm bg-green-500" />
+                Business revenue (from customers)
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {stats.monthlyRevenue.every((m) => Number(m.revenue) === 0) ? (
+            {stats.monthlyRevenue.every(
+              (m) => Number(m.revenue) === 0 && Number(m.customerRevenue) === 0
+            ) ? (
               <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
                 No revenue recorded yet
               </div>
             ) : (
               <>
-                <div className="flex items-end gap-3" style={{ height: "180px" }}>
+                <div className="flex items-end gap-4" style={{ height: "180px" }}>
                   {stats.monthlyRevenue.map((item, index) => {
-                    const rev = Number(item.revenue) || 0;
-                    const barH =
-                      maxRevenue > 0
-                        ? Math.max((rev / maxRevenue) * 140, rev > 0 ? 6 : 2)
-                        : 2;
+                    const platRev = Number(item.revenue) || 0;
+                    const custRev = Number(item.customerRevenue) || 0;
+                    const platH = maxBar > 0 ? Math.max((platRev / maxBar) * 140, platRev > 0 ? 6 : 2) : 2;
+                    const custH = maxBar > 0 ? Math.max((custRev / maxBar) * 140, custRev > 0 ? 6 : 2) : 2;
                     return (
                       <div
                         key={index}
-                        className="flex-1 flex flex-col items-center justify-end h-full"
+                        className="flex-1 flex flex-col items-center justify-end h-full gap-1"
                       >
-                        <span className="text-xs text-gray-500 mb-1 text-center leading-tight">
-                          {rev > 0 ? formatCurrency(rev) : ""}
-                        </span>
-                        <div
-                          className="w-full bg-black rounded-t transition-all duration-500"
-                          style={{ height: `${barH}px` }}
-                        />
+                        <div className="w-full flex gap-1 items-end justify-center" style={{ height: "145px" }}>
+                          {/* Platform bar (blue) */}
+                          <div className="flex-1 flex flex-col items-center justify-end h-full">
+                            {platRev > 0 && (
+                              <span className="text-[9px] text-blue-600 mb-0.5 leading-none text-center">
+                                {formatCurrency(platRev)}
+                              </span>
+                            )}
+                            <div
+                              className="w-full bg-blue-500 rounded-t transition-all duration-500"
+                              style={{ height: `${platH}px` }}
+                            />
+                          </div>
+                          {/* Customer bar (green) */}
+                          <div className="flex-1 flex flex-col items-center justify-end h-full">
+                            {custRev > 0 && (
+                              <span className="text-[9px] text-green-600 mb-0.5 leading-none text-center">
+                                {formatCurrency(custRev)}
+                              </span>
+                            )}
+                            <div
+                              className="w-full bg-green-500 rounded-t transition-all duration-500"
+                              style={{ height: `${custH}px` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex gap-3 mt-2 border-t pt-2">
+                <div className="flex gap-4 mt-2 border-t pt-2">
                   {stats.monthlyRevenue.map((item, index) => (
                     <div key={index} className="flex-1 text-center">
                       <span className="text-xs text-gray-500">{item.month}</span>
@@ -515,7 +658,7 @@ export default function BusinessDetailPage() {
         {/* Queue Status Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Queue Status Breakdown
             </CardTitle>
           </CardHeader>
@@ -534,16 +677,13 @@ export default function BusinessDetailPage() {
                   return (
                     <div key={status}>
                       <div className="flex items-center justify-between text-sm mb-1">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={
-                              STATUS_COLORS[status] ||
-                              "bg-gray-100 text-gray-700"
-                            }
-                          >
-                            {status.replace("_", " ")}
-                          </Badge>
-                        </div>
+                        <Badge
+                          className={
+                            STATUS_COLORS[status] || "bg-gray-100 text-gray-700"
+                          }
+                        >
+                          {status.replace("_", " ")}
+                        </Badge>
                         <span className="text-gray-600 font-medium">
                           {count}{" "}
                           <span className="text-gray-400 font-normal">
@@ -568,8 +708,11 @@ export default function BusinessDetailPage() {
         {/* Services */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Services / Queue Types
+              <span className="ml-2 font-normal text-gray-400">
+                (what business charges customers per visit)
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -581,8 +724,8 @@ export default function BusinessDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Price / Visit</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -590,7 +733,9 @@ export default function BusinessDetailPage() {
                   {stats.services.map((svc) => (
                     <TableRow key={svc.id}>
                       <TableCell className="font-medium">{svc.name}</TableCell>
-                      <TableCell>{formatCurrency(svc.price)}</TableCell>
+                      <TableCell className="font-semibold text-green-700">
+                        {formatCurrency(svc.price)}
+                      </TableCell>
                       <TableCell>
                         {svc.is_active ? (
                           <Badge className="bg-green-100 text-green-700 text-xs">
@@ -614,9 +759,10 @@ export default function BusinessDetailPage() {
       {/* ── Recent Queue Activity ──────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+          <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <Activity className="h-4 w-4" />
             Recent Queue Activity
+            <span className="font-normal text-gray-400 ml-1">(last 5 entries)</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -631,7 +777,7 @@ export default function BusinessDetailPage() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Service</TableHead>
-                  <TableHead>Position</TableHead>
+                  <TableHead>#</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Time</TableHead>
@@ -643,13 +789,13 @@ export default function BusinessDetailPage() {
                     <TableCell className="font-medium">
                       {q.customer_name}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-gray-500 text-sm">
                       {q.customer_phone || "—"}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-gray-500 text-sm">
                       {q.service_type || "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-gray-600">
                       {q.position != null ? `#${q.position}` : "—"}
                     </TableCell>
                     <TableCell>
@@ -666,7 +812,7 @@ export default function BusinessDetailPage() {
                           {q.priority}
                         </Badge>
                       ) : (
-                        "—"
+                        <span className="text-gray-400 text-sm">normal</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -689,17 +835,39 @@ export default function BusinessDetailPage() {
         </CardContent>
       </Card>
 
-      {/* ── Recent Payments ───────────────────────────────────────── */}
+      {/* ── Subscription Payments (Platform ← Business) ───────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+          <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <CreditCard className="h-4 w-4" />
-            Recent Payments
+            Subscription Payments
+            <span className="font-normal text-gray-400 ml-1">
+              — what this business pays the platform
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Payment status summary */}
+          <div className="flex gap-4 mb-4 pb-4 border-b">
+            <div className="flex items-center gap-1.5 text-sm">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="font-semibold">{stats.successfulPayments}</span>
+              <span className="text-gray-400">paid</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <span className="font-semibold">{stats.pendingPayments}</span>
+              <span className="text-gray-400">pending</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <XCircle className="h-4 w-4 text-red-500" />
+              <span className="font-semibold">{stats.failedPayments}</span>
+              <span className="text-gray-400">failed</span>
+            </div>
+          </div>
+
           {stats.recentPayments.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">
+            <p className="text-sm text-gray-400 text-center py-4">
               No payments recorded
             </p>
           ) : (
@@ -720,13 +888,15 @@ export default function BusinessDetailPage() {
                     <TableCell className="font-medium capitalize">
                       {p.plan_id || "—"}
                     </TableCell>
-                    <TableCell>{formatCurrency(Number(p.amount))}</TableCell>
-                    <TableCell className="text-gray-500 capitalize">
+                    <TableCell className="font-semibold text-blue-700">
+                      {formatCurrency(Number(p.amount))}
+                    </TableCell>
+                    <TableCell className="text-gray-500 capitalize text-sm">
                       {p.payment_method || "—"}
                     </TableCell>
                     <TableCell className="text-gray-400 text-xs font-mono">
                       {p.transaction_id
-                        ? p.transaction_id.slice(0, 16) + "..."
+                        ? p.transaction_id.slice(0, 16) + "…"
                         : "—"}
                     </TableCell>
                     <TableCell>
@@ -759,13 +929,16 @@ export default function BusinessDetailPage() {
         </CardContent>
       </Card>
 
-      {/* ── Orders Summary ────────────────────────────────────────── */}
+      {/* ── Orders Breakdown ──────────────────────────────────────── */}
       {Object.keys(stats.ordersByStatus).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <ShoppingBag className="h-4 w-4" />
               Orders Breakdown
+              <span className="font-normal text-gray-400 ml-1">
+                — what customers ordered from this business
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -783,17 +956,21 @@ export default function BusinessDetailPage() {
                   </span>
                 </div>
               ))}
+              <div className="flex items-center gap-2 bg-green-50 rounded-lg px-4 py-3 border border-green-100">
+                <span className="text-lg font-bold text-green-700">
+                  {formatCurrency(stats.customerOrderRevenue)}
+                </span>
+                <span className="text-sm text-green-600">total earned</span>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ── Footer spacing ────────────────────────────────────────── */}
+      {/* ── Footer ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 text-xs text-gray-400 pt-2 border-t">
         <Calendar className="h-3.5 w-3.5" />
-        <span>
-          Last updated: {new Date().toLocaleString("en-PK")}
-        </span>
+        <span>Last updated: {new Date().toLocaleString("en-PK")}</span>
       </div>
     </div>
   );
