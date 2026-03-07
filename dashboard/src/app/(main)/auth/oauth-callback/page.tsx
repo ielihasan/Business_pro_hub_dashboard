@@ -147,24 +147,31 @@ export default function OAuthCallbackPage() {
         }
       }
 
-      // Check if user has a pending application for this specific role
+      // Check if user has an existing application for this specific role
       const { data: existingApplications } = await supabase
         .from("business_applications")
         .select("*")
         .eq("user_id", session.user.id);
 
       if (existingApplications && existingApplications.length > 0) {
-        const pendingRoleType = pendingRole === "admin" ? "Admin" : null;
-        const hasPendingForRole = existingApplications.some(
+        const roleApp = existingApplications.find(
           (app) => pendingRole === "admin" ? app.business_type === "Admin" : app.business_type !== "Admin"
         );
 
-        if (hasPendingForRole) {
-          // User has pending application for this role
-          const isAdmin = pendingRole === "admin";
-          toast.warning("Application already submitted for this role!");
-          router.push(isAdmin ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business");
-          return;
+        if (roleApp) {
+          if (roleApp.is_rejected) {
+            // Rejected — inform user with reason, delete old application, allow re-registration
+            const reason = roleApp.rejection_reason || "No reason provided";
+            toast.warning(`Your previous application was rejected: "${reason}". Please resubmit your details below.`);
+            await supabase.from("business_applications").delete().eq("id", roleApp.id);
+            // Fall through to registration below
+          } else {
+            // Still pending — awaiting admin review
+            const isAdmin = pendingRole === "admin";
+            toast.warning("Your application is already under review. Please wait for admin approval.");
+            router.push(isAdmin ? "/auth/waiting-approval-admin" : "/auth/waiting-approval-business");
+            return;
+          }
         }
       }
 
@@ -198,6 +205,7 @@ export default function OAuthCallbackPage() {
           business_description: "Platform Administrator",
           is_approved: false,
           is_rejected: false,
+          email_verified: true, // Google already verified the email
         });
 
       if (error) throw error;
@@ -229,6 +237,7 @@ export default function OAuthCallbackPage() {
           business_description: data.businessDescription || "",
           is_approved: false,
           is_rejected: false,
+          email_verified: true, // Google already verified the email
         });
 
       if (error) throw error;

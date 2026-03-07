@@ -74,10 +74,25 @@ export function LoginForm() {
 
       const allAccounts = [...approvedAccounts, ...filteredPendingAccounts];
 
-      // No accounts found at all
+      // No accounts found at all — check if they have a rejected application
       if (allAccounts.length === 0) {
-        toast.error("User profile not found. Please contact support.");
+        const { data: rejectedApps } = await supabase
+          .from("business_applications")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .eq("is_rejected", true);
+
+        if (rejectedApps && rejectedApps.length > 0) {
+          const reason = rejectedApps[0].rejection_reason || "Not specified";
+          toast.error(`Your application was rejected. Reason: "${reason}". You may register again.`);
+          await supabase.auth.signOut();
+          router.push("/auth/v1/register");
+          return;
+        }
+
+        toast.error("User profile not found. Please register first.");
         await supabase.auth.signOut();
+        router.push("/auth/v1/register");
         return;
       }
 

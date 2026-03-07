@@ -43,14 +43,27 @@ export async function registerUser(data: {
       userId = existingUser.id;
 
       // Check if they already have an application for this role
-      const { data: existingApplication } = await supabaseAdmin
+      const { data: allApplications } = await supabaseAdmin
         .from("business_applications")
         .select("*")
-        .eq("user_id", userId)
-        .eq("business_type", role === "admin" ? "Admin" : businessData?.businessType || "");
+        .eq("user_id", userId);
 
-      if (existingApplication && existingApplication.length > 0) {
-        return { error: "You already have a pending application for this role" };
+      const roleApp = allApplications?.find((app) =>
+        role === "admin" ? app.business_type === "Admin" : app.business_type !== "Admin"
+      );
+
+      if (roleApp) {
+        if (roleApp.is_rejected) {
+          // Rejected — delete old application and allow fresh re-registration
+          const { error: deleteError } = await supabaseAdmin
+            .from("business_applications")
+            .delete()
+            .eq("id", roleApp.id);
+          if (deleteError) return { error: deleteError.message };
+        } else {
+          // Still pending — block re-registration
+          return { error: "You already have a pending application. Please wait for admin review." };
+        }
       }
 
       // Check if they're already approved for this role

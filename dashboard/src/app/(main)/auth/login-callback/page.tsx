@@ -69,9 +69,10 @@ export default function LoginCallbackPage() {
         if (applicationData && applicationData.length > 0) {
           const firstApp = applicationData[0];
           if (firstApp.is_rejected) {
-            toast.error(`Your application was rejected. Reason: ${firstApp.rejection_reason || "Not specified"}`);
+            const reason = firstApp.rejection_reason || "Not specified";
+            toast.error(`Your application was rejected. Reason: "${reason}". You may register again.`);
             await supabase.auth.signOut();
-            router.push("/auth/v1/login");
+            router.push("/auth/v1/register");
             return;
           }
 
