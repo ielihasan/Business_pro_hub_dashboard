@@ -4,9 +4,9 @@
     {
       "name": "Dashboard (Next.js)",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--port", "3002"],
-      "cwd": "dashboard",
-      "port": 3002
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
+      "cwd": "C:\\Users\\X\\FYP\\Business_pro_hub_dashboard\\dashboard",
+      "port": 3003
     },
     {
       "name": "Backend (Spring Boot)",

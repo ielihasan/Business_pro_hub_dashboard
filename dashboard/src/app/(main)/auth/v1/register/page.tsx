@@ -59,7 +59,7 @@ export default function RegisterV1() {
             {/* Login Link */}
             <p className="text-muted-foreground text-center text-xs mt-6">
               Already have an account?{" "}
-              <Link href="/auth/v1/login" className="text-primary font-medium hover:underline transition-all duration-200">
+              <Link href="/auth/v1/login" className="text-primary font-medium hover:underline transition-all duration-200 py-2 inline-block">
                 Login here
               </Link>
             </p>

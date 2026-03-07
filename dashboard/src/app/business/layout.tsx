@@ -28,6 +28,7 @@ interface BusinessData {
   business_address: string;
   business_phone: string;
   email: string;
+  avatar_url?: string | null;
 }
 
 export default function BusinessLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,16 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Sync avatar changes from the settings page without a full reload
+  useEffect(() => {
+    const handleAvatarUpdate = (e: Event) => {
+      const { avatar_url } = (e as CustomEvent<{ avatar_url: string | null }>).detail;
+      setBusiness((prev) => prev ? { ...prev, avatar_url } : prev);
+    };
+    window.addEventListener("business-avatar-updated", handleAvatarUpdate);
+    return () => window.removeEventListener("business-avatar-updated", handleAvatarUpdate);
   }, []);
 
   const checkAuth = async () => {
@@ -220,9 +231,17 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
           {/* Business Details */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold">
-                {business?.business_name?.charAt(0).toUpperCase() || "B"}
-              </div>
+              {business?.avatar_url ? (
+                <img
+                  src={business.avatar_url}
+                  alt={business.business_name}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold flex-shrink-0 select-none">
+                  {business?.business_name?.charAt(0).toUpperCase() || "B"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">
                   {business?.business_name}
@@ -296,9 +315,17 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                 <p className="text-sm font-medium text-white">{business?.business_name}</p>
                 <p className="text-xs text-gray-400">{business?.email}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold">
-                {business?.business_name?.charAt(0).toUpperCase() || "B"}
-              </div>
+              {business?.avatar_url ? (
+                <img
+                  src={business.avatar_url}
+                  alt={business.business_name}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-600"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold flex-shrink-0 select-none">
+                  {business?.business_name?.charAt(0).toUpperCase() || "B"}
+                </div>
+              )}
             </div>
           </div>
         </header>

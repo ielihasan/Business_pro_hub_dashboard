@@ -49,60 +49,67 @@ export default function AdminDashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch business statistics
-      const { data: businesses } = await supabase
-        .from("admins")
-        .select("*")
-        .eq("role", "business_owner");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8181";
 
-      const totalBusinesses = businesses?.length || 0;
-      const pendingBusinesses = businesses?.filter(b => !b.is_approved).length || 0;
-      const approvedBusinesses = businesses?.filter(b => b.is_approved).length || 0;
+      // ── 1. Spring Boot platform stats (bypasses Supabase RLS) ──────────
+      const [statsRes, bizResult, recentResult] = await Promise.all([
+        fetch(`${apiUrl}/api/admin/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        // Approved businesses count — admins table is RLS-friendly for admin role
+        supabase
+          .from("admins")
+          .select("id, is_approved")
+          .eq("role", "business_owner"),
+        // Recent 5 registrations
+        supabase
+          .from("admins")
+          .select("id, business_name, business_type, full_name, email, created_at, is_approved")
+          .eq("role", "business_owner")
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ]);
 
-      // Fetch customer count
-      const { count: customerCount } = await supabase
-        .from("User")
-        .select("*", { count: "exact", head: true });
+      // ── 2. Parse Spring Boot stats ─────────────────────────────────────
+      if (statsRes.ok) {
+        const json = await statsRes.json();
+        const d = json.data ?? json; // ApiResponse wrapper or raw object
 
-      // Fetch queue statistics
-      const { data: queues } = await supabase
-        .from("queues")
-        .select("*");
+        // Pending businesses = not yet in businesses table → from admins
+        const allBiz = bizResult.data || [];
+        const pendingBusinesses = allBiz.filter((b) => !b.is_approved).length;
+        const approvedBusinesses = allBiz.filter((b) => b.is_approved).length;
 
-      const activeQueues = queues?.filter(q => q.status === "waiting" || q.status === "in_progress").length || 0;
+        setStats({
+          totalBusinesses: Number(d.totalBusinesses ?? 0),
+          pendingBusinesses,
+          approvedBusinesses,
+          totalCustomers: Number(d.totalCustomers ?? 0),
+          activeQueues: Number(d.activeQueues ?? 0),
+          totalOrders: Number(d.totalOrders ?? 0),
+          pendingOrders: Number(d.pendingOrders ?? 0),
+          completedOrders: Number(d.completedOrders ?? 0),
+        });
+      } else {
+        // Fallback — use only Supabase admins data if backend is offline
+        const allBiz = bizResult.data || [];
+        const pendingBusinesses = allBiz.filter((b) => !b.is_approved).length;
+        const approvedBusinesses = allBiz.filter((b) => b.is_approved).length;
+        setStats((prev) => ({
+          ...prev,
+          totalBusinesses: allBiz.length,
+          pendingBusinesses,
+          approvedBusinesses,
+        }));
+      }
 
-      // Fetch order statistics
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("*");
-
-      const totalOrders = orders?.length || 0;
-      const pendingOrders = orders?.filter(o => o.status === "pending").length || 0;
-      const completedOrders = orders?.filter(o => o.status === "completed").length || 0;
-
-      setStats({
-        totalBusinesses,
-        pendingBusinesses,
-        approvedBusinesses,
-        totalCustomers: customerCount || 0,
-        activeQueues,
-        totalOrders,
-        pendingOrders,
-        completedOrders,
-      });
-
-      // Fetch recent business registrations
-      const { data: recentBiz } = await supabase
-        .from("admins")
-        .select("*")
-        .eq("role", "business_owner")
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      setRecentBusinesses(recentBiz || []);
-      setLoading(false);
+      // ── 3. Recent businesses ───────────────────────────────────────────
+      setRecentBusinesses((recentResult.data as RecentBusiness[]) || []);
     } catch (error) {
-      console.warn("Dashboard API unavailable, backend may be offline");
+      console.warn("Dashboard data fetch error:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -238,7 +245,7 @@ export default function AdminDashboardPage() {
             <CardDescription>Common administrative tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Link href="/admin/businesses/pending">
+            <Link href="/admin/businesses/pending" className="block">
               <Button variant="outline" className="w-full justify-start">
                 <Clock className="mr-2 h-4 w-4" />
                 Review Pending Businesses
@@ -249,13 +256,13 @@ export default function AdminDashboardPage() {
                 )}
               </Button>
             </Link>
-            <Link href="/admin/businesses/approved">
+            <Link href="/admin/businesses/approved" className="block">
               <Button variant="outline" className="w-full justify-start">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 View All Businesses
               </Button>
             </Link>
-            <Link href="/admin/users">
+            <Link href="/admin/users" className="block">
               <Button variant="outline" className="w-full justify-start">
                 <Users className="mr-2 h-4 w-4" />
                 Manage Users

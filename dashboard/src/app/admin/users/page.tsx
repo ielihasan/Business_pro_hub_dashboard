@@ -161,12 +161,20 @@ export default function AdminManagementPage() {
 
       if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
-      setAdmins(result.data || []);
+      const rows = result.data || [];
+      setAdmins(rows);
       if (result.pagination) {
         setPagination((prev) => ({
           ...prev,
           total: result.pagination.total,
           totalPages: result.pagination.totalPages,
+        }));
+      } else {
+        // Backend returns flat list without pagination wrapper — derive totals from data
+        setPagination((prev) => ({
+          ...prev,
+          total: rows.length,
+          totalPages: Math.max(1, Math.ceil(rows.length / prev.limit)),
         }));
       }
     } catch (error: any) {

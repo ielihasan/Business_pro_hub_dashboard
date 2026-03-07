@@ -39,6 +39,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     checkAuth();
   }, []);
 
+  // Sync avatar changes from the settings page without a full reload
+  useEffect(() => {
+    const handleAvatarUpdate = (e: Event) => {
+      const { avatar_url } = (e as CustomEvent<{ avatar_url: string | null }>).detail;
+      setAdmin((prev: any) => prev ? { ...prev, avatar_url } : prev);
+    };
+    window.addEventListener("admin-avatar-updated", handleAvatarUpdate);
+    return () => window.removeEventListener("admin-avatar-updated", handleAvatarUpdate);
+  }, []);
+
   const checkAuth = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -75,6 +85,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/auth/v1/login");
   };
 
+  /** Resolve a human-readable title from the current pathname */
+  const getPageTitle = (path: string): string => {
+    // Exact match first
+    const exact = navigation.find((item) => item.href === path);
+    if (exact) return exact.name;
+    // Business detail page — /admin/businesses/<uuid>
+    if (/^\/admin\/businesses\/[^/]+$/.test(path) &&
+        path !== "/admin/businesses/pending" &&
+        path !== "/admin/businesses/approved") {
+      return "Business Details";
+    }
+    // Prefix match (e.g. sub-pages)
+    const prefix = navigation.find((item) => path?.startsWith(item.href + "/"));
+    if (prefix) return prefix.name;
+    return "Admin Dashboard";
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -86,7 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           {/* Admin info */}
           <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-            <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+            <Skeleton className="w-10 h-10 rounded-full flex-shrink-0 bg-gray-200" />
             <div className="flex-1 space-y-1.5">
               <Skeleton className="h-3.5 w-28" />
               <Skeleton className="h-3 w-36" />
@@ -196,9 +223,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Admin info */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold">
-                {admin?.full_name?.charAt(0) || "A"}
-              </div>
+              {admin?.avatar_url ? (
+                <img
+                  src={admin.avatar_url}
+                  alt={admin.full_name}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold flex-shrink-0 select-none">
+                  {admin?.full_name?.charAt(0) || "A"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {admin?.full_name}
@@ -270,7 +305,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Menu className="w-6 h-6" />
               </button>
               <h2 className="text-lg font-semibold text-white">
-                {navigation.find(item => item.href === pathname)?.name || "Admin Dashboard"}
+                {getPageTitle(pathname ?? "")}
               </h2>
             </div>
             <div className="flex items-center space-x-4">
@@ -278,9 +313,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <p className="text-sm font-medium text-white">{admin?.full_name}</p>
                 <p className="text-xs text-gray-400">{admin?.email}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold">
-                {admin?.full_name?.charAt(0) || "A"}
-              </div>
+              {admin?.avatar_url ? (
+                <img
+                  src={admin.avatar_url}
+                  alt={admin.full_name}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-600"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold flex-shrink-0 select-none">
+                  {admin?.full_name?.charAt(0) || "A"}
+                </div>
+              )}
             </div>
           </div>
         </header>

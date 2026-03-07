@@ -41,6 +41,7 @@ import {
   Star,
   ArrowUpRight,
   ArrowDownLeft,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -355,6 +356,21 @@ export default function BusinessDetailPage() {
   }
 
   const { business, stats } = data;
+
+  /* Service UUID → name lookup (queue.service_type stores the service UUID) */
+  const serviceNameMap: Record<string, string> = Object.fromEntries(
+    stats.services.map((s) => [s.id, s.name])
+  );
+
+  /** Resolve a service_type UUID to a human-readable name */
+  const resolveService = (serviceType: string | null): string => {
+    if (!serviceType) return "—";
+    const name = serviceNameMap[serviceType];
+    if (name) return name;
+    // If it looks like a UUID, don't expose it raw
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(serviceType) ? "Unknown Service" : serviceType;
+  };
 
   /* Revenue bar chart — dual bars per month */
   const maxBar = Math.max(
@@ -793,7 +809,7 @@ export default function BusinessDetailPage() {
                       {q.customer_phone || "—"}
                     </TableCell>
                     <TableCell className="text-gray-500 text-sm">
-                      {q.service_type || "—"}
+                      {resolveService(q.service_type)}
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {q.position != null ? `#${q.position}` : "—"}
@@ -895,9 +911,23 @@ export default function BusinessDetailPage() {
                       {p.payment_method || "—"}
                     </TableCell>
                     <TableCell className="text-gray-400 text-xs font-mono">
-                      {p.transaction_id
-                        ? p.transaction_id.slice(0, 16) + "…"
-                        : "—"}
+                      {p.transaction_id ? (
+                        <span className="flex items-center gap-1 group">
+                          <span title={p.transaction_id}>
+                            {p.transaction_id.slice(0, 16)}…
+                          </span>
+                          <button
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Copy transaction ID"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.transaction_id!);
+                              toast.success("Transaction ID copied");
+                            }}
+                          >
+                            <Copy className="h-3 w-3 text-gray-400 hover:text-gray-600" />
+                          </button>
+                        </span>
+                      ) : "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">

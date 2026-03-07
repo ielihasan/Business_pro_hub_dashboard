@@ -61,7 +61,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { full_name, email } = body;
+    const { full_name, email, avatar_url, business_name, business_address, business_phone, business_description } = body;
 
     // Update Auth user if email changed
     if (email) {
@@ -86,6 +86,11 @@ export async function PATCH(req: Request) {
 
     if (full_name !== undefined) updateData.full_name = full_name;
     if (email !== undefined) updateData.email = email;
+    if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+    if (business_name !== undefined) updateData.business_name = business_name;
+    if (business_address !== undefined) updateData.business_address = business_address;
+    if (business_phone !== undefined) updateData.business_phone = business_phone;
+    if (business_description !== undefined) updateData.business_description = business_description;
 
     // Update admins table
     const { data: updatedAdmin, error: updateError } = await supabase

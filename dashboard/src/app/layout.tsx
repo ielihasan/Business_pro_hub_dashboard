@@ -14,7 +14,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: APP_CONFIG.meta.title,
+  title: {
+    default: APP_CONFIG.meta.title,
+    template: "%s | BusinessHub Pro",
+  },
   description: APP_CONFIG.meta.description,
 };
 

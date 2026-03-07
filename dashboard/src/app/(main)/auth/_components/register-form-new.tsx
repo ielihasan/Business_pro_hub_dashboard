@@ -201,7 +201,7 @@ export function RegisterFormNew() {
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "admin" | "business")} className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-2 h-11">
         <TabsTrigger value="business">Business Owner</TabsTrigger>
         <TabsTrigger value="admin">Platform Admin</TabsTrigger>
       </TabsList>

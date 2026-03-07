@@ -194,12 +194,20 @@ export default function ApprovedBusinessesPage() {
 
         if (!response.ok) throw new Error(result.error || result.message || `Request failed (${response.status})`);
 
-        setBusinesses(result.data || []);
+        const rows = result.data || [];
+        setBusinesses(rows);
         if (result.pagination) {
           setPagination((prev) => ({
             ...prev,
             total: result.pagination.total,
             totalPages: result.pagination.totalPages,
+          }));
+        } else {
+          // Backend returns flat list without pagination wrapper — derive totals from data
+          setPagination((prev) => ({
+            ...prev,
+            total: rows.length,
+            totalPages: Math.max(1, Math.ceil(rows.length / prev.limit)),
           }));
         }
       } catch (error: any) {
@@ -456,7 +464,7 @@ export default function ApprovedBusinessesPage() {
                 <Building2 className="h-6 w-6 text-gray-700" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Business Types</p>
+                <p className="text-sm text-gray-500">Available Types</p>
                 <p className="text-2xl font-bold">{businessTypes.length}</p>
               </div>
             </div>
@@ -818,8 +826,9 @@ export default function ApprovedBusinessesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -993,8 +1002,9 @@ export default function ApprovedBusinessesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

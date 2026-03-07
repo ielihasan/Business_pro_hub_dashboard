@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useForm } from "react-hook-form";
@@ -30,6 +30,7 @@ export default function OAuthCallbackPage() {
   const [user, setUser] = useState<any>(null);
   const [businessTypes, setBusinessTypes] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const handled = useRef(false);
 
   const form = useForm<z.infer<typeof BusinessInfoSchema>>({
     resolver: zodResolver(BusinessInfoSchema),
@@ -43,27 +44,63 @@ export default function OAuthCallbackPage() {
   });
 
   useEffect(() => {
-    handleOAuthCallback();
     loadBusinessTypes();
+
+    // Listen for SIGNED_IN (fires after PKCE code exchange completes)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+          if (!handled.current) {
+            handled.current = true;
+            subscription.unsubscribe();
+            handleOAuthCallback(session);
+          }
+        }
+      }
+    );
+
+    // Also check immediately for an already-active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !handled.current) {
+        handled.current = true;
+        subscription.unsubscribe();
+        handleOAuthCallback(session);
+      }
+    });
+
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (!handled.current) {
+        handled.current = true;
+        subscription.unsubscribe();
+        router.push("/auth/v1/register");
+      }
+    }, 10000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
-  const loadBusinessTypes = async () => {
-    const { data } = await supabase
-      .from("business_types")
-      .select("*")
-      .eq("is_active", true)
-      .order("name");
-
-    if (data) setBusinessTypes(data);
+  const loadBusinessTypes = () => {
+    // business_types table was removed; use the canonical hardcoded list
+    setBusinessTypes([
+      { id: "1", name: "Coffee Shop" },
+      { id: "2", name: "Restaurant" },
+      { id: "3", name: "Retail Store" },
+      { id: "4", name: "Clinic / Healthcare" },
+      { id: "5", name: "Salon / Barbershop" },
+      { id: "6", name: "Bank / Finance" },
+      { id: "7", name: "Government Office" },
+      { id: "8", name: "Pharmacy" },
+      { id: "9", name: "Bakery" },
+      { id: "10", name: "Other" },
+    ]);
   };
 
-  const handleOAuthCallback = async () => {
+  const handleOAuthCallback = async (session: any) => {
     try {
-      // Get the OAuth session
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (error) throw error;
-
       if (!session) {
         toast.error("No authentication session found");
         router.push("/auth/v1/register");

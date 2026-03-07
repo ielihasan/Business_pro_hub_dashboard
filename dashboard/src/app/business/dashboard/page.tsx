@@ -59,61 +59,49 @@ export default function BusinessDashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     if (!businessId) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {};
-
-      const [queueRes, ordersRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue?business_id=${businessId}`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders?business_id=${businessId}`, { headers }),
-      ]);
-
       const today = new Date().toISOString().split("T")[0];
 
+      // Query queue entries and orders directly from Supabase (no Spring Boot needed)
+      const [{ data: queueEntries }, { data: orders }] = await Promise.all([
+        supabase.from("queues").select("*").eq("business_id", businessId),
+        supabase.from("orders").select("*").eq("business_id", businessId),
+      ]);
+
       // Queue stats
-      if (queueRes.ok) {
-        const queueJson = await queueRes.json();
-        const inner = queueJson.data || {};
-        const rawEntries: any[] = inner.data || [];
+      const rawEntries: any[] = queueEntries || [];
 
-        const activeQueues = rawEntries.filter(
-          (q) => q.status === "waiting" || q.status === "in_progress" || q.status === "serving"
-        ).length;
-        const totalQueuesToday = rawEntries.filter(
-          (q) => (q.joined_at || q.created_at || "").startsWith(today)
-        ).length;
-        const completedToday = rawEntries.filter(
-          (q) => q.status === "completed" && (q.completed_at || "").startsWith(today)
-        ).length;
+      const activeQueues = rawEntries.filter(
+        (q) => q.status === "waiting" || q.status === "in_progress" || q.status === "serving"
+      ).length;
+      const totalQueuesToday = rawEntries.filter(
+        (q) => (q.joined_at || q.created_at || "").startsWith(today)
+      ).length;
+      const completedToday = rawEntries.filter(
+        (q) => q.status === "completed" && (q.completed_at || "").startsWith(today)
+      ).length;
+      const uniqueCustomers = new Set(rawEntries.map((q) => q.customer_id).filter(Boolean));
 
-        const uniqueCustomers = new Set(rawEntries.map((q) => q.customer_id).filter(Boolean));
+      const recent = [...rawEntries]
+        .sort((a, b) => new Date(b.joined_at || b.created_at).getTime() - new Date(a.joined_at || a.created_at).getTime())
+        .slice(0, 5);
+      setRecentQueues(recent);
 
-        const recent = [...rawEntries]
-          .sort((a, b) => new Date(b.joined_at || b.created_at).getTime() - new Date(a.joined_at || a.created_at).getTime())
-          .slice(0, 5);
-        setRecentQueues(recent);
-
-        setStats((prev) => ({
-          ...prev,
-          activeQueues,
-          totalQueuesToday,
-          completedToday,
-          totalCustomers: uniqueCustomers.size,
-        }));
-      }
+      setStats((prev) => ({
+        ...prev,
+        activeQueues,
+        totalQueuesToday,
+        completedToday,
+        totalCustomers: uniqueCustomers.size,
+      }));
 
       // Orders stats
-      if (ordersRes.ok) {
-        const ordersJson = await ordersRes.json();
-        const orders: any[] = ordersJson.data?.data || [];
+      const ordersArr: any[] = orders || [];
+      const totalOrders = ordersArr.length;
+      const pendingOrders = ordersArr.filter((o) => o.status === "pending" || o.status === "processing").length;
+      const completedOrders = ordersArr.filter((o) => o.status === "completed").length;
+      const totalRevenue = ordersArr.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
-        const totalOrders = orders.length;
-        const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "processing").length;
-        const completedOrders = orders.filter((o) => o.status === "completed").length;
-        const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-
-        setStats((prev) => ({ ...prev, totalOrders, pendingOrders, completedOrders, totalRevenue }));
-      }
+      setStats((prev) => ({ ...prev, totalOrders, pendingOrders, completedOrders, totalRevenue }));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -52,6 +52,9 @@ import {
   CreditCard,
   AlertTriangle,
   CheckCircle,
+  Camera,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
@@ -65,6 +68,7 @@ interface AdminProfile {
   is_approved: boolean;
   created_at: string;
   updated_at: string;
+  avatar_url: string | null;
 }
 
 interface SystemSettings {
@@ -77,9 +81,9 @@ interface SystemSettings {
   support_email: string;
   max_businesses_per_plan: {
     free: number;
-    basic: number;
-    standard: number;
-    premium: number;
+    starter: number;
+    professional: number;
+    enterprise: number;
   };
 }
 
@@ -93,9 +97,9 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   support_email: "",
   max_businesses_per_plan: {
     free: 1,
-    basic: 3,
-    standard: 10,
-    premium: -1,
+    starter: 3,
+    professional: 10,
+    enterprise: -1,
   },
 };
 
@@ -108,6 +112,11 @@ export default function AdminSettingsPage() {
   });
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
+
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Password state
   const [passwordForm, setPasswordForm] = useState({
@@ -150,10 +159,9 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // Use Next.js API route directly — works without Spring Boot and returns avatar_url
+      const res = await fetch(`${window.location.origin}/API/settings/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json().catch(() => ({}));
@@ -164,6 +172,7 @@ export default function AdminSettingsPage() {
         full_name: data.data.full_name || "",
         email: data.data.email || "",
       });
+      setAvatarUrl(data.data.avatar_url || null);
     } catch (error: any) {
       toast.error(error.message || "Failed to fetch profile");
     } finally {
@@ -203,7 +212,8 @@ export default function AdminSettingsPage() {
         return;
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/profile`, {
+      // Use Next.js API route directly — works without Spring Boot
+      const res = await fetch(`${window.location.origin}/API/settings/profile`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -223,6 +233,100 @@ export default function AdminSettingsPage() {
       setProfileSaving(false);
     }
   };
+
+  // --- Avatar helpers ---
+
+  const saveAvatarUrl = async (url: string | null) => {
+    const token = await getAuthToken();
+    if (!token) throw new Error("Not authenticated");
+    // Use the Next.js API route directly (service-role key, bypasses Spring Boot)
+    const res = await fetch(`${window.location.origin}/API/settings/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ avatar_url: url }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to save avatar URL");
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!e.target) return;
+    // Reset so the same file can be re-selected
+    (e.target as HTMLInputElement).value = "";
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only JPG, PNG, WebP or GIF images are allowed");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be smaller than 2 MB");
+      return;
+    }
+
+    try {
+      setAvatarUploading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("Not authenticated"); return; }
+
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const filePath = `${user.id}/${Date.now()}.${ext}`;
+
+      // Delete old avatar file if exists
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split("/object/public/avatars/")[1];
+        if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+      }
+
+      // Upload new file
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Save to DB
+      await saveAvatarUrl(publicUrl);
+      setAvatarUrl(publicUrl);
+      window.dispatchEvent(new CustomEvent("admin-avatar-updated", { detail: { avatar_url: publicUrl } }));
+      toast.success("Profile photo updated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload photo");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!avatarUrl) return;
+    try {
+      setAvatarUploading(true);
+      // Delete from storage
+      const oldPath = avatarUrl.split("/object/public/avatars/")[1];
+      if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
+      // Clear in DB
+      await saveAvatarUrl(null);
+      setAvatarUrl(null);
+      window.dispatchEvent(new CustomEvent("admin-avatar-updated", { detail: { avatar_url: null } }));
+      toast.success("Profile photo removed");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove photo");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // --- Password ---
 
   const handlePasswordChange = async () => {
     // Validation
@@ -376,6 +480,17 @@ export default function AdminSettingsPage() {
             <CardContent className="space-y-6">
               {profileLoading ? (
                 <div className="space-y-4">
+                  {/* Avatar skeleton */}
+                  <div className="flex items-center gap-5">
+                    <Skeleton className="w-20 h-20 rounded-full flex-shrink-0" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-40" />
+                      <div className="flex gap-2 pt-1">
+                        <Skeleton className="h-8 w-28" />
+                      </div>
+                    </div>
+                  </div>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                     <div className="flex gap-2">
                       <Skeleton className="h-5 w-16 rounded-full" />
@@ -428,6 +543,77 @@ export default function AdminSettingsPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Avatar Section */}
+                  <div className="flex items-center gap-5">
+                    {/* Avatar preview */}
+                    <div className="relative flex-shrink-0">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Profile photo"
+                          className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-black flex items-center justify-center text-white text-2xl font-semibold select-none">
+                          {profileForm.full_name?.charAt(0)?.toUpperCase() || "A"}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={avatarUploading}
+                        className="absolute bottom-0 right-0 w-7 h-7 bg-black rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        title="Upload photo"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Info + buttons */}
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium text-gray-900">Profile Photo</p>
+                      <p className="text-xs text-gray-500">JPG, PNG, WebP or GIF · Max 2 MB</p>
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={avatarUploading}
+                        >
+                          {avatarUploading ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Upload className="h-3.5 w-3.5 mr-1.5" />
+                          )}
+                          {avatarUploading ? "Uploading…" : "Upload Photo"}
+                        </Button>
+                        {avatarUrl && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAvatarRemove}
+                            disabled={avatarUploading}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleAvatarUpload}
+                    />
+                  </div>
 
                   <Separator />
 
@@ -721,9 +907,9 @@ export default function AdminSettingsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="free">Free</SelectItem>
-                        <SelectItem value="basic">Basic</SelectItem>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="premium">Premium</SelectItem>
+                        <SelectItem value="starter">Starter</SelectItem>
+                        <SelectItem value="professional">Professional</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-gray-500">
@@ -778,17 +964,17 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-gray-500">-1 = unlimited</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Basic Plan</Label>
+                    <Label>Starter Plan</Label>
                     <Input
                       type="number"
                       min="-1"
-                      value={systemSettings.max_businesses_per_plan.basic}
+                      value={systemSettings.max_businesses_per_plan.starter}
                       onChange={(e) =>
                         setSystemSettings({
                           ...systemSettings,
                           max_businesses_per_plan: {
                             ...systemSettings.max_businesses_per_plan,
-                            basic: parseInt(e.target.value) || 0,
+                            starter: parseInt(e.target.value) || 0,
                           },
                         })
                       }
@@ -796,17 +982,17 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-gray-500">-1 = unlimited</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Standard Plan</Label>
+                    <Label>Professional Plan</Label>
                     <Input
                       type="number"
                       min="-1"
-                      value={systemSettings.max_businesses_per_plan.standard}
+                      value={systemSettings.max_businesses_per_plan.professional}
                       onChange={(e) =>
                         setSystemSettings({
                           ...systemSettings,
                           max_businesses_per_plan: {
                             ...systemSettings.max_businesses_per_plan,
-                            standard: parseInt(e.target.value) || 0,
+                            professional: parseInt(e.target.value) || 0,
                           },
                         })
                       }
@@ -814,17 +1000,17 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-gray-500">-1 = unlimited</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Premium Plan</Label>
+                    <Label>Enterprise Plan</Label>
                     <Input
                       type="number"
                       min="-1"
-                      value={systemSettings.max_businesses_per_plan.premium}
+                      value={systemSettings.max_businesses_per_plan.enterprise}
                       onChange={(e) =>
                         setSystemSettings({
                           ...systemSettings,
                           max_businesses_per_plan: {
                             ...systemSettings.max_businesses_per_plan,
-                            premium: parseInt(e.target.value) || 0,
+                            enterprise: parseInt(e.target.value) || 0,
                           },
                         })
                       }
