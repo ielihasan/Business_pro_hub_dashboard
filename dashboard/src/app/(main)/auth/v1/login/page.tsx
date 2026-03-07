@@ -49,10 +49,10 @@ export default function LoginV1() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
-              <h1 className="text-primary-foreground text-4xl font-light">
+              <h1 className="text-primary-foreground text-4xl font-bold">
                 BusinessHub Pro
               </h1>
-              <p className="text-primary-foreground/80 text-lg">
+              <p className="text-primary-foreground/80 text-lg font-bold">
                 Smart Business Support Platform with Real-Time Queue Optimization
               </p>
             </motion.div>

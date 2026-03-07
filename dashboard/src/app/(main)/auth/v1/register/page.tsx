@@ -90,7 +90,7 @@ export default function RegisterV1() {
             <BookOpenText className="text-primary-foreground size-16 mb-6 flex-shrink-0" />
           </motion.div>
           <motion.h1
-            className="text-primary-foreground text-3xl font-light mb-3"
+            className="text-primary-foreground text-3xl font-bold mb-3"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
@@ -98,7 +98,7 @@ export default function RegisterV1() {
             Welcome!
           </motion.h1>
           <motion.p
-            className="text-primary-foreground/90 text-base max-w-sm"
+            className="text-primary-foreground/90 text-base font-bold max-w-sm"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.6 }}
