@@ -53,12 +53,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import {
   Users,
@@ -571,13 +565,6 @@ export default function QueueManagementPage() {
 
   // Queue types
   const [queueTypes, setQueueTypes] = useState<QueueType[]>([]);
-  const [queueTypeDialogOpen, setQueueTypeDialogOpen] = useState(false);
-  const [editingQueueType, setEditingQueueType] = useState<QueueType | null>(null);
-  const [savingQueueType, setSavingQueueType] = useState(false);
-  const [newQueueType, setNewQueueType] = useState({
-    name: "", description: "", color: "#3B82F6",
-    estimated_service_time: 5, max_capacity: 50, price: 0,
-  });
 
   /* ── Fetch business */
   useEffect(() => {
@@ -655,60 +642,6 @@ export default function QueueManagementPage() {
     }
   }, [business?.id, fetchQueue, fetchQueueTypes]);
 
-  /* ── Queue type CRUD */
-  const handleSaveQueueType = async () => {
-    if (!newQueueType.name.trim()) { toast.error("Queue type name is required"); return; }
-    if (!business?.id) { toast.error("Business not loaded"); return; }
-    setSavingQueueType(true);
-    try {
-      const isEditing = !!editingQueueType;
-      const url = isEditing
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${editingQueueType!.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types`;
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(url, {
-        method: isEditing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ ...newQueueType, business_id: business.id }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      toast.success(`Queue type ${isEditing ? "updated" : "created"}!`);
-      await fetchQueueTypes(business.id);
-      setQueueTypeDialogOpen(false);
-      resetQueueTypeForm();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save queue type");
-    } finally { setSavingQueueType(false); }
-  };
-
-  const handleDeleteQueueType = async (id: string) => {
-    if (!confirm("Delete this queue type?")) return;
-    if (!business?.id) return;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${session?.access_token}` },
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error);
-      toast.success("Queue type deleted!");
-      await fetchQueueTypes(business.id);
-    } catch (err: any) { toast.error(err.message || "Failed to delete"); }
-  };
-
-  const handleEditQueueType = (qt: QueueType) => {
-    setEditingQueueType(qt);
-    setNewQueueType({ name: qt.name, description: qt.description || "", color: qt.color,
-      estimated_service_time: qt.estimated_service_time, max_capacity: qt.max_capacity, price: qt.price ?? 0 });
-    setQueueTypeDialogOpen(true);
-  };
-
-  const resetQueueTypeForm = () => {
-    setEditingQueueType(null);
-    setNewQueueType({ name: "", description: "", color: "#3B82F6", estimated_service_time: 5, max_capacity: 50, price: 0 });
-  };
 
   /* ── Add customer */
   const openAddCustomer = useCallback((queueTypeId?: string) => {
@@ -1026,27 +959,8 @@ export default function QueueManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
-      <Tabs defaultValue="queue" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="queue" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />Queue
-            {stats.waiting > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-gray-600 text-white rounded-full">
-                {stats.waiting}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="queue-types" className="flex items-center gap-2">
-            <Layers className="h-4 w-4" />Queue Types
-            {queueTypes.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">{queueTypes.length}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* ══ QUEUE TAB ══ */}
-        <TabsContent value="queue" className="space-y-4">
+      {/* Queue */}
+      <div className="space-y-4">
 
           {openLaneId ? (
             /* ── Full-screen detail view ── */
@@ -1076,70 +990,30 @@ export default function QueueManagementPage() {
           ) : (
             /* ── Compact list view ── */
             <>
-              {/* Global stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <Card>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-gray-500">Total Today</p><p className="text-2xl font-bold">{stats.total}</p></div>
-                      <Users className="h-6 w-6 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-gray-200 bg-gray-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-gray-600">Waiting</p><p className="text-2xl font-bold text-gray-900">{stats.waiting}</p></div>
-                      <Clock className="h-6 w-6 text-gray-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-blue-700">Serving</p><p className="text-2xl font-bold text-blue-800">{stats.serving}</p></div>
-                      <Play className="h-6 w-6 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-green-200 bg-green-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-green-700">Completed</p><p className="text-2xl font-bold text-green-800">{stats.completed}</p></div>
-                      <CheckCircle className="h-6 w-6 text-green-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-red-200 bg-red-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-red-700">Cancelled</p><p className="text-2xl font-bold text-red-800">{stats.cancelled}</p></div>
-                      <XCircle className="h-6 w-6 text-red-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div><p className="text-xs text-blue-700">Avg Wait</p><p className="text-2xl font-bold text-blue-800">{stats.avgWaitTime}m</p></div>
-                      <Timer className="h-6 w-6 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-emerald-200 bg-emerald-50 col-span-2 sm:col-span-1">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-emerald-700">Est. Revenue</p>
-                        <p className="text-2xl font-bold text-emerald-800">
-                          Rs.{Number(stats.estimated_revenue ?? 0).toLocaleString()}
-                        </p>
+              {/* Global stats — single row */}
+              <Card>
+                <CardContent className="py-0 px-0">
+                  <div className="flex items-stretch divide-x divide-gray-100 overflow-x-auto">
+                    {[
+                      { label: "Total Today",  value: stats.total,          icon: <Users className="h-5 w-5 text-gray-400" />,         valueClass: "text-gray-900" },
+                      { label: "Waiting",      value: stats.waiting,        icon: <Clock className="h-5 w-5 text-gray-500" />,         valueClass: "text-gray-800" },
+                      { label: "Serving",      value: stats.serving,        icon: <Play className="h-5 w-5 text-blue-500" />,          valueClass: "text-blue-700" },
+                      { label: "Completed",    value: stats.completed,      icon: <CheckCircle className="h-5 w-5 text-green-500" />,  valueClass: "text-green-700" },
+                      { label: "Cancelled",    value: stats.cancelled,      icon: <XCircle className="h-5 w-5 text-red-400" />,        valueClass: "text-red-600" },
+                      { label: "Avg Wait",     value: `${stats.avgWaitTime}m`, icon: <Timer className="h-5 w-5 text-blue-400" />,     valueClass: "text-blue-700" },
+                      { label: "Est. Revenue", value: `Rs.${Number(stats.estimated_revenue ?? 0).toLocaleString()}`, icon: <Banknote className="h-5 w-5 text-emerald-500" />, valueClass: "text-emerald-700" },
+                    ].map(({ label, value, icon, valueClass }) => (
+                      <div key={label} className="flex flex-col items-center justify-center gap-1 px-5 py-4 flex-1 min-w-[90px]">
+                        <div className="flex items-center gap-1.5">
+                          {icon}
+                          <p className="text-xs text-gray-400 font-medium whitespace-nowrap">{label}</p>
+                        </div>
+                        <p className={`text-2xl font-bold tabular-nums ${valueClass}`}>{value}</p>
                       </div>
-                      <Banknote className="h-6 w-6 text-emerald-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Filter + refresh */}
               <div className="flex items-center justify-between">
@@ -1215,12 +1089,11 @@ export default function QueueManagementPage() {
                       <div>
                         <p className="font-semibold text-gray-600 text-sm">No queue types created yet</p>
                         <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                          Go to <strong>Queue Types</strong> tab to create queues — each gets its own row, QR code, and customer list.
+                          Go to <strong>Services</strong> to create queue types — each gets its own lane, QR code, and customer list.
                         </p>
                       </div>
-                      <Button variant="outline" size="sm"
-                        onClick={() => document.querySelector<HTMLButtonElement>('[value="queue-types"]')?.click()}>
-                        <Plus className="h-4 w-4 mr-2" />Create Queue Type
+                      <Button variant="outline" size="sm" onClick={() => window.location.href = "/business/services"}>
+                        <Plus className="h-4 w-4 mr-2" />Go to Services
                       </Button>
                     </div>
                   )}
@@ -1228,97 +1101,7 @@ export default function QueueManagementPage() {
               )}
             </>
           )}
-        </TabsContent>
-
-        {/* ══ QUEUE TYPES TAB ══ */}
-        <TabsContent value="queue-types" className="space-y-6">
-
-          {/* Queue types grid */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />Queue Types</CardTitle>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Each type appears as its own lane in the Queue tab with its own QR code
-                  </p>
-                </div>
-                <Button onClick={() => { resetQueueTypeForm(); setQueueTypeDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-2" />Add Queue Type
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {queueTypes.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <Settings className="h-12 w-12 mx-auto mb-3 text-gray-200" />
-                  <p className="font-medium">No queue types yet</p>
-                  <p className="text-sm mt-1">Create one to manage different services with separate queues</p>
-                  <Button className="mt-4" onClick={() => { resetQueueTypeForm(); setQueueTypeDialogOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-2" />Create First Queue Type
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {queueTypes.map(qt => {
-                    const laneEntries = entriesForType(queueEntries, qt.id, "all");
-                    const waiting = laneEntries.filter(e => e.status === "waiting").length;
-                    const serving = laneEntries.filter(e => e.status === "serving").length;
-                    return (
-                      <div key={qt.id}
-                        className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
-                        style={{ borderColor: qt.color + "40", backgroundColor: qt.color + "08" }}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg"
-                              style={{ backgroundColor: qt.color }}>
-                              {qt.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">{qt.name}</h3>
-                              <p className="text-xs text-gray-500">{qt.description || "No description"}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditQueueType(qt)}>
-                              <Edit2 className="h-4 w-4 text-gray-400" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteQueueType(qt.id)}>
-                              <Trash2 className="h-4 w-4 text-red-400" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min</span>
-                          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />Max {qt.max_capacity}</span>
-                          {(qt.price ?? 0) > 0 && (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                              <Banknote className="h-3.5 w-3.5" />Rs.{Number(qt.price).toLocaleString()}
-                            </span>
-                          )}
-                          <span className="text-gray-600 font-medium">{waiting} waiting</span>
-                          {serving > 0 && <span className="text-blue-600 font-medium">{serving} serving</span>}
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1 text-xs"
-                            onClick={() => handleGenerateQrCode(qt.id)} disabled={loadingQr}
-                            style={{ borderColor: qt.color + "60", color: qt.color }}>
-                            <QrCode className="h-3.5 w-3.5 mr-1" />QR Code
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1 text-xs"
-                            onClick={() => openAddCustomer(qt.id)}>
-                            <UserPlus className="h-3.5 w-3.5 mr-1" />Add Customer
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* ══ DIALOGS ══ */}
 
@@ -1539,78 +1322,6 @@ export default function QueueManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Queue Type Create/Edit */}
-      <Dialog open={queueTypeDialogOpen}
-        onOpenChange={open => { setQueueTypeDialogOpen(open); if (!open) resetQueueTypeForm(); }}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90dvh] flex flex-col p-0 gap-0">
-          {/* Pinned header */}
-          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-            <DialogTitle>{editingQueueType ? "Edit Queue Type" : "Create Queue Type"}</DialogTitle>
-            <DialogDescription>
-              {editingQueueType ? "Update this queue type" : "A new lane will appear in the Queue tab immediately after saving"}
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Queue Name *</Label>
-              <Input placeholder="e.g., Haircut, Consultation, General"
-                value={newQueueType.name}
-                onChange={e => setNewQueueType(p => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea placeholder="Brief description of this queue type"
-                value={newQueueType.description}
-                onChange={e => setNewQueueType(p => ({ ...p, description: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={newQueueType.color}
-                    onChange={e => setNewQueueType(p => ({ ...p, color: e.target.value }))}
-                    className="w-12 h-10 rounded border cursor-pointer" />
-                  <Input value={newQueueType.color}
-                    onChange={e => setNewQueueType(p => ({ ...p, color: e.target.value }))}
-                    className="flex-1" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Est. Service Time (min)</Label>
-                <Input type="number" min={1} value={newQueueType.estimated_service_time}
-                  onChange={e => setNewQueueType(p => ({ ...p, estimated_service_time: parseInt(e.target.value) || 5 }))} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Max Capacity</Label>
-              <Input type="number" min={1} value={newQueueType.max_capacity}
-                onChange={e => setNewQueueType(p => ({ ...p, max_capacity: parseInt(e.target.value) || 50 }))} />
-              <p className="text-xs text-gray-400">Maximum customers allowed in this queue at once</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Price per Item (Rs.)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rs.</span>
-                <Input type="number" min={0} step={0.01} value={newQueueType.price}
-                  onChange={e => setNewQueueType(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
-                  className="pl-10" placeholder="0.00" />
-              </div>
-              <p className="text-xs text-gray-400">Charge per customer/item — used to estimate queue revenue</p>
-            </div>
-          </div>
-
-          {/* Pinned footer */}
-          <DialogFooter className="px-6 py-4 border-t shrink-0">
-            <Button variant="outline" onClick={() => setQueueTypeDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveQueueType} disabled={savingQueueType}>
-              {savingQueueType && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingQueueType ? "Update" : "Create"} Queue Type
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Queue Entry */}
       <Dialog open={editDialogOpen} onOpenChange={open => { setEditDialogOpen(open); if (!open) setEditingEntry(null); }}>

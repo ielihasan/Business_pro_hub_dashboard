@@ -18,6 +18,7 @@ import {
   CreditCard,
   Calendar,
   Shield,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -429,13 +430,21 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
             </button>
             <div className="flex-1" />
             <div className="flex items-center space-x-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-white">
+              <div className="hidden sm:flex flex-col items-end gap-1">
+                <p className="text-sm font-medium text-white leading-none">
                   {isStaff ? staffName : business?.business_name}
                 </p>
-                <p className="text-xs text-gray-400">
-                  {isStaff ? "Staff" : business?.email}
-                </p>
+                {isStaff ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-medium">
+                    <Shield className="h-2.5 w-2.5" />
+                    Staff Account
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-medium">
+                    <Crown className="h-2.5 w-2.5" />
+                    Business Owner · Full Access
+                  </span>
+                )}
               </div>
               {business?.avatar_url && !isStaff ? (
                 <img
