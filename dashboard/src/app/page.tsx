@@ -55,37 +55,37 @@ export default function LandingPage() {
       icon: Clock,
       title: "Smart Queue System",
       description: "Advanced AI-powered queue management that predicts wait times and optimizes customer flow automatically.",
-      color: "bg-gray-800"
+      color: "bg-[#3D4127]"
     },
     {
       icon: Users,
       title: "Customer Intelligence",
       description: "Deep customer insights with behavior analytics, preferences tracking, and personalized engagement tools.",
-      color: "bg-gray-700"
+      color: "bg-[#4a5130]"
     },
     {
       icon: BarChart3,
       title: "Advanced Analytics",
       description: "Real-time dashboards with actionable insights, trends analysis, and performance forecasting.",
-      color: "bg-gray-600"
+      color: "bg-[#636B2F]"
     },
     {
       icon: BellRing,
       title: "Smart Notifications",
       description: "Multi-channel alerts via SMS, email, and push notifications with customizable templates.",
-      color: "bg-gray-800"
+      color: "bg-[#3D4127]"
     },
     {
       icon: Shield,
       title: "Enterprise Security",
       description: "Bank-level encryption, SOC 2 compliance, and comprehensive data protection protocols.",
-      color: "bg-gray-700"
+      color: "bg-[#4a5130]"
     },
     {
       icon: Smartphone,
       title: "Mobile First",
       description: "Fully responsive design with native mobile apps for iOS and Android platforms.",
-      color: "bg-gray-600"
+      color: "bg-[#636B2F]"
     }
   ];
 
@@ -181,7 +181,7 @@ export default function LandingPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <motion.div
-                className="h-10 w-10 rounded-xl bg-gray-900 flex items-center justify-center shadow-lg"
+                className="h-10 w-10 rounded-xl bg-[#3D4127] flex items-center justify-center shadow-lg"
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
@@ -236,7 +236,7 @@ export default function LandingPage() {
                 </Link>
                 <Link href="/auth/v1/register">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button className="bg-gray-900 hover:bg-gray-800 shadow-lg text-white">
+                    <Button className="bg-[#3D4127] hover:bg-[#636B2F] shadow-lg text-white">
                       Get Started Free
                     </Button>
                   </motion.div>
@@ -262,7 +262,7 @@ export default function LandingPage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Badge className="mb-6 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
+              <Badge className="mb-6 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
                 <Zap className="w-4 h-4 mr-1.5 inline" />
                 Trusted by 10,000+ businesses worldwide
               </Badge>
@@ -278,7 +278,7 @@ export default function LandingPage() {
                 Transform Your
               </span>
               <br />
-              <span className="text-gray-600">
+              <span className="text-[#636B2F]">
                 Customer Experience
               </span>
             </motion.h1>
@@ -290,7 +290,7 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
               <Link href="/auth/v1/register">
-                <Button size="lg" className="text-[20px] px-10 py-6 bg-gray-900 hover:bg-gray-800 shadow-xl text-white h-auto">
+                <Button size="lg" className="text-[20px] px-10 py-6 bg-[#3D4127] hover:bg-[#636B2F] shadow-xl text-white h-auto">
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -308,15 +308,15 @@ export default function LandingPage() {
 
             <div className="flex flex-wrap items-center justify-center gap-8 text-[16px] text-gray-600">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-gray-700" />
+                <CheckCircle className="h-5 w-5 text-[#636B2F]" />
                 <span>No credit card required</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-gray-700" />
+                <CheckCircle className="h-5 w-5 text-[#636B2F]" />
                 <span>14-day free trial</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-gray-700" />
+                <CheckCircle className="h-5 w-5 text-[#636B2F]" />
                 <span>Cancel anytime</span>
               </div>
             </div>
@@ -363,7 +363,7 @@ export default function LandingPage() {
       <section id="features" className="py-24 bg-gradient-to-b from-white to-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
+            <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
               Features
             </Badge>
             <h2 className="text-[32px] md:text-[40px] font-bold mb-6 leading-[1.3]">
@@ -371,7 +371,7 @@ export default function LandingPage() {
                 Everything You Need
               </span>
               <br />
-              <span className="text-gray-600">
+              <span className="text-[#636B2F]">
                 In One Platform
               </span>
             </h2>
@@ -403,7 +403,7 @@ export default function LandingPage() {
       <section id="testimonials" className="py-24 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
+            <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
               Testimonials
             </Badge>
             <h2 className="text-[32px] md:text-[40px] font-bold mb-6 leading-[1.3]">
@@ -422,14 +422,14 @@ export default function LandingPage() {
                 <CardContent className="pt-8 pb-8">
                   <div className="flex gap-1 mb-6">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-gray-700 fill-gray-700" />
+                      <Star key={i} className="h-5 w-5 text-[#636B2F] fill-[#636B2F]" />
                     ))}
                   </div>
                   <p className="text-gray-700 text-[16px] md:text-[18px] leading-[1.6] mb-8 italic">
                     "{testimonial.content}"
                   </p>
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center text-white font-bold text-[18px]">
+                    <div className="h-12 w-12 rounded-full bg-[#3D4127] flex items-center justify-center text-white font-bold text-[18px]">
                       {testimonial.name.charAt(0)}
                     </div>
                     <div>
@@ -448,7 +448,7 @@ export default function LandingPage() {
       <section id="pricing" className="py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <Badge className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 border-gray-200 text-[16px]">
+            <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
               Available Plans
             </Badge>
             <h2 className="text-[32px] md:text-[40px] font-bold mb-4 leading-[1.3] text-gray-900">
@@ -496,9 +496,9 @@ export default function LandingPage() {
             </Card>
 
             {/* Starter Plan - Most Popular */}
-            <Card className="border-2 border-gray-900 shadow-2xl md:scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-gray-200 transition-all duration-300">
+            <Card className="border-2 border-[#3D4127] shadow-2xl md:scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-[#BAC095]/40 transition-all duration-300">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-                <Badge className="px-4 py-1.5 bg-gray-900 text-white border-0 shadow-lg text-[12px] font-bold whitespace-nowrap">
+                <Badge className="px-4 py-1.5 bg-[#3D4127] text-white border-0 shadow-lg text-[12px] font-bold whitespace-nowrap">
                   ★ MOST POPULAR
                 </Badge>
               </div>
@@ -520,8 +520,8 @@ export default function LandingPage() {
                     </div>
                     <p className="text-green-600 text-[12px] font-semibold">💰 Save Rs. 24,000/year</p>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-gray-900 text-white rounded-md px-2.5 py-1.5 text-[12px] font-medium">
-                    <span className="text-green-400">●</span> +847 businesses chose this month
+                  <div className="flex items-center gap-1.5 bg-[#3D4127] text-white rounded-md px-2.5 py-1.5 text-[12px] font-medium">
+                    <span className="text-[#D4DE95]">●</span> +847 businesses chose this month
                   </div>
                 </div>
               </CardHeader>
@@ -529,14 +529,14 @@ export default function LandingPage() {
                 <ul className="space-y-2.5">
                   {["Up to 500 queue entries/month", "Advanced queue management", "QR code generation", "Priority email support", "Basic analytics", "Up to 3 staff members"].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-gray-900 mt-0.5 shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-[#3D4127] mt-0.5 shrink-0" />
                       <span className="text-gray-700 font-medium text-[13px] leading-[1.5]">{feature}</span>
                     </li>
                   ))}
                   <li className="text-[12px] text-gray-500 pl-6">+1 more features</li>
                 </ul>
                 <Link href="/auth/v1/register">
-                  <Button size="lg" className="w-full h-10 bg-gray-900 hover:bg-gray-800 shadow-lg font-semibold text-white text-[14px]">
+                  <Button size="lg" className="w-full h-10 bg-[#3D4127] hover:bg-[#636B2F] shadow-lg font-semibold text-white text-[14px]">
                     Upgrade Now
                   </Button>
                 </Link>
@@ -620,7 +620,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 bg-gray-900 overflow-hidden">
+      <section className="relative py-24 bg-[#3D4127] overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.1))]"></div>
         <div className="container relative mx-auto px-6 text-center">
           <Badge className="mb-6 px-6 py-2 bg-white/10 text-white border-white/20 backdrop-blur-sm text-[16px]">
@@ -674,8 +674,8 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-5 gap-12 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
-                  <Store className="h-6 w-6 text-gray-900" />
+                <div className="h-10 w-10 rounded-xl bg-[#636B2F] flex items-center justify-center shadow-lg">
+                  <Store className="h-6 w-6 text-white" />
                 </div>
                 <span className="text-xl font-bold text-white">Business Pro Hub</span>
               </div>

@@ -209,8 +209,8 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
       <div className="min-h-screen bg-gray-50 flex">
         {/* Sidebar skeleton — matches the white sidebar with black header */}
         <aside className="hidden lg:flex flex-col w-64 border-r border-gray-200 bg-white">
-          {/* Black header bar */}
-          <div className="flex items-center h-16 px-6 bg-black">
+          {/* Header bar */}
+          <div className="flex items-center h-16 px-6 bg-[#3D4127]">
             <Skeleton className="h-5 w-5 mr-2 bg-white/20" />
             <Skeleton className="h-5 w-28 bg-white/20" />
           </div>
@@ -337,7 +337,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-200"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-semibold flex-shrink-0 select-none">
+                <div className="w-10 h-10 rounded-full bg-[#3D4127] flex items-center justify-center text-white font-semibold flex-shrink-0 select-none">
                   {business?.business_name?.charAt(0).toUpperCase() || "B"}
                 </div>
               )}
@@ -369,8 +369,8 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                         variant="ghost"
                         className={`w-full justify-start transition-colors ${
                           isActive
-                            ? "bg-black text-white hover:bg-black hover:text-white"
-                            : "text-gray-700 hover:bg-black hover:text-white"
+                            ? "bg-[#3D4127] text-white hover:bg-[#3D4127] hover:text-white"
+                            : "text-gray-700 hover:bg-[#3D4127] hover:text-white"
                         }`}
                       >
                         <item.icon className="mr-3 h-5 w-5" />
@@ -400,7 +400,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
           <div className="p-4 border-t border-gray-200">
             <Button
               variant="ghost"
-              className="w-full justify-start hover:bg-black hover:text-white transition-colors"
+              className="w-full justify-start hover:bg-[#3D4127] hover:text-white transition-colors"
               onClick={handleLogout}
             >
               <LogOut className="mr-3 h-5 w-5" />
@@ -440,7 +440,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                     Staff Account
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[10px] font-medium">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#636B2F]/30 border border-[#BAC095]/50 text-[#D4DE95] text-[10px] font-medium">
                     <Crown className="h-2.5 w-2.5" />
                     Business Owner · Full Access
                   </span>
@@ -453,7 +453,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-600"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold flex-shrink-0 select-none">
+                <div className="w-10 h-10 rounded-full bg-[#BAC095] flex items-center justify-center text-[#3D4127] font-semibold flex-shrink-0 select-none">
                   {isStaff
                     ? (staffName?.charAt(0).toUpperCase() || "S")
                     : (business?.business_name?.charAt(0).toUpperCase() || "B")}

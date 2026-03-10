@@ -8,22 +8,22 @@ import { motion } from "framer-motion";
 export default function RegisterV1() {
   return (
     <motion.div
-      className="flex h-screen overflow-hidden"
+      className="flex min-h-screen"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Left Section - Form Area */}
+      {/* Left Section - Form Area (natural scroll) */}
       <motion.div
-        className="bg-background flex w-full flex-col lg:w-2/3 h-full"
+        className="bg-background flex w-full flex-col lg:w-2/3"
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Compact Fixed Header */}
+        {/* Sticky Header — always visible at top */}
         <motion.div
-          className="flex-shrink-0 px-4 pt-3 pb-2 border-b"
+          className="sticky top-0 z-10 bg-background px-4 pt-3 pb-2 border-b"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -38,50 +38,48 @@ export default function RegisterV1() {
           </div>
         </motion.div>
 
-        {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto">
-          <motion.div
-            className="w-full max-w-2xl mx-auto px-4 py-6"
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="mb-4 text-center">
-              <h1 className="text-base md:text-lg font-semibold">Create Your Account</h1>
-              <p className="text-muted-foreground text-xs mt-1">
-                Choose your account type and fill in the details
-              </p>
-            </div>
-
-            {/* Registration Form */}
-            <RegisterFormNew />
-
-            {/* Login Link */}
-            <p className="text-muted-foreground text-center text-xs mt-6">
-              Already have an account?{" "}
-              <Link href="/auth/v1/login" className="text-primary font-medium hover:underline transition-all duration-200 py-2 inline-block">
-                Login here
-              </Link>
+        {/* Form Content */}
+        <motion.div
+          className="w-full max-w-2xl mx-auto px-4 py-6"
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="mb-4 text-center">
+            <h1 className="text-base md:text-lg font-semibold">Create Your Account</h1>
+            <p className="text-muted-foreground text-xs mt-1">
+              Choose your account type and fill in the details
             </p>
+          </div>
 
-            {/* Elixa Software Branding */}
-            <div className="text-center mt-6 pt-4 border-t border-gray-100">
-              <p className="text-[10px] text-muted-foreground/70">
-                A product by <span className="font-medium">Elixa Software Private Limited</span>
-              </p>
-            </div>
-          </motion.div>
-        </div>
+          {/* Registration Form */}
+          <RegisterFormNew />
+
+          {/* Login Link */}
+          <p className="text-muted-foreground text-center text-xs mt-6">
+            Already have an account?{" "}
+            <Link href="/auth/v1/login" className="text-primary font-medium hover:underline transition-all duration-200 py-2 inline-block">
+              Login here
+            </Link>
+          </p>
+
+          {/* Elixa Software Branding */}
+          <div className="text-center mt-6 pt-4 border-t border-gray-100">
+            <p className="text-[10px] text-muted-foreground/70">
+              A product by <span className="font-medium">Elixa Software Private Limited</span>
+            </p>
+          </div>
+        </motion.div>
       </motion.div>
 
-      {/* Right Section - Fixed Branding */}
+      {/* Right Section - Sticky Branding Panel */}
       <motion.div
-        className="bg-primary hidden lg:flex lg:w-1/3 h-full flex-shrink-0 overflow-hidden"
+        className="bg-black hidden lg:flex lg:w-1/3 flex-shrink-0"
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="flex flex-col items-center justify-center p-8 text-center w-full overflow-hidden">
+        <div className="sticky top-0 h-screen flex flex-col items-center justify-center p-8 text-center w-full">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}

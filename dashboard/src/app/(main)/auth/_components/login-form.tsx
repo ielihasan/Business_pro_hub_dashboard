@@ -216,7 +216,7 @@ export function LoginForm() {
           </FormItem>
         )} />
 
-        <Button type="submit" className="w-full">Login</Button>
+        <Button type="submit" className="w-full bg-black hover:bg-gray-900 text-white">Login</Button>
       </form>
     </Form>
   );

@@ -359,7 +359,7 @@ export function RegisterFormNew() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+            <Button type="submit" className="w-full bg-black hover:bg-gray-900 text-white" disabled={isLoading || isGoogleLoading}>
               {isLoading ? "Registering..." : "Register Business"}
             </Button>
 
@@ -473,7 +473,7 @@ export function RegisterFormNew() {
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+            <Button type="submit" className="w-full bg-black hover:bg-gray-900 text-white" disabled={isLoading || isGoogleLoading}>
               {isLoading ? "Registering..." : "Register as Admin"}
             </Button>
 
