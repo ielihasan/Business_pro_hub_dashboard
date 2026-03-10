@@ -38,14 +38,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -196,67 +188,101 @@ interface QueueLaneProps {
 }
 
 function QueueLane({ queueType, entries, isActive, onToggleActive, onOpen }: QueueLaneProps) {
-  const waiting = entries.filter(e => e.status === "waiting").length;
-  const serving = entries.filter(e => e.status === "serving").length;
-  const total   = entries.length;
-  const color   = isActive ? (queueType?.color || "#6B7280") : "#9CA3AF";
-  const name    = queueType?.name || "General Queue";
-  const laneId  = queueType?.id ?? "general";
+  const waiting   = entries.filter(e => e.status === "waiting").length;
+  const serving   = entries.filter(e => e.status === "serving").length;
+  const completed = entries.filter(e => e.status === "completed").length;
+  const color     = isActive ? (queueType?.color || "#6B7280") : "#9CA3AF";
+  const name      = queueType?.name || "General Queue";
+  const laneId    = queueType?.id ?? "general";
+  const maxCap    = queueType?.max_capacity ?? 50;
+  const fillPct   = Math.min(100, Math.round((waiting / maxCap) * 100));
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-white cursor-pointer select-none
-        hover:bg-gray-50 transition-colors ${!isActive ? "opacity-60" : ""}`}
+      className={`group relative rounded-xl border bg-white cursor-pointer select-none
+        transition-all duration-200 hover:shadow-md hover:-translate-y-px overflow-hidden
+        ${!isActive ? "opacity-55" : "shadow-sm"}`}
       onClick={() => onOpen(laneId)}
     >
-      {/* Color avatar */}
-      <div
-        className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm shrink-0"
-        style={{ backgroundColor: color }}
-      >
-        {queueType ? queueType.name.charAt(0).toUpperCase() : <Users className="h-3.5 w-3.5" />}
-      </div>
+      {/* Colored top accent bar */}
+      <div className="h-1 w-full" style={{ backgroundColor: color }} />
 
-      {/* Name + description */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium text-sm text-gray-900 truncate">{name}</span>
-          {!isActive && (
-            <Badge className="bg-gray-100 text-gray-400 border-0 text-[10px] px-1 py-0 h-3.5 shrink-0">Closed</Badge>
-          )}
+      <div className="flex items-center gap-4 px-4 py-3.5">
+        {/* Avatar */}
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm"
+          style={{ backgroundColor: color }}
+        >
+          {queueType ? queueType.name.charAt(0).toUpperCase() : <Users className="h-5 w-5" />}
         </div>
-        {queueType?.description && (
-          <p className="text-xs text-gray-400 truncate">{queueType.description}</p>
-        )}
-      </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-xs text-gray-500 tabular-nums">
-          <span className="font-semibold text-gray-800">{waiting}</span> waiting
-        </span>
-        {serving > 0 && (
-          <span className="text-xs text-blue-600 tabular-nums font-medium">· {serving} serving</span>
-        )}
-        {total > 0 && (
-          <span className="text-[11px] text-gray-400 hidden sm:inline">/ {total} total</span>
-        )}
-      </div>
+        {/* Name + meta */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm text-gray-900 truncate">{name}</span>
+            {isActive && serving > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-1.5 py-0.5 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                {serving} serving
+              </span>
+            )}
+            {!isActive && (
+              <Badge className="bg-gray-100 text-gray-400 border-0 text-[10px] px-1.5 py-0 h-4 shrink-0">Closed</Badge>
+            )}
+          </div>
+          {queueType?.description ? (
+            <p className="text-xs text-gray-400 truncate mt-0.5">{queueType.description}</p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-0.5">Open to all customers</p>
+          )}
+          {/* Capacity mini-bar */}
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="flex-1 max-w-[80px] h-1 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${fillPct}%`, backgroundColor: color }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-400 tabular-nums shrink-0">
+              {waiting}/{maxCap}
+            </span>
+          </div>
+        </div>
 
-      {/* Toggle — stops propagation so it doesn't open the detail view */}
-      <div
-        className="shrink-0"
-        onClick={e => { e.stopPropagation(); onToggleActive(queueType?.id ?? null, !isActive); }}
-      >
-        <Switch
-          checked={isActive}
-          onCheckedChange={v => onToggleActive(queueType?.id ?? null, v)}
-          className="scale-75 data-[state=checked]:bg-green-500"
-        />
-      </div>
+        {/* Stats cluster */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-center hidden sm:block">
+            <p className="text-xl font-bold tabular-nums leading-tight" style={{ color }}>{waiting}</p>
+            <p className="text-[10px] text-gray-400 leading-tight">waiting</p>
+          </div>
+          {completed > 0 && (
+            <div className="text-center hidden md:block">
+              <p className="text-base font-semibold tabular-nums leading-tight text-green-600">{completed}</p>
+              <p className="text-[10px] text-gray-400 leading-tight">done</p>
+            </div>
+          )}
+          {/* sm: compact badge */}
+          <div className="sm:hidden">
+            <span className="text-sm font-bold tabular-nums" style={{ color }}>{waiting}</span>
+            <span className="text-xs text-gray-400 ml-0.5">w</span>
+          </div>
+        </div>
 
-      {/* Arrow */}
-      <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+        {/* Toggle */}
+        <div
+          className="shrink-0"
+          onClick={e => { e.stopPropagation(); onToggleActive(queueType?.id ?? null, !isActive); }}
+        >
+          <Switch
+            checked={isActive}
+            onCheckedChange={v => onToggleActive(queueType?.id ?? null, v)}
+            className="data-[state=checked]:bg-green-500"
+          />
+        </div>
+
+        {/* Arrow */}
+        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+      </div>
     </div>
   );
 }
@@ -392,122 +418,130 @@ function QueueDetail({
             </div>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50/60">
-                <TableHead className="w-[64px] pl-4">#</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead className="hidden sm:table-cell">Wait</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Source</TableHead>
-                <TableHead className="text-right pr-4">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visibleEntries.map((entry) => (
-                <TableRow key={entry.id} className={entry.status === "serving" ? "bg-blue-50/60" : ""}>
-                  <TableCell className="pl-4">
-                    <div className="font-mono font-bold text-sm" style={{ color }}>
-                      {String(entry.position).padStart(3, "0")}
-                    </div>
-                    <div className="text-[10px] text-gray-400">{formatTime(entry.created_at)}</div>
-                  </TableCell>
+          <div className="divide-y divide-gray-100">
+            {visibleEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50/80 transition-colors ${
+                  entry.status === "serving" ? "bg-blue-50/30" : ""
+                }`}
+              >
+                {/* Position + time */}
+                <div className="w-10 text-center shrink-0">
+                  <div className="font-mono font-bold text-sm leading-tight" style={{ color }}>
+                    {String(entry.position).padStart(3, "0")}
+                  </div>
+                  <div className="text-[10px] text-gray-400 leading-tight">{formatTime(entry.created_at)}</div>
+                </div>
 
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {entry.scanned_user?.avatar_url ? (
-                        <img src={entry.scanned_user.avatar_url} alt=""
-                          className="h-7 w-7 rounded-full object-cover shrink-0" />
-                      ) : entry.customer_id ? (
-                        <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                          <Users className="h-3.5 w-3.5 text-blue-600" />
-                        </div>
-                      ) : null}
-                      <div>
-                        <p className="font-medium text-sm leading-tight">
-                          {entry.scanned_user?.full_name || entry.customer_name}
-                        </p>
-                        {(entry.scanned_user?.phone_number || entry.customer_phone) && (
-                          <p className="text-xs text-gray-400 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {entry.scanned_user?.phone_number || entry.customer_phone}
-                          </p>
-                        )}
-                        <div className="flex gap-1 mt-0.5">
-                          {entry.customer_id && (
-                            <Badge variant="secondary"
-                              className="text-[9px] px-1 py-0 h-3.5 bg-blue-50 text-blue-700 border-blue-200">
-                              App
-                            </Badge>
-                          )}
-                          {entry.priority === "high" && (
-                            <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5">High</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
+                {/* Avatar */}
+                {entry.scanned_user?.avatar_url ? (
+                  <img src={entry.scanned_user.avatar_url} alt=""
+                    className="h-8 w-8 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+                    style={{ backgroundColor: color + "CC" }}
+                  >
+                    {(entry.scanned_user?.full_name || entry.customer_name || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
 
-                  <TableCell className="hidden sm:table-cell text-sm">
-                    {(entry.status === "waiting" || entry.status === "serving")
-                      ? <span className="font-medium">{getWaitTime(entry.created_at)}</span>
-                      : <span className="text-gray-400">—</span>}
-                  </TableCell>
+                {/* Customer info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-sm text-gray-900 truncate">
+                      {entry.scanned_user?.full_name || entry.customer_name}
+                    </p>
+                    {entry.customer_id && (
+                      <Badge className="text-[9px] px-1 py-0 h-3.5 bg-blue-50 text-blue-700 border-blue-200 shrink-0">App</Badge>
+                    )}
+                    {entry.priority === "high" && (
+                      <Badge variant="destructive" className="text-[9px] px-1 py-0 h-3.5 shrink-0">High</Badge>
+                    )}
+                  </div>
+                  {(entry.scanned_user?.phone_number || entry.customer_phone) && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                      <Phone className="h-2.5 w-2.5" />
+                      {entry.scanned_user?.phone_number || entry.customer_phone}
+                    </p>
+                  )}
+                </div>
 
-                  <TableCell>{getStatusBadge(entry.status)}</TableCell>
+                {/* Wait time */}
+                <div className="hidden sm:block text-sm w-12 text-center shrink-0">
+                  {(entry.status === "waiting" || entry.status === "serving")
+                    ? <span className="font-medium text-gray-700">{getWaitTime(entry.created_at)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </div>
 
-                  <TableCell className="hidden md:table-cell">
-                    <Badge variant="outline" className="text-xs">
-                      {entry.customer_id ? "App / QR" : "Walk-in"}
-                    </Badge>
-                  </TableCell>
+                {/* Status */}
+                <div className="shrink-0">{getStatusBadge(entry.status)}</div>
 
-                  <TableCell className="text-right pr-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onEditEntry(entry)}>
-                          <Edit2 className="h-4 w-4 mr-2 text-gray-600" />Edit Details
+                {/* Source */}
+                <div className="hidden md:block shrink-0">
+                  <Badge variant="outline" className="text-xs">
+                    {entry.customer_id ? "App / QR" : "Walk-in"}
+                  </Badge>
+                </div>
+
+                {/* Quick action + dropdown */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {entry.status === "waiting" && (
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-xs gap-1 border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                      onClick={() => onStatusChange(entry, "serving")}>
+                      <Play className="h-3 w-3" />
+                      <span className="hidden sm:inline">Serve</span>
+                    </Button>
+                  )}
+                  {entry.status === "serving" && (
+                    <Button size="sm"
+                      className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => onStatusChange(entry, "completed")}>
+                      <CheckCircle className="h-3 w-3" />
+                      <span className="hidden sm:inline">Done</span>
+                    </Button>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-700">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onEditEntry(entry)}>
+                        <Edit2 className="h-4 w-4 mr-2 text-gray-600" />Edit Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {entry.status === "waiting" && (
+                        <DropdownMenuItem onClick={() => onStatusChange(entry, "serving")}>
+                          <Play className="h-4 w-4 mr-2 text-blue-600" />Start Serving
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {entry.status === "waiting" && (
-                          <DropdownMenuItem onClick={() => onStatusChange(entry, "serving")}>
-                            <Play className="h-4 w-4 mr-2 text-blue-600" />Start Serving
-                          </DropdownMenuItem>
-                        )}
-                        {entry.status === "serving" && (
-                          <DropdownMenuItem onClick={() => onStatusChange(entry, "completed")}>
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />Mark Complete
-                          </DropdownMenuItem>
-                        )}
-                        {(entry.status === "waiting" || entry.status === "serving") && (
-                          <DropdownMenuItem
-                            onClick={() => onCancelClick(entry)}
-                            className="text-red-600"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />Cancel
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onDeleteEntry(entry)}
-                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />Delete Entry
+                      )}
+                      {entry.status === "serving" && (
+                        <DropdownMenuItem onClick={() => onStatusChange(entry, "completed")}>
+                          <CheckCircle className="h-4 w-4 mr-2 text-green-600" />Mark Complete
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      )}
+                      {(entry.status === "waiting" || entry.status === "serving") && (
+                        <DropdownMenuItem onClick={() => onCancelClick(entry)} className="text-red-600">
+                          <XCircle className="h-4 w-4 mr-2" />Cancel
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onDeleteEntry(entry)}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                        <Trash2 className="h-4 w-4 mr-2" />Delete Entry
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -1037,54 +1071,44 @@ export default function QueueManagementPage() {
 
               {/* Queue list */}
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                          <Skeleton className="h-5 w-32" />
-                          <Skeleton className="h-5 w-14 rounded-full" />
+                    <div key={i} className="rounded-xl border bg-white p-4">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-11 w-11 rounded-xl" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-48" />
+                          <Skeleton className="h-1.5 w-24 rounded-full" />
                         </div>
+                        <Skeleton className="h-8 w-14" />
                         <Skeleton className="h-6 w-10 rounded-full" />
                       </div>
-                      {Array.from({ length: 2 }).map((_, j) => (
-                        <div key={j} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <Skeleton className="h-7 w-7 rounded-full" />
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-4 w-20" />
-                          <Skeleton className="h-6 w-16 rounded-full ml-auto" />
-                          <Skeleton className="h-7 w-7 rounded" />
-                        </div>
-                      ))}
                     </div>
                   ))}
                 </div>
               ) : (
-                <Card className="overflow-hidden">
-                  <div className="p-2 space-y-1">
-                    {queueTypes.map(qt => (
-                      <QueueLane
-                        key={qt.id}
-                        queueType={qt}
-                        entries={entriesForType(queueEntries, qt.id, "all")}
-                        isActive={qt.is_active}
-                        onToggleActive={handleToggleQueueType}
-                        onOpen={setOpenLaneId}
-                      />
-                    ))}
+                <div className="space-y-3">
+                  {queueTypes.map(qt => (
                     <QueueLane
-                      key="general"
-                      queueType={null}
-                      entries={entriesForType(queueEntries, null, "all")}
-                      isActive={generalQueueActive}
+                      key={qt.id}
+                      queueType={qt}
+                      entries={entriesForType(queueEntries, qt.id, "all")}
+                      isActive={qt.is_active}
                       onToggleActive={handleToggleQueueType}
                       onOpen={setOpenLaneId}
                     />
-                  </div>
-
+                  ))}
+                  <QueueLane
+                    key="general"
+                    queueType={null}
+                    entries={entriesForType(queueEntries, null, "all")}
+                    isActive={generalQueueActive}
+                    onToggleActive={handleToggleQueueType}
+                    onOpen={setOpenLaneId}
+                  />
                   {queueTypes.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-8 gap-3 text-center border-t">
+                    <div className="flex flex-col items-center justify-center py-10 gap-3 text-center rounded-xl border bg-white">
                       <Layers className="h-8 w-8 text-gray-200" />
                       <div>
                         <p className="font-semibold text-gray-600 text-sm">No queue types created yet</p>
@@ -1097,7 +1121,7 @@ export default function QueueManagementPage() {
                       </Button>
                     </div>
                   )}
-                </Card>
+                </div>
               )}
             </>
           )}

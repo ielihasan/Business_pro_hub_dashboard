@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Users,
   Clock,
-  Package,
   UserCog,
   Settings,
   LogOut,
@@ -39,7 +38,6 @@ interface BusinessData {
 const fullNavigation = [
   { name: "Dashboard",        href: "/business/dashboard", icon: LayoutDashboard, staffAllowed: true  },
   { name: "Queue Management", href: "/business/queue",     icon: Clock,            staffAllowed: true  },
-  { name: "Orders",           href: "/business/orders",    icon: Package,          staffAllowed: true  },
   { name: "Customers",        href: "/business/customers", icon: Users,            staffAllowed: true  },
   { name: "Staff",            href: "/business/staff",     icon: UserCog,          staffAllowed: false }, // owner only
   { name: "Services",         href: "/business/services",  icon: Store,            staffAllowed: true  },
@@ -222,9 +220,9 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
               <Skeleton className="h-3 w-20" />
             </div>
           </div>
-          {/* Nav items — 9 links */}
+          {/* Nav items — 8 links */}
           <nav className="flex-1 p-4 space-y-1">
-            {Array.from({ length: 9 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-full rounded-md" />
             ))}
           </nav>
