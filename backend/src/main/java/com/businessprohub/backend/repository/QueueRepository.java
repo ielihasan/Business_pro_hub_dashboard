@@ -35,4 +35,7 @@ public interface QueueRepository extends JpaRepository<Queue, String> {
     List<Queue> findByBusinessIdAndStatusAndCreatedAtAfterOrderByPositionAsc(
         String businessId, String status, java.time.OffsetDateTime after
     );
+
+    long countByServedByStaffIdAndStatus(String servedByStaffId, String status);
+    long countByServedByStaffId(String servedByStaffId);
 }

@@ -74,8 +74,32 @@ export function LoginForm() {
 
       const allAccounts = [...approvedAccounts, ...filteredPendingAccounts];
 
-      // No accounts found at all — check if they have a rejected application
+      // No accounts found at all — check if they are a staff member first
       if (allAccounts.length === 0) {
+        const API = process.env.NEXT_PUBLIC_API_URL;
+        const token = authData.session?.access_token;
+        try {
+          const staffRes = await fetch(
+            `${API}/api/staff/me?auth_user_id=${authData.user.id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (staffRes.ok) {
+            const staffJson = await staffRes.json();
+            if (staffJson.data) {
+              // Valid staff member — send them to the business dashboard
+              if (data.remember && authData.session) {
+                await supabase.auth.setSession(authData.session);
+              }
+              toast.success(`Welcome, ${staffJson.data.full_name}!`);
+              router.push("/business/dashboard");
+              return;
+            }
+          }
+        } catch {
+          // Staff check failed — fall through to normal error handling
+        }
+
+        // Check for a rejected application
         const { data: rejectedApps } = await supabase
           .from("business_applications")
           .select("*")

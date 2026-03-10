@@ -68,4 +68,7 @@ public class Queue {
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    @Column(name = "served_by_staff_id", columnDefinition = "uuid")
+    private String servedByStaffId;
 }

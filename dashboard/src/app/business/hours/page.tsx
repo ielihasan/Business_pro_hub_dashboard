@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DayHours {
@@ -128,20 +129,12 @@ export default function BusinessHoursPage() {
 
   const getBusinessId = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data: admin } = await supabase
-          .from("admins")
-          .select("id")
-          .eq("id", user.id)
-          .eq("role", "business_owner")
-          .single();
-
-        if (admin) {
-          setBusinessId(admin.id);
-        }
+      const id = await resolveBusinessId();
+      if (id) {
+        setBusinessId(id);
+      } else {
+        setUseMockData(true);
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error getting business ID:", error);

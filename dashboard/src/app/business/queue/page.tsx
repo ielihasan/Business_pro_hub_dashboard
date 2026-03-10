@@ -89,6 +89,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { resolveBusinessId } from "@/lib/resolve-business-id";
 import QRCodeLib from "qrcode";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -581,13 +582,16 @@ export default function QueueManagementPage() {
   /* ── Fetch business */
   useEffect(() => {
     const fetchBusiness = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const id = await resolveBusinessId();
+      if (id) {
+        // Fetch business name from admins (business owner row)
         const { data } = await supabase
           .from("admins")
           .select("id, business_name")
-          .eq("id", user.id).eq("role", "business_owner").single();
-        if (data) setBusiness(data);
+          .eq("id", id)
+          .eq("role", "business_owner")
+          .single();
+        setBusiness(data ?? { id, business_name: "Business" });
       }
     };
     fetchBusiness();
@@ -623,7 +627,18 @@ export default function QueueManagementPage() {
           status: e.status === "in_progress" || e.status === "called" ? "serving" : e.status,
         }));
         setQueueEntries(mapped);
-        setStats(inner.stats);
+        // Merge API stats and map avg_wait_time → avgWaitTime
+        const apiStats = inner.stats || {};
+        setStats(prev => ({
+          ...prev,
+          total:             apiStats.total             ?? prev.total,
+          waiting:           apiStats.waiting           ?? prev.waiting,
+          serving:           apiStats.serving           ?? prev.serving,
+          completed:         apiStats.completed         ?? prev.completed,
+          cancelled:         apiStats.cancelled         ?? prev.cancelled,
+          avgWaitTime:       apiStats.avg_wait_time     ?? prev.avgWaitTime,
+          estimated_revenue: apiStats.estimated_revenue ?? prev.estimated_revenue,
+        }));
       }
     } catch (err) { console.warn("Queue API unavailable, using mock data"); }
     finally { setLoading(false); setRefreshing(false); }

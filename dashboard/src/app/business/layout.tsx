@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import Link from "next/link";
@@ -17,9 +17,12 @@ import {
   Store,
   CreditCard,
   Calendar,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const API = process.env.NEXT_PUBLIC_API_URL;
 
 interface BusinessData {
   id: string;
@@ -31,12 +34,30 @@ interface BusinessData {
   avatar_url?: string | null;
 }
 
+// Navigation items available to all roles
+const fullNavigation = [
+  { name: "Dashboard",        href: "/business/dashboard", icon: LayoutDashboard, staffAllowed: true  },
+  { name: "Queue Management", href: "/business/queue",     icon: Clock,            staffAllowed: true  },
+  { name: "Orders",           href: "/business/orders",    icon: Package,          staffAllowed: true  },
+  { name: "Customers",        href: "/business/customers", icon: Users,            staffAllowed: true  },
+  { name: "Staff",            href: "/business/staff",     icon: UserCog,          staffAllowed: false }, // owner only
+  { name: "Services",         href: "/business/services",  icon: Store,            staffAllowed: true  },
+  { name: "Business Hours",   href: "/business/hours",     icon: Calendar,         staffAllowed: true  },
+  { name: "Pricing & Plans",  href: "/business/pricing",   icon: CreditCard,       staffAllowed: false }, // owner only
+  { name: "Settings",         href: "/business/settings",  icon: Settings,         staffAllowed: false }, // owner only
+];
+
 export default function BusinessLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [business, setBusiness] = useState<BusinessData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
+  const [staffName, setStaffName] = useState<string | null>(null);
+  // Tracks when checkAuth() redirected from a restricted page (loading stays true
+  // until pathname changes, then we call setLoading(false) to show the dashboard).
+  const redirectingFromRestricted = useRef(false);
 
   useEffect(() => {
     checkAuth();
@@ -52,38 +73,124 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
     return () => window.removeEventListener("business-avatar-updated", handleAvatarUpdate);
   }, []);
 
+  // Redirect staff away from restricted pages when navigating directly by URL
+  useEffect(() => {
+    if (!loading && isStaff) {
+      const restrictedRoutes = fullNavigation
+        .filter((item) => !item.staffAllowed)
+        .map((item) => item.href);
+      const isRestricted = restrictedRoutes.some(
+        (route) => pathname === route || pathname?.startsWith(route + "/")
+      );
+      if (isRestricted) {
+        toast.warning("This page is not accessible for staff accounts.");
+        router.push("/business/dashboard");
+      }
+    }
+  }, [isStaff, loading, pathname]);
+
+  // When a restricted-page redirect (from checkAuth) completes, the pathname
+  // changes to /business/dashboard — release the loading state so the layout renders.
+  useEffect(() => {
+    if (redirectingFromRestricted.current) {
+      redirectingFromRestricted.current = false;
+      setLoading(false);
+    }
+  }, [pathname]);
+
   const checkAuth = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
       if (!user) {
         router.push("/auth/v1/login");
         return;
       }
 
+      // ── 1. Check if user is a business owner ─────────────────────────────
       const { data: adminRecords, error } = await supabase
         .from("admins")
         .select("*")
         .eq("id", user.id)
         .eq("role", "business_owner");
 
-      if (error || !adminRecords || adminRecords.length === 0) {
-        toast.error("Business profile not found, come back to login page");
-        router.push("/auth/v1/login");
+      if (!error && adminRecords && adminRecords.length > 0) {
+        const businessData = adminRecords[0];
+        if (!businessData.is_approved) {
+          toast.warning("Your business is pending approval");
+          router.push("/auth/waiting-approval-business");
+          return;
+        }
+        setBusiness(businessData);
+        setIsStaff(false);
+        setLoading(false);
         return;
       }
 
-      // Get the first business_owner record (should only be one per user)
-      const businessData = adminRecords[0];
+      // ── 2. Check if user is a staff member ───────────────────────────────
+      const token = session?.access_token;
+      if (token) {
+        try {
+          const res = await fetch(`${API}/api/staff/me?auth_user_id=${user.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const json = await res.json();
+          if (json.success && json.data) {
+            const staffData = json.data;
+            if (!staffData.is_active) {
+              toast.error("Your staff account has been deactivated. Contact your manager.");
+              router.push("/auth/v1/login");
+              return;
+            }
 
-      if (!businessData.is_approved) {
-        toast.warning("Your business is pending approval");
-        router.push("/auth/waiting-approval-business");
-        return;
+            // Fetch the business details for the staff's business
+            const { data: bizRecords } = await supabase
+              .from("admins")
+              .select("*")
+              .eq("id", staffData.business_id)
+              .eq("role", "business_owner")
+              .single();
+
+            setBusiness(bizRecords ?? {
+              id: staffData.business_id,
+              business_name: "Business",
+              business_type: "",
+              business_address: "",
+              business_phone: "",
+              email: "",
+            });
+            setIsStaff(true);
+            setStaffName(staffData.full_name);
+
+            // Redirect staff away from restricted pages before rendering
+            const restrictedRoutes = fullNavigation
+              .filter((item) => !item.staffAllowed)
+              .map((item) => item.href);
+            const currentPath = window.location.pathname;
+            const isRestricted = restrictedRoutes.some(
+              (route) => currentPath === route || currentPath.startsWith(route + "/")
+            );
+            if (isRestricted) {
+              // Mark redirect in-flight so useEffect([pathname]) calls setLoading(false)
+              // when the dashboard route activates (same layout instance stays mounted).
+              redirectingFromRestricted.current = true;
+              toast.warning("This page is not accessible for staff accounts.");
+              router.push("/business/dashboard");
+              return; // Keep loading=true (skeleton) until pathname changes
+            }
+
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Staff lookup failed — fall through to error
+        }
       }
 
-      setBusiness(businessData);
-      setLoading(false);
+      // ── 3. Not business owner or staff ───────────────────────────────────
+      toast.error("Access denied — not a business account");
+      router.push("/auth/v1/login");
     } catch (error) {
       console.error("Auth error:", error);
       router.push("/auth/v1/login");
@@ -183,17 +290,8 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
     );
   }
 
-  const navigation = [
-    { name: "Dashboard", href: "/business/dashboard", icon: LayoutDashboard },
-    { name: "Queue Management", href: "/business/queue", icon: Clock },
-    { name: "Orders", href: "/business/orders", icon: Package },
-    { name: "Customers", href: "/business/customers", icon: Users },
-    { name: "Staff", href: "/business/staff", icon: UserCog },
-    { name: "Services", href: "/business/services", icon: Store },
-    { name: "Business Hours", href: "/business/hours", icon: Calendar },
-    { name: "Pricing & Plans", href: "/business/pricing", icon: CreditCard },
-    { name: "Settings", href: "/business/settings", icon: Settings },
-  ];
+  // Filter navigation based on role
+  const navigation = fullNavigation.filter((item) => !isStaff || item.staffAllowed);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -246,7 +344,14 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                 <p className="text-sm font-semibold text-gray-900 truncate">
                   {business?.business_name}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{business?.business_type}</p>
+                {isStaff ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Shield className="h-3 w-3 text-gray-400" />
+                    <p className="text-xs text-gray-500 truncate">{staffName}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 truncate">{business?.business_type}</p>
+                )}
               </div>
             </div>
           </div>
@@ -275,6 +380,19 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                 );
               })}
             </ul>
+
+            {/* Staff role badge */}
+            {isStaff && (
+              <div className="mt-4 px-2 py-2 rounded-md bg-amber-50 border border-amber-200">
+                <div className="flex items-center gap-2 text-amber-700">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Staff Account</span>
+                </div>
+                <p className="text-xs text-amber-600 mt-0.5 leading-tight">
+                  Some features are restricted.
+                </p>
+              </div>
+            )}
           </nav>
 
           {/* Logout - B/W Theme */}
@@ -312,10 +430,14 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
             <div className="flex-1" />
             <div className="flex items-center space-x-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-white">{business?.business_name}</p>
-                <p className="text-xs text-gray-400">{business?.email}</p>
+                <p className="text-sm font-medium text-white">
+                  {isStaff ? staffName : business?.business_name}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {isStaff ? "Staff" : business?.email}
+                </p>
               </div>
-              {business?.avatar_url ? (
+              {business?.avatar_url && !isStaff ? (
                 <img
                   src={business.avatar_url}
                   alt={business.business_name}
@@ -323,7 +445,9 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                 />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-semibold flex-shrink-0 select-none">
-                  {business?.business_name?.charAt(0).toUpperCase() || "B"}
+                  {isStaff
+                    ? (staffName?.charAt(0).toUpperCase() || "S")
+                    : (business?.business_name?.charAt(0).toUpperCase() || "B")}
                 </div>
               )}
             </div>

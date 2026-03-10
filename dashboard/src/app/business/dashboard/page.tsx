@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
+import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, Package, CheckCircle, Star, QrCode, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,8 +51,8 @@ export default function BusinessDashboardPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setBusinessId(user.id);
+      const id = await resolveBusinessId();
+      if (id) setBusinessId(id);
     };
     init();
   }, []);

@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.OptionalDouble;
 
 @Service
 public class QueueService {
@@ -49,16 +50,26 @@ public class QueueService {
         long waiting = entries.stream().filter(q -> "waiting".equals(q.getStatus())).count();
         long serving = entries.stream().filter(q -> List.of("in_progress", "called").contains(q.getStatus())).count();
         long completed = entries.stream().filter(q -> "completed".equals(q.getStatus())).count();
+        long cancelled = entries.stream().filter(q -> "cancelled".equals(q.getStatus())).count();
         BigDecimal estimatedRevenue = entries.stream()
                 .map(q -> q.getEstimatedPrice() != null ? q.getEstimatedPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Avg wait: average minutes between joined_at and started_at for served entries today
+        OptionalDouble avgWait = entries.stream()
+                .filter(q -> q.getJoinedAt() != null && q.getStartedAt() != null)
+                .mapToLong(q -> java.time.Duration.between(q.getJoinedAt(), q.getStartedAt()).toMinutes())
+                .filter(m -> m >= 0)
+                .average();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", entries.size());
         stats.put("waiting", waiting);
         stats.put("serving", serving);
         stats.put("completed", completed);
+        stats.put("cancelled", cancelled);
         stats.put("estimated_revenue", estimatedRevenue);
+        stats.put("avg_wait_time", avgWait.isPresent() ? (long) avgWait.getAsDouble() : 0);
 
         Map<String, Object> result = new HashMap<>();
         result.put("data", entries);

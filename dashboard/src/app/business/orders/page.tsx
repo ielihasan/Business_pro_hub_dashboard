@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderItem {
@@ -144,9 +145,9 @@ export default function OrdersPage() {
 
   const getBusinessId = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setBusinessId(user.id);
+      const id = await resolveBusinessId();
+      if (id) {
+        setBusinessId(id);
       } else {
         setApiError("Not authenticated");
         setLoading(false);

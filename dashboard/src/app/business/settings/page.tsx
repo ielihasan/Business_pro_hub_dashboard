@@ -26,6 +26,14 @@ export default function SettingsPage() {
     business_description: "",
     email: "",
   });
+  const [currentPlanName, setCurrentPlanName] = useState<string>("—");
+
+  // Map plan IDs returned by the pricing API to display names
+  const PLAN_NAMES: Record<string, string> = {
+    starter:      "Starter",
+    professional: "Professional",
+    enterprise:   "Enterprise",
+  };
 
   const fetchBusinessData = async () => {
     try {
@@ -50,6 +58,21 @@ export default function SettingsPage() {
         email: data.email || "",
       });
       setAvatarUrl(data.avatar_url ?? null);
+
+      // Fetch current subscription plan from pricing API
+      try {
+        const pricingRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/pricing?business_id=${session.user.id}`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } }
+        );
+        if (pricingRes.ok) {
+          const pricingJson = await pricingRes.json();
+          const planId: string = pricingJson?.data?.current_plan ?? "";
+          setCurrentPlanName(PLAN_NAMES[planId.toLowerCase()] ?? planId ?? "Free");
+        }
+      } catch {
+        // Pricing fetch failed — keep default "—"
+      }
     } catch (error) {
       console.error("Error fetching business data:", error);
       toast.error("Failed to load business settings");
@@ -427,7 +450,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Subscription Plan</span>
-            <span className="text-sm font-medium">Free</span>
+            <span className="text-sm font-medium">{currentPlanName}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Business Type</span>
