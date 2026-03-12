@@ -116,6 +116,7 @@ export default function JoinQueuePage({
     phone_number?: string;
   } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [leavingQueue, setLeavingQueue] = useState(false);
 
   // Build storage key for this business + queue type
   const getStorageKey = useCallback((queueTypeId?: string) => {
@@ -154,8 +155,8 @@ export default function JoinQueuePage({
           setSelectedQueueType(types[0].id);
         }
       }
-    } catch (error) {
-      console.error("Error fetching queue types:", error);
+    } catch {
+      // silently fail — queue types list stays empty
     }
   }, [businessId, queueTypeFromUrl]);
 
@@ -173,8 +174,8 @@ export default function JoinQueuePage({
         setBusinessName(data.data.business_name || "Business");
         setQueueClosed(!data.data.is_open);
       }
-    } catch (error) {
-      console.error("Error fetching queue info:", error);
+    } catch {
+      // silently fail
     } finally {
       setInitialLoading(false);
     }
@@ -202,8 +203,8 @@ export default function JoinQueuePage({
         }
         setLastRefresh(new Date());
       }
-    } catch (error) {
-      console.error("Status refresh error:", error);
+    } catch {
+      // silently fail — next auto-refresh will retry
     }
   }, [ticket?.queue_type_id, getStorageKey]);
 
@@ -218,7 +219,7 @@ export default function JoinQueuePage({
             .from("users")
             .select("id, full_name, email, phone_number")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
 
           if (profile) {
             setAppUser(profile);
@@ -387,6 +388,7 @@ export default function JoinQueuePage({
   };
 
   const handleLeaveQueue = async () => {
+    setLeavingQueue(true);
     if (ticket?.id) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${ticket.id}`, {
@@ -394,8 +396,8 @@ export default function JoinQueuePage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "cancelled" }),
         });
-      } catch (error) {
-        console.error("Error leaving queue:", error);
+      } catch {
+        // silently proceed — local state is cleaned up regardless
       }
     }
     const storageKey = getStorageKey(ticket?.queue_type_id || undefined);
@@ -403,6 +405,7 @@ export default function JoinQueuePage({
     setJoined(false);
     setTicket(null);
     setFormData({ customer_name: "", customer_phone: "", customer_email: "" });
+    setLeavingQueue(false);
     toast.success("You have left the queue");
   };
 
@@ -608,9 +611,11 @@ export default function JoinQueuePage({
                 <Button
                   variant="ghost"
                   onClick={handleLeaveQueue}
+                  disabled={leavingQueue}
                   className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
-                  Leave Queue
+                  {leavingQueue && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {leavingQueue ? "Leaving..." : "Leave Queue"}
                 </Button>
               )}
             </div>

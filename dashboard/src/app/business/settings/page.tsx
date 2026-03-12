@@ -73,8 +73,7 @@ export default function SettingsPage() {
       } catch {
         // Pricing fetch failed — keep default "—"
       }
-    } catch (error) {
-      console.error("Error fetching business data:", error);
+    } catch {
       toast.error("Failed to load business settings");
     } finally {
       setLoading(false);
@@ -112,7 +111,6 @@ export default function SettingsPage() {
 
       toast.success("Business settings updated successfully!");
     } catch (error: any) {
-      console.error("Error updating settings:", error);
       toast.error(error.message || "Failed to update settings");
     } finally {
       setSaving(false);

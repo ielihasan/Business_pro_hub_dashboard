@@ -136,8 +136,7 @@ export default function BusinessHoursPage() {
         setUseMockData(true);
         setLoading(false);
       }
-    } catch (error) {
-      console.error("Error getting business ID:", error);
+    } catch {
       setUseMockData(true);
       setLoading(false);
     }
@@ -153,7 +152,7 @@ export default function BusinessHoursPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error);
+        throw new Error(data.error || data.message || "Failed to load business hours");
       }
 
       if (data.data.weekly_hours && data.data.weekly_hours.length > 0) {
@@ -253,7 +252,7 @@ export default function BusinessHoursPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error);
+        throw new Error(data.error || data.message || "Failed to save business hours");
       }
 
       toast.success("Business hours saved successfully!");
@@ -297,8 +296,8 @@ export default function BusinessHoursPage() {
         });
 
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error);
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || data.message || "Failed to add special hours");
         }
 
         toast.success("Special hours added!");
@@ -333,8 +332,8 @@ export default function BusinessHoursPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error);
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || "Failed to remove special hours");
       }
 
       toast.success("Special hours removed!");

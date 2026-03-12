@@ -189,7 +189,7 @@ export function LoginForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem>
-            <FormLabel>Email Address</FormLabel>
+            <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
             <FormControl>
               <Input {...field} type="email" placeholder="you@example.com" autoComplete="off" />
             </FormControl>
@@ -199,7 +199,7 @@ export function LoginForm() {
 
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem>
-            <FormLabel>Password</FormLabel>
+            <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
             <FormControl>
               <Input {...field} type="password" placeholder="••••••••" autoComplete="current-password" />
             </FormControl>

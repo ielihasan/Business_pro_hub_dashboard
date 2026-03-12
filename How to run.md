@@ -10,5 +10,5 @@ cd dashboard && node node_modules/next/dist/bin/next dev -p 3002
 
 ## Account & Password
 
-`admin@test.com` `Admin@1234`
-`business@test.com` `Test@1234`
+`admin@test.com` `AdminPass123!`
+`business@test.com` `TestPass123!`

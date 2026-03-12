@@ -41,7 +41,9 @@ export default function LoginV1() {
               animate={{ scale: 1, rotate: 0 }}
               transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              <BookOpenText className="text-primary-foreground mx-auto size-12" />
+              <Link href="/">
+                <BookOpenText className="text-primary-foreground mx-auto size-12 cursor-pointer hover:opacity-80 transition-opacity" />
+              </Link>
             </motion.div>
             <motion.div
               className="space-y-2"

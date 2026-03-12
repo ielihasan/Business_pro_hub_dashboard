@@ -85,7 +85,9 @@ export default function RegisterV1() {
             animate={{ scale: 1, rotate: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <BookOpenText className="text-primary-foreground size-16 mb-6 flex-shrink-0" />
+            <Link href="/">
+              <BookOpenText className="text-primary-foreground size-16 mb-6 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" />
+            </Link>
           </motion.div>
           <motion.h1
             className="text-primary-foreground text-3xl font-bold mb-3"

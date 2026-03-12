@@ -118,6 +118,8 @@ export default function OrdersPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteOrderTarget, setDeleteOrderTarget] = useState<string | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -258,7 +260,7 @@ export default function OrdersPage() {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || data.message || "Failed to create order");
 
       toast.success("Order created successfully!");
       fetchOrders();
@@ -293,7 +295,7 @@ export default function OrdersPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error);
+        throw new Error(data.error || data.message || "Failed to update status");
       }
 
       toast.success(`Order status updated to ${newStatus}`);
@@ -317,7 +319,7 @@ export default function OrdersPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error);
+        throw new Error(data.error || data.message || "Failed to update payment");
       }
 
       toast.success(`Payment marked as ${paymentStatus}`);
@@ -327,25 +329,32 @@ export default function OrdersPage() {
     }
   };
 
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to delete this order?")) return;
+  const handleDeleteOrder = (orderId: string) => {
+    setDeleteOrderTarget(orderId);
+  };
 
+  const confirmDeleteOrder = async () => {
+    if (!deleteOrderTarget) return;
+    setDeletingOrder(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders/${deleteOrderTarget}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error);
+        throw new Error(data.error || data.message || "Failed to delete order");
       }
 
       toast.success("Order deleted successfully");
+      setDeleteOrderTarget(null);
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete order");
+    } finally {
+      setDeletingOrder(false);
     }
   };
 
@@ -1065,6 +1074,25 @@ export default function OrdersPage() {
               onClick={() => setIsViewDialogOpen(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Order Confirmation Dialog */}
+      <Dialog open={!!deleteOrderTarget} onOpenChange={(open) => { if (!open) setDeleteOrderTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this order? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOrderTarget(null)} disabled={deletingOrder}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeleteOrder} disabled={deletingOrder}>
+              {deletingOrder && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

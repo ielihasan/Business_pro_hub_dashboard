@@ -65,6 +65,10 @@ export default function ServicesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQueueType, setEditingQueueType] = useState<QueueType | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Delete confirmation dialog
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -176,20 +180,28 @@ export default function ServicesPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error);
+      if (!res.ok) throw new Error(json.error || json.message || "Failed to delete service");
       toast.success("Service deleted!");
+      setDeleteTarget(null);
       fetchQueueTypes();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete service");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -442,6 +454,25 @@ export default function ServicesPage() {
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editingQueueType ? "Update" : "Create"} Service
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Service</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

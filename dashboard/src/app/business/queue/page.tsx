@@ -707,7 +707,7 @@ export default function QueueManagementPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || data.message || "Failed to add customer to queue");
       const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
       toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
       setAddDialogOpen(false);
@@ -728,7 +728,7 @@ export default function QueueManagementPage() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to update status"); }
       toast.success(`Status → ${newStatus}`);
       // optimistic update
       setQueueEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
@@ -776,7 +776,7 @@ export default function QueueManagementPage() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to update queue entry"); }
       toast.success("Queue entry updated!");
       setEditDialogOpen(false);
       setEditingEntry(null);
@@ -800,7 +800,7 @@ export default function QueueManagementPage() {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${session?.access_token}` },
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to remove from queue"); }
       toast.success(`Removed ${deletingEntry.customer_name} from queue`);
       // optimistic remove
       setQueueEntries(prev => prev.filter(e => e.id !== deletingEntry.id));
@@ -841,7 +841,7 @@ export default function QueueManagementPage() {
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error);
+      if (!res.ok) throw new Error(json.error || json.message || "Failed to update queue status");
       toast.success(`${qt.name} queue ${newValue ? "opened" : "closed"}`);
     } catch (err: any) {
       // Revert optimistic update on failure
@@ -880,7 +880,7 @@ export default function QueueManagementPage() {
     try {
       setQrCode(await generateQrCodeClientSide(joinUrl));
       setQrJoinUrl(joinUrl);
-    } catch (e) { console.error(e); }
+    } catch { /* QR generation failed silently — dialog still opens */ }
     finally { setQrDialogOpen(true); setLoadingQr(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business?.id, queueTypes]);

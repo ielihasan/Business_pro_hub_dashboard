@@ -215,7 +215,7 @@ export function RegisterFormNew() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="John Doe" />
                   </FormControl>
@@ -229,7 +229,7 @@ export function RegisterFormNew() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="email" placeholder="you@business.com" />
                   </FormControl>
@@ -243,7 +243,7 @@ export function RegisterFormNew() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="password" placeholder="••••••••" />
                   </FormControl>
@@ -257,7 +257,7 @@ export function RegisterFormNew() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>Confirm Password <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="password" placeholder="••••••••" />
                   </FormControl>
@@ -271,7 +271,7 @@ export function RegisterFormNew() {
               name="businessName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Name</FormLabel>
+                  <FormLabel>Business Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="My Coffee Shop" />
                   </FormControl>
@@ -285,7 +285,7 @@ export function RegisterFormNew() {
               name="businessType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Type</FormLabel>
+                  <FormLabel>Business Type <span className="text-red-500">*</span></FormLabel>
                   <Select onValueChange={(val) => { field.onChange(val); if (val !== "Other") setCustomBusinessType(""); }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -318,7 +318,7 @@ export function RegisterFormNew() {
               name="businessPhone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Phone</FormLabel>
+                  <FormLabel>Business Phone <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="+1 (555) 123-4567" />
                   </FormControl>
@@ -332,7 +332,7 @@ export function RegisterFormNew() {
               name="businessAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Address</FormLabel>
+                  <FormLabel>Business Address <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="123 Main St, City, State" />
                   </FormControl>
@@ -422,7 +422,7 @@ export function RegisterFormNew() {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Admin Name" />
                   </FormControl>
@@ -436,7 +436,7 @@ export function RegisterFormNew() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="email" placeholder="admin@businesshub.com" />
                   </FormControl>
@@ -450,7 +450,7 @@ export function RegisterFormNew() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="password" placeholder="••••••••" />
                   </FormControl>
@@ -464,7 +464,7 @@ export function RegisterFormNew() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>Confirm Password <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input {...field} type="password" placeholder="••••••••" />
                   </FormControl>

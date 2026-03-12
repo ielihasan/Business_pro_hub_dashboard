@@ -100,7 +100,7 @@ export default function StaffPage() {
   // Add Staff dialog
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState<NewStaffForm>({
-    full_name: "", email: "", phone: "", position: "Staff",
+    full_name: "", email: "", phone: "", position: "",
   });
   const [addLoading, setAddLoading] = useState(false);
   const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string } | null>(null);
@@ -166,6 +166,15 @@ export default function StaffPage() {
       toast.error("Name and email are required");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(addForm.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (!addForm.position) {
+      toast.error("Position is required");
+      return;
+    }
     setAddLoading(true);
     try {
       const res = await fetch(`${API}/api/staff`, {
@@ -183,7 +192,7 @@ export default function StaffPage() {
       }
       toast.success("Staff member added!");
       setCreatedCreds({ email: addForm.email, password: json.data.temp_password });
-      setAddForm({ full_name: "", email: "", phone: "", position: "Staff" });
+      setAddForm({ full_name: "", email: "", phone: "", position: "" });
       fetchStaff();
     } catch {
       toast.error("Network error");
@@ -195,7 +204,7 @@ export default function StaffPage() {
   const closeAddDialog = () => {
     setAddOpen(false);
     setCreatedCreds(null);
-    setAddForm({ full_name: "", email: "", phone: "", position: "Staff" });
+    setAddForm({ full_name: "", email: "", phone: "", position: "" });
   };
 
   // ── Edit Staff ────────────────────────────────────────────────────────────
@@ -542,13 +551,13 @@ export default function StaffPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Position</Label>
+                  <Label>Position <span className="text-red-500">*</span></Label>
                   <Select
                     value={addForm.position}
                     onValueChange={(v) => setAddForm({ ...addForm, position: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a position" />
                     </SelectTrigger>
                     <SelectContent>
                       {POSITIONS.map((p) => (
