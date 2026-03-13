@@ -28,6 +28,18 @@ export function LoginForm() {
     defaultValues: { email: lastRegisteredEmail, password: "", remember: false },
   });
 
+  const applyRememberMe = (remember: boolean) => {
+    if (remember) {
+      localStorage.setItem("bph-remember-me", "true");
+      localStorage.setItem("bph-remember-until", String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+      sessionStorage.removeItem("bph-session-active");
+    } else {
+      localStorage.removeItem("bph-remember-me");
+      localStorage.removeItem("bph-remember-until");
+      sessionStorage.setItem("bph-session-active", "true");
+    }
+  };
+
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
       const { data: authData, error } = await supabase.auth.signInWithPassword({
@@ -87,9 +99,7 @@ export function LoginForm() {
             const staffJson = await staffRes.json();
             if (staffJson.data) {
               // Valid staff member — send them to the business dashboard
-              if (data.remember && authData.session) {
-                await supabase.auth.setSession(authData.session);
-              }
+              applyRememberMe(data.remember ?? false);
               toast.success(`Welcome, ${staffJson.data.full_name}!`);
               router.push("/business/dashboard");
               return;
@@ -155,10 +165,7 @@ export function LoginForm() {
 
       // Approved account - proceed with normal login
       if (userAccount.role === "admin") {
-        if (data.remember && authData.session) {
-          await supabase.auth.setSession(authData.session);
-        }
-
+        applyRememberMe(data.remember ?? false);
         toast.success("Welcome, Admin!");
         router.push("/admin/dashboard");
       } else if (userAccount.role === "business_owner") {
@@ -168,10 +175,7 @@ export function LoginForm() {
           return;
         }
 
-        if (data.remember && authData.session) {
-          await supabase.auth.setSession(authData.session);
-        }
-
+        applyRememberMe(data.remember ?? false);
         toast.success(`Welcome back, ${userAccount.business_name}!`);
         router.push("/business/dashboard");
       } else {

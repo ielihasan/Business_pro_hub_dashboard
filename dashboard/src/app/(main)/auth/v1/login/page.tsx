@@ -69,7 +69,7 @@ export default function LoginV1() {
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="w-full max-w-md space-y-10 py-10 lg:py-32">
+        <div className="w-full max-w-md space-y-10">
           {/* Header */}
           <motion.div
             className="space-y-4 text-center"

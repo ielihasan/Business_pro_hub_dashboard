@@ -23,4 +23,28 @@ if (typeof window !== "undefined") {
       }
     }
   });
+
+  supabase.auth.getSession().then(({ data: { session }, error }) => {
+    // Invalid refresh token — clear session cleanly
+    if (error?.message?.toLowerCase().includes("refresh token")) {
+      supabase.auth.signOut();
+      return;
+    }
+
+    if (session) {
+      const isRemembered = localStorage.getItem("bph-remember-me") === "true";
+      const rememberUntil = parseInt(localStorage.getItem("bph-remember-until") || "0");
+      const isSessionActive = sessionStorage.getItem("bph-session-active") === "true";
+
+      if (isRemembered && Date.now() > rememberUntil) {
+        // 30-day period expired — sign out
+        localStorage.removeItem("bph-remember-me");
+        localStorage.removeItem("bph-remember-until");
+        supabase.auth.signOut();
+      } else if (!isRemembered && !isSessionActive) {
+        // Not remembered + sessionStorage cleared (browser restarted) — sign out
+        supabase.auth.signOut();
+      }
+    }
+  });
 }
