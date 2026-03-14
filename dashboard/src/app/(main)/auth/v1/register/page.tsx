@@ -23,7 +23,7 @@ export default function RegisterV1() {
       >
         {/* Sticky Header — always visible at top */}
         <motion.div
-          className="sticky top-0 z-10 bg-background px-4 pt-3 pb-2 border-b relative"
+          className="sticky top-0 z-10 bg-background px-4 pt-3 pb-2 border-b"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
