@@ -28,12 +28,14 @@ import {
   Calendar,
   BellRing,
   Play,
-  X
+  X,
+  Menu
 } from "lucide-react";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 
 export default function LandingPage() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
@@ -196,15 +198,16 @@ export default function LandingPage() {
               </div>
             </motion.div>
             <motion.nav
-              className="hidden md:flex items-center space-x-1"
+              className="flex items-center space-x-1"
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
+              {/* Nav links — hidden on mobile */}
               <motion.a
                 href="#features"
                 onClick={(e) => handleSmoothScroll(e, 'features')}
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -213,7 +216,7 @@ export default function LandingPage() {
               <motion.a
                 href="#testimonials"
                 onClick={(e) => handleSmoothScroll(e, 'testimonials')}
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -222,30 +225,78 @@ export default function LandingPage() {
               <motion.a
                 href="#pricing"
                 onClick={(e) => handleSmoothScroll(e, 'pricing')}
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
+                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 Pricing
               </motion.a>
-              <div className="ml-4 flex items-center space-x-3">
-                <Link href="/auth/v1/login">
+              {/* Action buttons — always visible */}
+              <div className="md:ml-4 flex items-center space-x-2">
+                <Link href="/auth/v1/login" className="hidden md:block">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button variant="ghost" className="font-medium">Sign In</Button>
+                    <Button variant="ghost" className="font-medium text-sm px-3">Sign In</Button>
                   </motion.div>
                 </Link>
-                <Link href="/auth/v1/register">
+                <Link href="/auth/v1/register" className="hidden md:block">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button className="bg-[#3D4127] hover:bg-[#636B2F] shadow-lg text-white">
+                    <Button className="bg-[#3D4127] hover:bg-[#636B2F] shadow-lg text-white text-sm px-3">
                       Get Started Free
                     </Button>
                   </motion.div>
                 </Link>
+                {/* Hamburger — mobile only */}
+                <button
+                  className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                >
+                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
               </div>
             </motion.nav>
           </div>
         </div>
       </motion.header>
+
+      {/* Mobile Menu Dropdown */}
+      {isMobileMenuOpen && (
+        <motion.div
+          className="md:hidden sticky top-[73px] z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xl px-5 py-5 flex flex-col"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="flex flex-col mb-4">
+            {[
+              { label: 'Features', id: 'features' },
+              { label: 'Testimonials', id: 'testimonials' },
+              { label: 'Pricing', id: 'pricing' },
+            ].map(({ label, id }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                onClick={(e) => { handleSmoothScroll(e, id); setIsMobileMenuOpen(false); }}
+                className="flex items-center justify-between px-3 py-3 rounded-xl text-gray-700 hover:text-[#3D4127] hover:bg-[#D4DE95]/20 font-medium transition-all duration-150"
+              >
+                {label}
+                <ArrowRight className="h-4 w-4 text-gray-400" />
+              </a>
+            ))}
+          </div>
+          <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
+            <Link href="/auth/v1/login" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="outline" className="w-full h-11 font-medium border-gray-200 hover:border-[#3D4127] hover:text-[#3D4127]">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/auth/v1/register" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button className="w-full h-11 bg-[#3D4127] hover:bg-[#636B2F] text-white font-medium shadow-md">
+                Get Started Free
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* Hero Section */}
       <motion.section
@@ -262,9 +313,9 @@ export default function LandingPage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Badge className="mb-6 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
-                <Zap className="w-4 h-4 mr-1.5 inline" />
-                Trusted by 10,000+ businesses worldwide
+              <Badge className="mb-6 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px] text-center leading-snug whitespace-normal max-w-[220px] sm:max-w-none">
+                <Zap className="w-4 h-4 mr-1.5 inline flex-shrink-0" />
+                <span>Trusted by 10,000+<br className="sm:hidden" /> businesses worldwide</span>
               </Badge>
             </motion.div>
 
@@ -669,80 +720,80 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-950 text-gray-400 py-16 border-t border-gray-800">
+      <footer className="bg-white text-gray-500 py-16 border-t border-gray-200">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-5 gap-12 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="h-10 w-10 rounded-xl bg-[#636B2F] flex items-center justify-center shadow-lg">
+                <div className="h-10 w-10 rounded-xl bg-[#3D4127] flex items-center justify-center shadow-lg">
                   <Store className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-xl font-bold text-white">Business Pro Hub</span>
+                <span className="text-xl font-bold text-gray-900">Business Pro Hub</span>
               </div>
-              <p className="text-gray-400 mb-4 leading-relaxed max-w-sm">
+              <p className="text-gray-500 mb-4 leading-relaxed max-w-sm">
                 The most advanced queue management platform trusted by thousands of businesses worldwide.
               </p>
-              <p className="text-gray-500 text-sm mb-6">
-                A product by <span className="text-gray-300 font-medium">Elixa Software Private Limited</span>
+              <p className="text-gray-400 text-sm mb-6">
+                A product by <span className="text-gray-600 font-medium">Elixa Software Private Limited</span>
               </p>
               <div className="flex gap-4">
-                <a href="#" className="h-10 w-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center">
+                <a href="#" className="h-10 w-10 rounded-lg bg-gray-100 hover:bg-[#D4DE95]/40 text-gray-500 hover:text-[#3D4127] flex items-center justify-center transition-colors">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 </a>
-                <a href="#" className="h-10 w-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center">
+                <a href="#" className="h-10 w-10 rounded-lg bg-gray-100 hover:bg-[#D4DE95]/40 text-gray-500 hover:text-[#3D4127] flex items-center justify-center transition-colors">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
                 </a>
-                <a href="#" className="h-10 w-10 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center">
+                <a href="#" className="h-10 w-10 rounded-lg bg-gray-100 hover:bg-[#D4DE95]/40 text-gray-500 hover:text-[#3D4127] flex items-center justify-center transition-colors">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                 </a>
               </div>
             </div>
 
             <div>
-              <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Product</h3>
+              <h3 className="text-gray-900 font-bold mb-4 text-sm uppercase tracking-wider">Product</h3>
               <ul className="space-y-3">
-                <li><a href="#features" className="hover:text-white transition-colors cursor-pointer">Features</a></li>
-                <li><a href="#pricing" className="hover:text-white transition-colors cursor-pointer">Pricing</a></li>
-                <li><a href="#testimonials" className="hover:text-white transition-colors cursor-pointer">Testimonials</a></li>
-                <li><button onClick={() => setIsDemoOpen(true)} className="hover:text-white transition-colors cursor-pointer">Demo</button></li>
+                <li><a href="#features" className="text-[#636B2F] hover:text-[#3D4127] transition-colors cursor-pointer">Features</a></li>
+                <li><a href="#pricing" className="text-[#636B2F] hover:text-[#3D4127] transition-colors cursor-pointer">Pricing</a></li>
+                <li><a href="#testimonials" className="text-[#636B2F] hover:text-[#3D4127] transition-colors cursor-pointer">Testimonials</a></li>
+                <li><button onClick={() => setIsDemoOpen(true)} className="text-[#636B2F] hover:text-[#3D4127] transition-colors cursor-pointer">Demo</button></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Company</h3>
+              <h3 className="text-gray-900 font-bold mb-4 text-sm uppercase tracking-wider">Company</h3>
               <ul className="space-y-3">
-                <li><Link href="/company#about" className="hover:text-white transition-colors">About Elixa Software</Link></li>
-                <li><Link href="/company#blog" className="hover:text-white transition-colors">Blog</Link></li>
-                <li><Link href="/company#careers" className="hover:text-white transition-colors">Careers</Link></li>
-                <li><Link href="/company#press" className="hover:text-white transition-colors">Press Kit</Link></li>
+                <li><Link href="/company#about" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">About Elixa Software</Link></li>
+                <li><Link href="/company#blog" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Blog</Link></li>
+                <li><Link href="/company#careers" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Careers</Link></li>
+                <li><Link href="/company#press" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Press Kit</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Support</h3>
+              <h3 className="text-gray-900 font-bold mb-4 text-sm uppercase tracking-wider">Support</h3>
               <ul className="space-y-3">
-                <li><Link href="/support#help-center" className="hover:text-white transition-colors">Help Center</Link></li>
-                <li><Link href="/support#contact" className="hover:text-white transition-colors">Contact Us</Link></li>
-                <li><Link href="/legal?tab=privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/legal?tab=terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link href="/support#help-center" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Help Center</Link></li>
+                <li><Link href="/support#contact" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Contact Us</Link></li>
+                <li><Link href="/legal?tab=privacy" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/legal?tab=terms" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-8">
+          <div className="border-t border-gray-200 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="text-center md:text-left">
                 <p className="text-sm text-gray-500">
                   &copy; 2026 Business Pro Hub. All rights reserved.
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Developed by <span className="text-gray-400">Elixa Software Private Limited</span>
+                <p className="text-xs text-gray-400 mt-1">
+                  Developed by <span className="text-gray-600">Elixa Software Private Limited</span>
                 </p>
               </div>
               <div className="flex gap-6 text-sm">
-                <Link href="/legal?tab=privacy" className="hover:text-white transition-colors">Privacy</Link>
-                <Link href="/legal?tab=terms" className="hover:text-white transition-colors">Terms</Link>
-                <Link href="/legal?tab=cookies" className="hover:text-white transition-colors">Cookies</Link>
+                <Link href="/legal?tab=privacy" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Privacy</Link>
+                <Link href="/legal?tab=terms" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Terms</Link>
+                <Link href="/legal?tab=cookies" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Cookies</Link>
               </div>
             </div>
           </div>

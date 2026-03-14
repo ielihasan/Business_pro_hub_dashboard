@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenText } from "lucide-react";
+import { BookOpenText, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { LoginForm } from "../../_components/login-form";
@@ -64,11 +64,19 @@ export default function LoginV1() {
 
       {/* Right Section */}
       <motion.div
-        className="bg-background flex w-full items-center justify-center p-8 lg:w-2/3"
+        className="bg-background relative flex w-full items-center justify-center p-8 lg:w-2/3"
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
+        <Link
+          href="/"
+          className="absolute top-4 left-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+          Home
+        </Link>
+
         <div className="w-full max-w-md space-y-10">
           {/* Header */}
           <motion.div

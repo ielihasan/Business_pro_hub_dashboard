@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenText } from "lucide-react";
+import { BookOpenText, ArrowLeft } from "lucide-react";
 import { RegisterFormNew } from "../../_components/register-form-new";
 import { motion } from "framer-motion";
 
@@ -23,11 +23,18 @@ export default function RegisterV1() {
       >
         {/* Sticky Header — always visible at top */}
         <motion.div
-          className="sticky top-0 z-10 bg-background px-4 pt-3 pb-2 border-b"
+          className="sticky top-0 z-10 bg-background px-4 pt-3 pb-2 border-b relative"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          <Link
+            href="/"
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            Home
+          </Link>
           <div className="w-full max-w-2xl mx-auto text-center">
             <h2 className="text-lg md:text-xl font-bold tracking-tight">
               Welcome to BusinessHub Pro
