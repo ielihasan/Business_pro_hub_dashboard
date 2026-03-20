@@ -20,6 +20,7 @@ interface BusinessStats {
   totalStaff: number;
   todayQueueRevenue: number;
   totalRevenue: number;
+  averageRating: number;
 }
 
 interface RecentQueue {
@@ -44,6 +45,7 @@ export default function BusinessDashboardPage() {
     totalStaff: 0,
     todayQueueRevenue: 0,
     totalRevenue: 0,
+    averageRating: 0,
   });
   const [recentQueues, setRecentQueues] = useState<RecentQueue[]>([]);
   const [loading, setLoading] = useState(true);
