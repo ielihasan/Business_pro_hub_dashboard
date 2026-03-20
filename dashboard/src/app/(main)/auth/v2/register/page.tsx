@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Globe } from "lucide-react";
+import { Globe, ArrowLeft } from "lucide-react";
 
 import { APP_CONFIG } from "@/config/app-config";
 
@@ -24,16 +24,23 @@ export default function RegisterV2() {
         </div>
       </div>
 
-      <div className="absolute top-5 flex w-full justify-end px-10">
+      <div className="absolute top-5 flex w-full items-center justify-between px-4 sm:px-8">
+        <Link
+          href="/"
+          className="flex items-center gap-1 text-sm font-medium text-[#636B2F] hover:text-[#3D4127] transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+          Home
+        </Link>
         <div className="text-muted-foreground text-sm">
           Already have an account?{" "}
-          <Link className="text-foreground" href="/auth/v1/login">
+          <Link className="text-foreground font-medium hover:underline" href="/auth/v1/login">
             Login
           </Link>
         </div>
       </div>
 
-      <div className="absolute bottom-5 flex w-full justify-between px-10">
+      <div className="absolute bottom-5 flex w-full justify-between px-4 sm:px-8">
         <div className="text-sm">{APP_CONFIG.copyright}</div>
         <div className="flex items-center gap-1 text-sm">
           <Globe className="text-muted-foreground size-4" />

@@ -30,16 +30,16 @@ export default function RegisterV1() {
         >
           <Link
             href="/"
-            className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sm font-medium text-[#636B2F] hover:text-[#3D4127] transition-colors"
           >
             <ArrowLeft className="size-4" />
             Home
           </Link>
-          <div className="w-full max-w-2xl mx-auto text-center">
-            <h2 className="text-lg md:text-xl font-bold tracking-tight">
+          <div className="w-full max-w-2xl mx-auto text-center pl-16 pr-4 sm:px-0">
+            <h2 className="text-base sm:text-lg md:text-xl font-bold tracking-tight">
               Welcome to BusinessHub Pro
             </h2>
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-muted-foreground text-xs mt-1 hidden sm:block">
               Real-time queue management & business operations dashboard
             </p>
           </div>

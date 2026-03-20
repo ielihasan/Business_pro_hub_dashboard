@@ -30,7 +30,7 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
             </div>
           </div>
         </div>
-        <div className="relative order-1 flex h-full">{children}</div>
+        <div className="relative order-1 flex h-full px-4 sm:px-0">{children}</div>
       </div>
     </main>
   );

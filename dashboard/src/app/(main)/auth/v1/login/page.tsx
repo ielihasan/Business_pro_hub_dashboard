@@ -21,7 +21,7 @@ export default function LoginV1() {
 
   return (
     <motion.div
-      className="flex h-dvh"
+      className="flex min-h-dvh"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -64,20 +64,20 @@ export default function LoginV1() {
 
       {/* Right Section */}
       <motion.div
-        className="bg-background relative flex w-full items-center justify-center p-8 lg:w-2/3"
+        className="bg-background relative flex w-full items-center justify-center p-4 sm:p-8 lg:w-2/3"
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       >
         <Link
           href="/"
-          className="absolute top-4 left-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-4 left-4 flex items-center gap-1 text-sm font-medium text-[#636B2F] hover:text-[#3D4127] transition-colors"
         >
           <ArrowLeft className="size-4" />
           Home
         </Link>
 
-        <div className="w-full max-w-md space-y-10">
+        <div className="w-full max-w-md space-y-6 sm:space-y-10 pt-8 sm:pt-0">
           {/* Header */}
           <motion.div
             className="space-y-4 text-center"
