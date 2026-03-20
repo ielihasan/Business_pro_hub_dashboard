@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface BusinessRepository extends JpaRepository<Business, String> {
     List<Business> findByIsActive(Boolean isActive);
     Optional<Business> findByIdAndIsActive(String id, Boolean isActive);
+    long countByIsActive(boolean isActive);
 }

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -212,15 +213,20 @@ export function LoginForm() {
         )} />
 
         <FormField control={form.control} name="remember" render={({ field }) => (
-          <FormItem className="flex items-center">
-            <Checkbox checked={field.value} onCheckedChange={field.onChange} id="remember" />
-            <FormLabel htmlFor="remember" className="ml-2 text-sm text-muted-foreground">
-              Remember me for 30 days
-            </FormLabel>
+          <FormItem className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Checkbox checked={field.value} onCheckedChange={field.onChange} id="remember" />
+              <FormLabel htmlFor="remember" className="ml-2 text-sm text-muted-foreground">
+                Remember me for 30 days
+              </FormLabel>
+            </div>
+            <Link href="/auth/forgot-password" className="text-sm text-primary hover:underline font-medium">
+              Forgot Password?
+            </Link>
           </FormItem>
         )} />
 
-        <Button type="submit" className="w-full bg-black hover:bg-gray-900 text-white">Login</Button>
+        <Button type="submit" className="w-full bg-[#3D4127] hover:bg-[#636B2F] text-white">Login</Button>
       </form>
     </Form>
   );

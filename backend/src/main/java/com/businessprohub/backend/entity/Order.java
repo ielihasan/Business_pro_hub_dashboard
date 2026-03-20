@@ -48,6 +48,18 @@ public class Order {
     @Column(name = "payment_status")
     private String paymentStatus; // "unpaid" | "paid"
 
+    @Column(name = "customer_name")
+    private String customerName;
+
+    @Column(name = "customer_phone")
+    private String customerPhone;
+
+    @Column(name = "customer_email")
+    private String customerEmail;
+
+    @Column(name = "items", columnDefinition = "jsonb")
+    private String items; // stored as JSON string
+
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 

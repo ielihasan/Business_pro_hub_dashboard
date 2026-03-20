@@ -112,7 +112,9 @@
       "Bash(\"/c/Users/X/AppData/Local/Programs/Microsoft VS Code/bin/code\" --uninstall-extension oracle.oracle-java)",
       "Bash(# Verify it''s gone from the active extensions list \"\"/c/Users/X/AppData/Local/Programs/Microsoft VS Code/bin/code\"\" --list-extensions)",
       "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot\" /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn clean package -q --no-transfer-progress -f /c/Users/X/FYP/Business_pro_hub_dashboard/backend/pom.xml)",
-      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot\" /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn clean package --no-transfer-progress -f /c/Users/X/FYP/Business_pro_hub_dashboard/backend/pom.xml)"
+      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot\" /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn clean package --no-transfer-progress -f /c/Users/X/FYP/Business_pro_hub_dashboard/backend/pom.xml)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)"
     ]
   }
 }

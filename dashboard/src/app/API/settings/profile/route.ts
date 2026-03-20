@@ -25,14 +25,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: admin, error } = await supabase
+    // Prefer business_owner row; fall back to admin row (handles users with both roles)
+    const { data: rows } = await supabase
       .from("admins")
       .select("*")
-      .eq("id", user.id)
-      .single();
+      .eq("id", user.id);
 
-    if (error || !admin) {
-      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+    const admin = (rows ?? []).find((r) => r.role === "business_owner") ?? (rows ?? [])[0];
+
+    if (!admin) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
     return NextResponse.json({ data: admin });
@@ -92,11 +94,16 @@ export async function PATCH(req: Request) {
     if (business_phone !== undefined) updateData.business_phone = business_phone;
     if (business_description !== undefined) updateData.business_description = business_description;
 
-    // Update admins table
+    // Determine which role row to update (prefer business_owner)
+    const { data: existingRows } = await supabase.from("admins").select("role").eq("id", user.id);
+    const targetRole = (existingRows ?? []).find((r) => r.role === "business_owner")?.role ?? "admin";
+
+    // Update admins table for the correct role row
     const { data: updatedAdmin, error: updateError } = await supabase
       .from("admins")
       .update(updateData)
       .eq("id", user.id)
+      .eq("role", targetRole)
       .select()
       .single();
 

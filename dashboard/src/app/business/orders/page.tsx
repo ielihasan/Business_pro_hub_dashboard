@@ -180,7 +180,10 @@ export default function OrdersPage() {
       if (!res.ok) throw new Error(json.error || "Failed to load orders");
 
       const inner = json.data || {};
-      const list: Order[] = inner.data || [];
+      const list: Order[] = (inner.data || []).map((o: any) => ({
+        ...o,
+        items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items); } catch { return []; } })() : (o.items ?? []),
+      }));
       setOrders(list);
       setTotalCount(inner.total || 0);
       setTotalPages(inner.total_pages || 1);

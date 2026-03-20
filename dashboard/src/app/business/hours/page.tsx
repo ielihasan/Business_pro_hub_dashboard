@@ -185,9 +185,12 @@ export default function BusinessHoursPage() {
         setHours(mappedHours);
       }
 
-      if (data.data.special_hours) {
-        setSpecialHours(data.data.special_hours);
-      }
+      // Backend returns "special" key; fall back to "special_hours" for compatibility
+      const specialData = data.data.special ?? data.data.special_hours ?? [];
+      setSpecialHours(specialData.map((s: any) => ({
+        ...s,
+        is_closed: s.is_closed !== undefined ? s.is_closed : !s.is_open,
+      })));
 
       setUseMockData(false);
     } catch (error: any) {

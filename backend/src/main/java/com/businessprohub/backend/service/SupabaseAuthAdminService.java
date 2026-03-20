@@ -103,8 +103,9 @@ public class SupabaseAuthAdminService {
      */
     public String findUserIdByEmail(String email) {
         try {
+            String encodedEmail = java.net.URLEncoder.encode(email, java.nio.charset.StandardCharsets.UTF_8);
             Map<?, ?> result = webClient.get()
-                    .uri(supabaseUrl + "/auth/v1/admin/users?filter=email%3D" + email + "&per_page=1")
+                    .uri(supabaseUrl + "/auth/v1/admin/users?filter=email%3D" + encodedEmail + "&per_page=1")
                     .header("Authorization", "Bearer " + serviceRoleKey)
                     .header("apikey", serviceRoleKey)
                     .retrieve()

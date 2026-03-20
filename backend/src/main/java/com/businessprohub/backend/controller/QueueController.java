@@ -6,11 +6,13 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.service.QrCodeService;
 import com.businessprohub.backend.service.QueueService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/queue")
 public class QueueController {
@@ -78,7 +80,8 @@ public class QueueController {
             String dataUrl = qrCodeService.generateQrCodeDataUrl(businessId, queueTypeId);
             return ResponseEntity.ok(ApiResponse.success(Map.of("qr_code", dataUrl)));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
+            log.error("Failed to generate QR code for business {}: {}", businessId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to generate QR code"));
         }
     }
 
@@ -91,7 +94,8 @@ public class QueueController {
             String dataUrl = qrCodeService.generateQrCodeDataUrl(businessId, queueTypeId);
             return ResponseEntity.ok(ApiResponse.success(Map.of("qr_code", dataUrl)));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
+            log.error("Failed to generate QR code: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to generate QR code"));
         }
     }
 
@@ -109,6 +113,13 @@ public class QueueController {
                                                   @RequestBody Map<String, Object> body) {
         Queue updated = queueService.updateEntry(id, body);
         return ResponseEntity.ok(ApiResponse.success(updated, "Queue entry updated"));
+    }
+
+    // POST /api/queue/{id}/leave — public endpoint to cancel/leave a queue (replaces the old public PATCH)
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<ApiResponse<?>> leaveQueue(@PathVariable String id) {
+        Queue updated = queueService.updateEntry(id, Map.of("status", "cancelled"));
+        return ResponseEntity.ok(ApiResponse.success(updated, "Left queue successfully"));
     }
 
     // DELETE /api/queue/{id}

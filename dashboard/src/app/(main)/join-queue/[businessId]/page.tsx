@@ -52,8 +52,9 @@ interface QueueTicket {
   created_at?: string;
   display_number?: string;
   quantity?: number;
-  estimated_price?: number;
   unit_price?: number;
+  total_price?: number;
+  estimated_price?: number; // backwards compat alias
 }
 
 interface QueueInfo {
@@ -344,6 +345,10 @@ export default function JoinQueuePage({
 
     try {
       setLoading(true);
+      // Calculate total price client-side before sending
+      const unitPrice = selectedType?.price ?? 0;
+      const totalPrice = unitPrice * quantity;
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -353,6 +358,8 @@ export default function JoinQueuePage({
           queue_type_id: selectedQueueType || undefined,
           queue_type_name: selectedType?.name || undefined,
           quantity,
+          unit_price: unitPrice,
+          total_price: totalPrice,
           // Pass user_id if this is a logged-in app user
           user_id: appUser?.id || undefined,
         }),
@@ -391,10 +398,8 @@ export default function JoinQueuePage({
     setLeavingQueue(true);
     if (ticket?.id) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${ticket.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "cancelled" }),
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${ticket.id}/leave`, {
+          method: "POST",
         });
       } catch {
         // silently proceed — local state is cleaned up regardless
@@ -561,7 +566,7 @@ export default function JoinQueuePage({
                   <span className="text-gray-600">Joined at {formatTime(ticket.created_at)}</span>
                 </div>
               )}
-              {(ticket.estimated_price ?? 0) > 0 && (
+              {((ticket.total_price ?? ticket.estimated_price ?? 0) > 0) && (
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
                   <div className="flex items-center gap-3">
                     <Banknote className="h-4 w-4 text-emerald-500" />
@@ -570,7 +575,7 @@ export default function JoinQueuePage({
                     </span>
                   </div>
                   <span className="font-bold text-emerald-700">
-                    Rs.{Number(ticket.estimated_price).toLocaleString()}
+                    Rs.{Number(ticket.total_price ?? ticket.estimated_price ?? 0).toLocaleString()}
                   </span>
                 </div>
               )}

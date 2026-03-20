@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, Package, CheckCircle, Star, QrCode, ArrowRight } from "lucide-react";
+import { Users, Clock, Package, CheckCircle, Banknote, QrCode, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ interface BusinessStats {
   completedOrders: number;
   totalCustomers: number;
   totalStaff: number;
-  averageRating: number;
+  todayQueueRevenue: number;
   totalRevenue: number;
 }
 
@@ -42,7 +42,7 @@ export default function BusinessDashboardPage() {
     completedOrders: 0,
     totalCustomers: 0,
     totalStaff: 0,
-    averageRating: 0,
+    todayQueueRevenue: 0,
     totalRevenue: 0,
   });
   const [recentQueues, setRecentQueues] = useState<RecentQueue[]>([]);
@@ -62,9 +62,10 @@ export default function BusinessDashboardPage() {
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      // Query queue entries and orders directly from Supabase (no Spring Boot needed)
-      const [{ data: queueEntries }, { data: orders }] = await Promise.all([
+      // Query queue entries, pricing, and orders directly from Supabase
+      const [{ data: queueEntries }, { data: queuePricing }, { data: orders }] = await Promise.all([
         supabase.from("queues").select("*").eq("business_id", businessId),
+        supabase.from("queue_pricing").select("queue_id, total_price, created_at").eq("business_id", businessId),
         supabase.from("orders").select("*").eq("business_id", businessId),
       ]);
 
@@ -87,12 +88,25 @@ export default function BusinessDashboardPage() {
         .slice(0, 5);
       setRecentQueues(recent);
 
+      // Revenue from queue_pricing table (today only, excludes cancelled via queue_id filter)
+      const todayQueueIds = new Set(
+        rawEntries
+          .filter((q) => (q.joined_at || q.created_at || "").startsWith(today))
+          .filter((q) => q.status !== "cancelled" && q.status !== "no_show")
+          .map((q) => q.id)
+      );
+      const pricingArr: { queue_id: string; total_price: string | null }[] = queuePricing || [];
+      const todayQueueRevenue = pricingArr
+        .filter((p) => todayQueueIds.has(p.queue_id))
+        .reduce((sum, p) => sum + (parseFloat(p.total_price) || 0), 0);
+
       setStats((prev) => ({
         ...prev,
         activeQueues,
         totalQueuesToday,
         completedToday,
         totalCustomers: uniqueCustomers.size,
+        todayQueueRevenue,
       }));
 
       // Orders stats
@@ -215,14 +229,14 @@ export default function BusinessDashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Average Rating</CardTitle>
-            <Star className="h-5 w-5 text-gray-600" />
+            <CardTitle className="text-sm font-medium text-gray-600">Today's Revenue</CardTitle>
+            <Banknote className="h-5 w-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "N/A"}
+            <div className="text-3xl font-bold text-emerald-700">
+              Rs. {stats.todayQueueRevenue.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Customer satisfaction</p>
+            <p className="text-xs text-gray-500 mt-1">From queue entries today</p>
           </CardContent>
         </Card>
       </div>

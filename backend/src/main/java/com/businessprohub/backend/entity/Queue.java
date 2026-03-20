@@ -51,8 +51,11 @@ public class Queue {
     @Column(name = "quantity")
     private Integer quantity; // number of items/persons — from customer
 
-    @Column(name = "estimated_price", precision = 10, scale = 2)
-    private BigDecimal estimatedPrice; // price * quantity
+    @Column(name = "unit_price", precision = 10, scale = 2)
+    private BigDecimal unitPrice;
+
+    @Column(name = "total_price", precision = 10, scale = 2)
+    private BigDecimal totalPrice;
 
     @Column(name = "joined_at")
     private OffsetDateTime joinedAt;

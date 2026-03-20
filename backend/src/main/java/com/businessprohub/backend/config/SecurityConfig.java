@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -52,8 +54,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/queue/qrcode").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/queue/qrcode").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/queue-types").permitAll()
-                .requestMatchers(HttpMethod.PATCH, "/api/queue/*").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/queue/*/leave").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/app-user/profile").permitAll()
+                // Admin-only endpoints
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Everything else requires valid Supabase JWT
                 .anyRequest().authenticated()
             )

@@ -2,6 +2,7 @@ package com.businessprohub.backend.repository;
 
 import com.businessprohub.backend.entity.Queue;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -38,4 +39,9 @@ public interface QueueRepository extends JpaRepository<Queue, String> {
 
     long countByServedByStaffIdAndStatus(String servedByStaffId, String status);
     long countByServedByStaffId(String servedByStaffId);
+
+    long countByStatus(String status);
+
+    @Query("SELECT COUNT(q) FROM Queue q WHERE q.status IN ('waiting', 'in_progress', 'called')")
+    long countActiveQueues();
 }

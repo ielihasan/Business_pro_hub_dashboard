@@ -88,10 +88,10 @@ public class AdminBusinessDetailController {
                 .map(Order::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Revenue business earns from customers via queue estimated prices
+        // Revenue business earns from customers via queue total prices
         BigDecimal customerQueueRevenue = allQueues.stream()
-                .filter(q -> "completed".equals(q.getStatus()) && q.getEstimatedPrice() != null)
-                .map(Queue::getEstimatedPrice)
+                .filter(q -> "completed".equals(q.getStatus()) && q.getTotalPrice() != null)
+                .map(Queue::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Total what business earns FROM customers
@@ -142,8 +142,8 @@ public class AdminBusinessDetailController {
                             && q.getCreatedAt() != null
                             && !q.getCreatedAt().isBefore(start)
                             && !q.getCreatedAt().isAfter(end)
-                            && q.getEstimatedPrice() != null)
-                    .map(Queue::getEstimatedPrice)
+                            && q.getTotalPrice() != null)
+                    .map(Queue::getTotalPrice)
                     .reduce(BigDecimal.ZERO, BigDecimal::add)
                     .add(orders.stream()
                             .filter(o -> "completed".equals(o.getStatus())

@@ -8,6 +8,9 @@ import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.repository.PaymentRepository;
 import com.businessprohub.backend.repository.SubscriptionRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -51,9 +54,15 @@ public class PricingController {
     }
 
     // POST /api/pricing — subscribe to a plan
+    @Transactional
     @PostMapping
-    public ResponseEntity<ApiResponse<?>> subscribe(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<?>> subscribe(Authentication auth,
+                                                    @RequestBody Map<String, Object> body) {
         String businessId = (String) body.get("business_id");
+        String callerId = (String) auth.getPrincipal();
+        if (!callerId.equals(businessId)) {
+            throw new AccessDeniedException("Access denied");
+        }
         String planId     = (String) body.get("plan_id");
         String planName   = body.get("plan_name") != null ? body.get("plan_name").toString() : planId;
         String paymentMethod = body.get("payment_method") != null
@@ -109,7 +118,12 @@ public class PricingController {
 
     // DELETE /api/pricing?business_id=
     @DeleteMapping
-    public ResponseEntity<ApiResponse<?>> cancel(@RequestParam("business_id") String businessId) {
+    public ResponseEntity<ApiResponse<?>> cancel(Authentication auth,
+                                                 @RequestParam("business_id") String businessId) {
+        String callerId = (String) auth.getPrincipal();
+        if (!callerId.equals(businessId)) {
+            throw new AccessDeniedException("Access denied");
+        }
         Subscription sub = subRepo.findByBusinessId(businessId).stream()
                 .filter(s -> "active".equals(s.getStatus()))
                 .findFirst()

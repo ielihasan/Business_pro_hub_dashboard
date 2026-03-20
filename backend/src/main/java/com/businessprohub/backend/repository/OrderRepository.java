@@ -10,4 +10,5 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, String> {
     List<Order> findByBusinessId(String businessId);
     List<Order> findByBusinessIdAndStatus(String businessId, String status);
+    long countByStatus(String status);
 }

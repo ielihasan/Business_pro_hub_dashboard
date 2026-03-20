@@ -10,6 +10,7 @@ import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/businesses")
 public class BusinessController {
@@ -41,10 +43,23 @@ public class BusinessController {
         this.emailService = emailService;
     }
 
-    // GET /api/businesses
+    // GET /api/businesses?search=&business_type=
     @GetMapping
-    public ResponseEntity<ApiResponse<?>> list() {
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(value = "business_type", required = false) String businessType) {
         List<Business> businesses = businessRepo.findByIsActive(true);
+        final String q = (search != null && !search.isBlank()) ? search.toLowerCase() : null;
+        if (q != null || (businessType != null && !businessType.isBlank())) {
+            businesses = businesses.stream()
+                    .filter(b -> q == null
+                            || (b.getBusinessName() != null && b.getBusinessName().toLowerCase().contains(q))
+                            || (b.getFullName() != null && b.getFullName().toLowerCase().contains(q))
+                            || (b.getEmail() != null && b.getEmail().toLowerCase().contains(q)))
+                    .filter(b -> businessType == null || businessType.isBlank()
+                            || businessType.equalsIgnoreCase(b.getBusinessType()))
+                    .toList();
+        }
         return ResponseEntity.ok(ApiResponse.success(businesses));
     }
 
@@ -138,6 +153,7 @@ public class BusinessController {
         if (body.containsKey("phone")) business.setBusinessPhone((String) body.get("phone"));
         if (body.containsKey("address")) business.setBusinessAddress((String) body.get("address"));
         if (body.containsKey("is_active")) business.setIsActive((Boolean) body.get("is_active"));
+        if (body.containsKey("subscription_plan")) business.setSubscriptionPlan((String) body.get("subscription_plan"));
         business.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         businessRepo.save(business);
 
@@ -147,6 +163,7 @@ public class BusinessController {
             if (body.containsKey("business_type")) a.setBusinessType((String) body.get("business_type"));
             if (body.containsKey("phone")) a.setBusinessPhone((String) body.get("phone"));
             if (body.containsKey("address")) a.setBusinessAddress((String) body.get("address"));
+            if (body.containsKey("subscription_plan")) a.setSubscriptionPlan((String) body.get("subscription_plan"));
             a.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
             adminRepo.save(a);
         });
@@ -225,7 +242,7 @@ public class BusinessController {
             emailService.sendApprovalEmail(app.getEmail(), app.getBusinessName() != null ? app.getBusinessName() : app.getFullName());
         } catch (Exception e) {
             // Log but don't fail the approval if email sending fails
-            System.err.println("Warning: failed to send approval email to " + app.getEmail() + ": " + e.getMessage());
+            log.error("Failed to send approval email to {}: {}", app.getEmail(), e.getMessage(), e);
         }
 
         return ResponseEntity.ok(ApiResponse.success(null, "Business approved successfully"));

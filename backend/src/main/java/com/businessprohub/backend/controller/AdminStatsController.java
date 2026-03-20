@@ -37,28 +37,22 @@ public class AdminStatsController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getStats() {
-        // Businesses
+        // Businesses — pure count queries, no findAll()
         long totalBusinesses  = businessRepo.count();
-        long activeBusinesses = businessRepo.findByIsActive(true).size();
+        long activeBusinesses = businessRepo.countByIsActive(true);
 
         // Customers (walk-in records across all businesses)
         long totalCustomers = customerRepo.count();
 
-        // Queues — all entries across all businesses
-        var allQueues = queueRepo.findAll();
-        long activeQueues    = allQueues.stream()
-                .filter(q -> "waiting".equals(q.getStatus()) || "in_progress".equals(q.getStatus()) || "called".equals(q.getStatus()))
-                .count();
-        long completedQueues = allQueues.stream()
-                .filter(q -> "completed".equals(q.getStatus()))
-                .count();
-        long totalQueues     = allQueues.size();
+        // Queues — DB-side count queries only
+        long activeQueues    = queueRepo.countActiveQueues();
+        long completedQueues = queueRepo.countByStatus("completed");
+        long totalQueues     = queueRepo.count();
 
-        // Orders — all orders across all businesses
-        var allOrders = orderRepo.findAll();
-        long totalOrders     = allOrders.size();
-        long pendingOrders   = allOrders.stream().filter(o -> "pending".equals(o.getStatus())).count();
-        long completedOrders = allOrders.stream().filter(o -> "completed".equals(o.getStatus())).count();
+        // Orders — DB-side count queries only
+        long totalOrders     = orderRepo.count();
+        long pendingOrders   = orderRepo.countByStatus("pending");
+        long completedOrders = orderRepo.countByStatus("completed");
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalBusinesses",  totalBusinesses);

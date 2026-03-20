@@ -8,6 +8,7 @@ import com.businessprohub.backend.repository.AdminRepository;
 import com.businessprohub.backend.repository.SystemSettingsRepository;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -90,7 +91,12 @@ public class SettingsController {
 
     // PATCH /api/settings/system
     @PatchMapping("/system")
-    public ResponseEntity<ApiResponse<?>> updateSystem(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<?>> updateSystem(Authentication auth,
+                                                       @RequestBody Map<String, Object> body) {
+        if (!auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            throw new AccessDeniedException("Admin only");
+        }
         for (Map.Entry<String, Object> entry : body.entrySet()) {
             Optional<SystemSettings> existing = settingsRepo.findByKey(entry.getKey());
             SystemSettings setting = existing.orElse(new SystemSettings());

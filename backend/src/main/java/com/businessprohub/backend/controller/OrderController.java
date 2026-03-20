@@ -5,24 +5,34 @@ import com.businessprohub.backend.entity.Order;
 import com.businessprohub.backend.exception.BadRequestException;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.OrderRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
 
     private final OrderRepository orderRepo;
+    private final ObjectMapper objectMapper;
 
-    public OrderController(OrderRepository orderRepo) {
+    public OrderController(OrderRepository orderRepo, ObjectMapper objectMapper) {
         this.orderRepo = orderRepo;
+        this.objectMapper = objectMapper;
     }
 
     // GET /api/orders?business_id=&status=&page=1&page_size=20
@@ -54,20 +64,53 @@ public class OrderController {
     }
 
     // POST /api/orders
+    @Transactional
     @PostMapping
     public ResponseEntity<ApiResponse<?>> create(@RequestBody Map<String, Object> body) {
+        // Generate unique order number: ORD-YYYYMMDD-XXXXX
+        String dateStr = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randPart = String.format("%05d", ThreadLocalRandom.current().nextInt(100000));
+        String orderNumber = "ORD-" + dateStr + "-" + randPart;
+
         Order order = new Order();
+        order.setOrderNumber(orderNumber);
         order.setBusinessId((String) body.get("business_id"));
         order.setCustomerId((String) body.get("customer_id"));
         order.setQueueId((String) body.get("queue_id"));
+        order.setCustomerName((String) body.get("customer_name"));
+        order.setCustomerPhone((String) body.get("customer_phone"));
+        order.setCustomerEmail((String) body.get("customer_email"));
         order.setStatus("pending");
         order.setPaymentStatus("unpaid");
         order.setNotes((String) body.get("notes"));
         order.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
 
-        if (body.containsKey("total_amount")) {
+        // Serialize items list to JSON string for JSONB storage and compute total server-side
+        if (body.containsKey("items")) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> items = (List<Map<String, Object>>) body.get("items");
+                if (items != null && !items.isEmpty()) {
+                    BigDecimal computedTotal = BigDecimal.ZERO;
+                    for (Map<String, Object> item : items) {
+                        BigDecimal price = new BigDecimal(item.getOrDefault("price", 0).toString());
+                        int quantity = Integer.parseInt(item.getOrDefault("quantity", 1).toString());
+                        computedTotal = computedTotal.add(price.multiply(BigDecimal.valueOf(quantity)));
+                    }
+                    order.setTotalAmount(computedTotal);
+                } else if (body.containsKey("total_amount")) {
+                    // items present but empty — fall back to client total
+                    order.setTotalAmount(new BigDecimal(body.get("total_amount").toString()));
+                }
+                order.setItems(objectMapper.writeValueAsString(items));
+            } catch (Exception e) {
+                log.warn("Failed to serialize order items", e);
+            }
+        } else if (body.containsKey("total_amount")) {
+            // No items at all — fall back to client-provided total for backward compat
             order.setTotalAmount(new BigDecimal(body.get("total_amount").toString()));
         }
+
         orderRepo.save(order);
         return ResponseEntity.ok(ApiResponse.success(order, "Order created"));
     }

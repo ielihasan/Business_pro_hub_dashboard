@@ -3,19 +3,23 @@ package com.businessprohub.backend.service;
 import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.entity.Business;
 import com.businessprohub.backend.entity.Queue;
+import com.businessprohub.backend.entity.QueuePricing;
 import com.businessprohub.backend.exception.BadRequestException;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AppUserRepository;
 import com.businessprohub.backend.repository.BusinessRepository;
+import com.businessprohub.backend.repository.QueuePricingRepository;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.ServiceEntityRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.OptionalDouble;
+import java.util.stream.Collectors;
 
 @Service
 public class QueueService {
@@ -24,15 +28,18 @@ public class QueueService {
     private final BusinessRepository businessRepo;
     private final AppUserRepository appUserRepo;
     private final ServiceEntityRepository serviceRepo;
+    private final QueuePricingRepository pricingRepo;
 
     public QueueService(QueueRepository queueRepo,
                         BusinessRepository businessRepo,
                         AppUserRepository appUserRepo,
-                        ServiceEntityRepository serviceRepo) {
+                        ServiceEntityRepository serviceRepo,
+                        QueuePricingRepository pricingRepo) {
         this.queueRepo = queueRepo;
         this.businessRepo = businessRepo;
         this.appUserRepo = appUserRepo;
         this.serviceRepo = serviceRepo;
+        this.pricingRepo = pricingRepo;
     }
 
     /** GET /api/queue?business_id=&status=&date= */
@@ -51,9 +58,16 @@ public class QueueService {
         long serving = entries.stream().filter(q -> List.of("in_progress", "called").contains(q.getStatus())).count();
         long completed = entries.stream().filter(q -> "completed".equals(q.getStatus())).count();
         long cancelled = entries.stream().filter(q -> "cancelled".equals(q.getStatus())).count();
-        BigDecimal estimatedRevenue = entries.stream()
-                .map(q -> q.getEstimatedPrice() != null ? q.getEstimatedPrice() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Revenue from queue_pricing table (exclude cancelled/no_show entries)
+        Set<String> billableIds = entries.stream()
+                .filter(q -> !"cancelled".equals(q.getStatus()) && !"no_show".equals(q.getStatus()))
+                .map(Queue::getId)
+                .collect(Collectors.toSet());
+        BigDecimal totalRevenue = billableIds.isEmpty() ? BigDecimal.ZERO :
+                pricingRepo.findByQueueIdIn(billableIds).stream()
+                        .map(p -> p.getTotalPrice() != null ? p.getTotalPrice() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Avg wait: average minutes between joined_at and started_at for served entries today
         OptionalDouble avgWait = entries.stream()
@@ -68,7 +82,7 @@ public class QueueService {
         stats.put("serving", serving);
         stats.put("completed", completed);
         stats.put("cancelled", cancelled);
-        stats.put("estimated_revenue", estimatedRevenue);
+        stats.put("estimated_revenue", totalRevenue);
         stats.put("avg_wait_time", avgWait.isPresent() ? (long) avgWait.getAsDouble() : 0);
 
         Map<String, Object> result = new HashMap<>();
@@ -77,7 +91,8 @@ public class QueueService {
         return result;
     }
 
-    /** POST /api/queue — walk-in customer */
+    /** POST /api/queue — walk-in customer (added by staff via dashboard) */
+    @Transactional
     public Map<String, Object> addWalkIn(Map<String, Object> body) {
         String businessId = (String) body.get("business_id");
         String customerName = (String) body.get("customer_name");
@@ -89,9 +104,9 @@ public class QueueService {
         Business business = businessRepo.findByIdAndIsActive(businessId, true)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found or inactive"));
 
-        // Look up price from service/queue-type
+        // For walk-ins, resolve price server-side from services table
         BigDecimal unitPrice = resolvePrice(queueTypeId);
-        BigDecimal estimatedPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
         Queue entry = new Queue();
         entry.setBusinessId(businessId);
@@ -103,7 +118,8 @@ public class QueueService {
         entry.setPriority("normal");
         entry.setStatus("waiting");
         entry.setQuantity(quantity);
-        entry.setEstimatedPrice(estimatedPrice);
+        entry.setUnitPrice(unitPrice);
+        entry.setTotalPrice(totalPrice);
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         entry.setJoinedAt(now);
@@ -113,17 +129,34 @@ public class QueueService {
         entry.setPosition(position);
 
         Queue saved = queueRepo.save(entry);
-        Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position);
+
+        // Store pricing in queue_pricing table
+        savePricing(saved.getId(), businessId, quantity, unitPrice, totalPrice, now);
+
+        Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position, unitPrice, totalPrice);
         return Map.of("data", data, "message", "Customer added to queue");
     }
 
-    /** POST /api/queue/join — QR / mobile app join */
+    /** POST /api/queue/join — QR / mobile app join (client sends calculated total_price) */
+    @Transactional
     public Map<String, Object> joinQueue(Map<String, Object> body) {
         String businessId = (String) body.get("business_id");
         String userId = (String) body.get("user_id");
         String queueTypeId = (String) body.get("queue_type_id");
         String queueTypeName = (String) body.get("queue_type_name");
         int quantity = body.get("quantity") != null ? Integer.parseInt(body.get("quantity").toString()) : 1;
+
+        // Mobile app sends unit_price + total_price (all calculations done client-side)
+        BigDecimal unitPrice = parseBigDecimal(body.get("unit_price"), BigDecimal.ZERO);
+        BigDecimal totalPrice = parseBigDecimal(body.get("total_price"), BigDecimal.ZERO);
+
+        // Fallback: if client didn't send prices, resolve server-side
+        if (unitPrice.compareTo(BigDecimal.ZERO) == 0) {
+            unitPrice = resolvePrice(queueTypeId);
+        }
+        if (totalPrice.compareTo(BigDecimal.ZERO) == 0 && unitPrice.compareTo(BigDecimal.ZERO) > 0) {
+            totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
 
         Business business = businessRepo.findByIdAndIsActive(businessId, true)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found or is inactive"));
@@ -181,19 +214,24 @@ public class QueueService {
         entry.setPosition(position);
         entry.setStatus("waiting");
         entry.setQuantity(quantity);
-        entry.setEstimatedPrice(resolvePrice(queueTypeId).multiply(BigDecimal.valueOf(quantity)));
+        entry.setUnitPrice(unitPrice);
+        entry.setTotalPrice(totalPrice);
+
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         entry.setJoinedAt(now);
         entry.setCreatedAt(now);
 
         Queue saved = queueRepo.save(entry);
 
+        // Store pricing in queue_pricing table
+        savePricing(saved.getId(), businessId, quantity, unitPrice, totalPrice, now);
+
         // Estimate wait time
         long peopleAhead = queueRepo.countByBusinessIdAndStatusAndPositionLessThanAndCreatedAtAfter(
                 businessId, "waiting", position, dayStart);
         int estimatedWait = (int)(peopleAhead * 5);
 
-        Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position);
+        Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position, unitPrice, totalPrice);
         data.put("people_ahead", peopleAhead);
         data.put("estimated_wait_minutes", estimatedWait);
         return Map.of("data", data, "message", "Successfully joined the queue!");
@@ -247,6 +285,9 @@ public class QueueService {
         Optional<Queue> serving = queueRepo.findFirstByBusinessIdAndStatusInOrderByStartedAtAsc(
                 entry.getBusinessId(), List.of("in_progress", "called"));
 
+        // Load pricing
+        Optional<QueuePricing> pricing = pricingRepo.findByQueueId(entry.getId());
+
         String uiStatus = mapDbStatusToUi(entry.getStatus());
 
         Map<String, Object> data = new HashMap<>();
@@ -260,6 +301,11 @@ public class QueueService {
         data.put("estimated_wait_minutes", peopleAhead * 5);
         data.put("business_name", business != null ? business.getBusinessName() : "");
         data.put("service_type", entry.getServiceType());
+        data.put("quantity", entry.getQuantity() != null ? entry.getQuantity() : 1);
+        data.put("unit_price", pricing.map(p -> p.getUnitPrice() != null ? p.getUnitPrice() : BigDecimal.ZERO).orElse(BigDecimal.ZERO));
+        data.put("total_price", pricing.map(p -> p.getTotalPrice() != null ? p.getTotalPrice() : BigDecimal.ZERO).orElse(BigDecimal.ZERO));
+        // Keep estimated_price alias for backwards compat with frontend
+        data.put("estimated_price", pricing.map(p -> p.getTotalPrice() != null ? p.getTotalPrice() : BigDecimal.ZERO).orElse(BigDecimal.ZERO));
 
         Map<String, Object> queueInfo = new HashMap<>();
         queueInfo.put("current_serving_number", serving.map(q -> pad(q.getPosition())).orElse(null));
@@ -276,7 +322,6 @@ public class QueueService {
 
         if (body.containsKey("status")) {
             String uiStatus = (String) body.get("status");
-            // Map UI → DB
             String dbStatus = switch (uiStatus) {
                 case "serving" -> "in_progress";
                 case "waiting" -> "waiting";
@@ -300,6 +345,19 @@ public class QueueService {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private void savePricing(String queueId, String businessId, int quantity,
+                              BigDecimal unitPrice, BigDecimal totalPrice, OffsetDateTime now) {
+        QueuePricing pricing = new QueuePricing();
+        pricing.setQueueId(queueId);
+        pricing.setBusinessId(businessId);
+        pricing.setQuantity(quantity);
+        pricing.setUnitPrice(unitPrice);
+        pricing.setTotalPrice(totalPrice);
+        pricing.setCreatedAt(now);
+        pricing.setUpdatedAt(now);
+        pricingRepo.save(pricing);
+    }
 
     private int nextPosition(String businessId, String queueTypeId, OffsetDateTime dayStart) {
         if (queueTypeId != null && !queueTypeId.isBlank()) {
@@ -337,7 +395,7 @@ public class QueueService {
 
     private Map<String, Object> buildTicketResponse(Queue entry, String businessName,
                                                       String queueTypeId, String queueTypeName,
-                                                      int position) {
+                                                      int position, BigDecimal unitPrice, BigDecimal totalPrice) {
         Map<String, Object> data = new HashMap<>();
         data.put("id", entry.getId());
         data.put("ticket_number", entry.getId());
@@ -350,17 +408,29 @@ public class QueueService {
         data.put("customer_name", entry.getCustomerName());
         data.put("customer_phone", entry.getCustomerPhone());
         data.put("quantity", entry.getQuantity() != null ? entry.getQuantity() : 1);
-        data.put("estimated_price", entry.getEstimatedPrice() != null ? entry.getEstimatedPrice() : BigDecimal.ZERO);
-        data.put("unit_price", resolvePrice(queueTypeId));
+        data.put("unit_price", unitPrice != null ? unitPrice : BigDecimal.ZERO);
+        data.put("total_price", totalPrice != null ? totalPrice : BigDecimal.ZERO);
+        // Keep estimated_price alias so existing frontend code still works
+        data.put("estimated_price", totalPrice != null ? totalPrice : BigDecimal.ZERO);
+        data.put("created_at", entry.getCreatedAt() != null ? entry.getCreatedAt().toString() : null);
         return data;
     }
 
-    /** Look up the unit price for a queue type (service). Returns ZERO if not found or no price. */
+    /** Resolve unit price from services table (used as fallback when client doesn't send price). */
     private BigDecimal resolvePrice(String queueTypeId) {
         if (queueTypeId == null || queueTypeId.isBlank()) return BigDecimal.ZERO;
         return serviceRepo.findById(queueTypeId)
                 .map(s -> s.getPrice() != null ? s.getPrice() : BigDecimal.ZERO)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal parseBigDecimal(Object value, BigDecimal fallback) {
+        if (value == null) return fallback;
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 
     private OffsetDateTime todayStart(String date) {

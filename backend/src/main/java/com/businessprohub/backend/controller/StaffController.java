@@ -5,7 +5,9 @@ import com.businessprohub.backend.entity.Staff;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.StaffRepository;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -20,6 +22,7 @@ import java.util.*;
  *  - Staff Management (cannot add/remove other staff)
  *  - Pricing & Plans (cannot change subscription)
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/staff")
 public class StaffController {
@@ -89,6 +92,7 @@ public class StaffController {
 
     // ─── POST /api/staff ──────────────────────────────────────────────────────
     // Create a staff member and (optionally) a Supabase auth account
+    @Transactional
     @PostMapping
     public ResponseEntity<ApiResponse<?>> create(@RequestBody Map<String, Object> body) {
         String businessId = (String) body.get("business_id");
@@ -123,6 +127,7 @@ public class StaffController {
             }
         } catch (Exception e) {
             // Auth account creation failed — still save the staff record without auth
+            log.warn("Failed to create Supabase auth account for {}: {}", email, e.getMessage());
             authUserId = null;
         }
 
@@ -199,6 +204,7 @@ public class StaffController {
 
     // ─── DELETE /api/staff/{id} ───────────────────────────────────────────────
     // Delete staff member and their Supabase auth account
+    @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> delete(@PathVariable("id") String id) {
         Optional<Staff> opt = staffRepo.findById(id);
@@ -214,6 +220,7 @@ public class StaffController {
                 authAdminService.deleteUser(staff.getAuthUserId());
             } catch (Exception e) {
                 // Log but don't block deletion of the staff record
+                log.warn("Failed to delete Supabase auth account for staff {}: {}", staff.getAuthUserId(), e.getMessage());
             }
         }
 

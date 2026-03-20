@@ -64,19 +64,27 @@ public class BusinessHoursController {
             }
         }
 
-        // Handle special hours
-        if (body.containsKey("special")) {
-            Map<String, Object> specialData = (Map<String, Object>) body.get("special");
-            SpecialHours sh = new SpecialHours();
-            sh.setBusinessId(businessId);
-            sh.setDate(LocalDate.parse((String) specialData.get("date")));
-            sh.setOpenTime((String) specialData.get("open_time"));
-            sh.setCloseTime((String) specialData.get("close_time"));
-            Boolean shIsClosed = specialData.get("is_closed") != null ? (Boolean) specialData.get("is_closed") : false;
-            sh.setIsOpen(!shIsClosed);
-            sh.setReason((String) specialData.get("description"));
-            sh.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-            specialRepo.save(sh);
+        // Handle special hours — accepts both "special" (single map) and "special_hours" (list)
+        List<Map<String, Object>> specialList = null;
+        if (body.containsKey("special_hours")) {
+            specialList = (List<Map<String, Object>>) body.get("special_hours");
+        } else if (body.containsKey("special")) {
+            specialList = List.of((Map<String, Object>) body.get("special"));
+        }
+        if (specialList != null) {
+            for (Map<String, Object> specialData : specialList) {
+                SpecialHours sh = new SpecialHours();
+                sh.setBusinessId(businessId);
+                sh.setDate(LocalDate.parse((String) specialData.get("date")));
+                sh.setOpenTime((String) specialData.get("open_time"));
+                sh.setCloseTime((String) specialData.get("close_time"));
+                Boolean shIsClosed = specialData.get("is_closed") != null ? (Boolean) specialData.get("is_closed") : false;
+                sh.setIsOpen(!shIsClosed);
+                String reason = specialData.containsKey("reason") ? (String) specialData.get("reason") : (String) specialData.get("description");
+                sh.setReason(reason);
+                sh.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+                specialRepo.save(sh);
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success(null, "Business hours updated"));

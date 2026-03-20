@@ -36,21 +36,43 @@ import { ScrollProgress } from "@/components/ui/scroll-progress";
 export default function LandingPage() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
     if (element) {
-      const headerOffset = 76; // Height of sticky header + progress bar below (73 + 3)
+      const headerOffset = 80;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
     }
   };
+
+  const scrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const sections = ['features', 'testimonials', 'pricing'];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const intersecting = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (intersecting.length > 0) {
+          setActiveSection(intersecting[0].target.id);
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    );
+    sections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
 
   const features = [
     {
@@ -176,8 +198,10 @@ export default function LandingPage() {
       >
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
-            <motion.div
-              className="flex items-center space-x-3"
+            <motion.a
+              href="#"
+              onClick={scrollToTop}
+              className="flex items-center space-x-3 cursor-pointer"
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -196,7 +220,7 @@ export default function LandingPage() {
                 </span>
                 <p className="text-xs text-gray-500 hidden sm:block">Smart Queue Management</p>
               </div>
-            </motion.div>
+            </motion.a>
             <motion.nav
               className="flex items-center space-x-1"
               initial={{ x: 20, opacity: 0 }}
@@ -204,33 +228,26 @@ export default function LandingPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               {/* Nav links — hidden on mobile */}
-              <motion.a
-                href="#features"
-                onClick={(e) => handleSmoothScroll(e, 'features')}
-                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Features
-              </motion.a>
-              <motion.a
-                href="#testimonials"
-                onClick={(e) => handleSmoothScroll(e, 'testimonials')}
-                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Testimonials
-              </motion.a>
-              <motion.a
-                href="#pricing"
-                onClick={(e) => handleSmoothScroll(e, 'pricing')}
-                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Pricing
-              </motion.a>
+              {[
+                { label: 'Features', id: 'features' },
+                { label: 'Testimonials', id: 'testimonials' },
+                { label: 'Pricing', id: 'pricing' },
+              ].map(({ label, id }) => (
+                <motion.a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={(e) => handleSmoothScroll(e, id)}
+                  className={`hidden md:block px-4 pb-1.5 pt-2 transition-all duration-300 cursor-pointer text-sm border-b-2
+                    ${activeSection === id
+                      ? 'text-[#3D4127] font-semibold border-[#636B2F]'
+                      : 'text-gray-500 font-medium border-transparent hover:text-gray-900 hover:border-gray-300'
+                    }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {label}
+                </motion.a>
+              ))}
               {/* Action buttons — always visible */}
               <div className="md:ml-4 flex items-center space-x-2">
                 <Link href="/auth/v1/login" className="hidden md:block">
@@ -329,7 +346,7 @@ export default function LandingPage() {
                 Transform Your
               </span>
               <br />
-              <span className="text-[#636B2F]">
+              <span className="text-[#3D4127]">
                 Customer Experience
               </span>
             </motion.h1>
@@ -349,7 +366,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-[20px] px-10 py-6 border-2 h-auto hover:bg-gray-50"
+                className="text-[20px] px-10 py-6 border-2 h-auto hover:bg-gray-50 shadow-lg"
                 onClick={() => setIsDemoOpen(true)}
               >
                 <Play className="mr-2 h-5 w-5" />
@@ -411,7 +428,7 @@ export default function LandingPage() {
       </motion.section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 bg-gradient-to-b from-white to-gray-50">
+      <section id="features" className="py-24 bg-gradient-to-b from-white to-gray-50 scroll-mt-20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
             <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
@@ -451,7 +468,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-24 bg-white">
+      <section id="testimonials" className="py-24 bg-white scroll-mt-20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
             <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
@@ -467,19 +484,19 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 items-stretch">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50 transition-shadow duration-300 hover:shadow-2xl">
-                <CardContent className="pt-8 pb-8">
+              <Card key={index} className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50 transition-shadow duration-300 hover:shadow-2xl h-full flex flex-col">
+                <CardContent className="pt-8 pb-8 flex flex-col flex-1">
                   <div className="flex gap-1 mb-6">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <Star key={i} className="h-5 w-5 text-[#636B2F] fill-[#636B2F]" />
                     ))}
                   </div>
-                  <p className="text-gray-700 text-[16px] md:text-[18px] leading-[1.6] mb-8 italic">
+                  <p className="text-gray-700 text-[16px] md:text-[18px] leading-[1.6] mb-8 italic flex-1">
                     "{testimonial.content}"
                   </p>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 mt-auto">
                     <div className="h-12 w-12 rounded-full bg-[#3D4127] flex items-center justify-center text-white font-bold text-[18px]">
                       {testimonial.name.charAt(0)}
                     </div>
@@ -496,7 +513,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-gradient-to-b from-gray-50 to-white">
+      <section id="pricing" className="py-24 bg-gradient-to-b from-gray-50 to-white scroll-mt-20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
             <Badge className="mb-4 px-4 py-2 bg-[#D4DE95]/40 text-[#3D4127] border-[#BAC095] text-[16px]">
@@ -512,10 +529,10 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-start">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch">
 
             {/* Free Plan */}
-            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300 relative">
+            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300 relative flex flex-col">
               <div className="absolute -top-3 left-4">
                 <Badge className="px-3 py-1 bg-gray-100 text-gray-600 border-gray-300 text-[12px] font-semibold">
                   Current
@@ -531,8 +548,8 @@ export default function LandingPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <ul className="space-y-2.5">
+              <CardContent className="flex flex-col flex-1 space-y-5">
+                <ul className="space-y-2.5 flex-1">
                   {["Up to 50 queue entries/month", "Basic queue management", "QR code generation", "Email support", "1 staff member", "Up to 100 customers"].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-gray-500 mt-0.5 shrink-0" />
@@ -540,14 +557,14 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button disabled size="lg" className="w-full h-10 font-semibold text-[14px] bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200">
+                <Button disabled size="lg" className="w-full h-10 font-semibold text-[14px] bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 mt-auto">
                   Current Plan
                 </Button>
               </CardContent>
             </Card>
 
             {/* Starter Plan - Most Popular */}
-            <Card className="border-2 border-[#3D4127] shadow-2xl md:scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-[#BAC095]/40 transition-all duration-300">
+            <Card className="border-2 border-[#3D4127] shadow-2xl md:scale-105 bg-gradient-to-br from-white to-gray-50 relative ring-4 ring-[#BAC095]/40 transition-all duration-300 flex flex-col">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
                 <Badge className="px-4 py-1.5 bg-[#3D4127] text-white border-0 shadow-lg text-[12px] font-bold whitespace-nowrap">
                   ★ MOST POPULAR
@@ -576,8 +593,8 @@ export default function LandingPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <ul className="space-y-2.5">
+              <CardContent className="flex flex-col flex-1 space-y-5">
+                <ul className="space-y-2.5 flex-1">
                   {["Up to 500 queue entries/month", "Advanced queue management", "QR code generation", "Priority email support", "Basic analytics", "Up to 3 staff members"].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#3D4127] mt-0.5 shrink-0" />
@@ -586,7 +603,7 @@ export default function LandingPage() {
                   ))}
                   <li className="text-[12px] text-gray-500 pl-6">+1 more features</li>
                 </ul>
-                <Link href="/auth/v1/register">
+                <Link href="/auth/v1/register" className="mt-auto">
                   <Button size="lg" className="w-full h-10 bg-[#3D4127] hover:bg-[#636B2F] shadow-lg font-semibold text-white text-[14px]">
                     Upgrade Now
                   </Button>
@@ -595,7 +612,7 @@ export default function LandingPage() {
             </Card>
 
             {/* Professional Plan */}
-            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
+            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300 flex flex-col">
               <CardHeader className="pb-4">
                 <div className="space-y-2">
                   <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Professional</CardTitle>
@@ -612,8 +629,8 @@ export default function LandingPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <ul className="space-y-2.5">
+              <CardContent className="flex flex-col flex-1 space-y-5">
+                <ul className="space-y-2.5 flex-1">
                   {["Unlimited queue entries", "Advanced queue management", "QR code generation", "24/7 priority support", "Advanced analytics & reports", "Up to 10 staff members"].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-gray-700 mt-0.5 shrink-0" />
@@ -622,7 +639,7 @@ export default function LandingPage() {
                   ))}
                   <li className="text-[12px] text-gray-500 pl-6">+3 more features</li>
                 </ul>
-                <Link href="/auth/v1/register">
+                <Link href="/auth/v1/register" className="mt-auto">
                   <Button variant="outline" size="lg" className="w-full border-2 h-10 font-semibold hover:bg-gray-50 text-[14px]">
                     Upgrade Now
                   </Button>
@@ -631,7 +648,7 @@ export default function LandingPage() {
             </Card>
 
             {/* Enterprise Plan */}
-            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300">
+            <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl bg-white transition-shadow duration-300 flex flex-col">
               <CardHeader className="pb-4">
                 <div className="space-y-2">
                   <CardTitle className="text-[22px] md:text-[24px] leading-[1.3]">Enterprise</CardTitle>
@@ -648,8 +665,8 @@ export default function LandingPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <ul className="space-y-2.5">
+              <CardContent className="flex flex-col flex-1 space-y-5">
+                <ul className="space-y-2.5 flex-1">
                   {["Everything in Professional", "Unlimited staff members", "Unlimited customers", "Dedicated account manager", "Custom integrations", "White-label solution"].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-gray-700 mt-0.5 shrink-0" />
@@ -658,7 +675,7 @@ export default function LandingPage() {
                   ))}
                   <li className="text-[12px] text-gray-500 pl-6">+3 more features</li>
                 </ul>
-                <Link href="/auth/v1/register">
+                <Link href="/auth/v1/register" className="mt-auto">
                   <Button variant="outline" size="lg" className="w-full border-2 h-10 font-semibold hover:bg-gray-50 text-[14px]">
                     Upgrade Now
                   </Button>
@@ -786,11 +803,8 @@ export default function LandingPage() {
                 <p className="text-sm text-gray-500">
                   &copy; 2026 Business Pro Hub. All rights reserved.
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Developed by <span className="text-gray-600">Elixa Software Private Limited</span>
-                </p>
               </div>
-              <div className="flex gap-6 text-sm">
+              <div className="flex gap-8 text-sm">
                 <Link href="/legal?tab=privacy" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Privacy</Link>
                 <Link href="/legal?tab=terms" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Terms</Link>
                 <Link href="/legal?tab=cookies" className="text-[#636B2F] hover:text-[#3D4127] transition-colors">Cookies</Link>
