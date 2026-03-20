@@ -98,7 +98,7 @@ export default function BusinessDashboardPage() {
       const pricingArr: { queue_id: string; total_price: string | null }[] = queuePricing || [];
       const todayQueueRevenue = pricingArr
         .filter((p) => todayQueueIds.has(p.queue_id))
-        .reduce((sum, p) => sum + (parseFloat(p.total_price) || 0), 0);
+        .reduce((sum, p) => sum + (parseFloat(p.total_price ?? "0") || 0), 0);
 
       setStats((prev) => ({
         ...prev,
