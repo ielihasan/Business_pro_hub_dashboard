@@ -34,7 +34,6 @@ function ResetPasswordForm() {
 
   useEffect(() => {
     // Listen for Supabase's PASSWORD_RECOVERY event.
-    // Supabase fires this after processing the token from the reset email link.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" && !handled.current) {
         handled.current = true;
@@ -42,12 +41,19 @@ function ResetPasswordForm() {
       }
     });
 
-    // Safety timeout — if no event in 8s, the link is invalid/expired
+    // PKCE flow: Supabase emails a link with ?code= query param.
+    // We must exchange it for a session — this triggers the PASSWORD_RECOVERY event above.
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(window.location.href).catch(() => {
+        if (!handled.current) setPageState("invalid");
+      });
+    }
+
+    // Safety timeout — if no event fires in 10s, the link is invalid/expired
     const timeout = setTimeout(() => {
-      if (!handled.current) {
-        setPageState("invalid");
-      }
-    }, 8000);
+      if (!handled.current) setPageState("invalid");
+    }, 10000);
 
     return () => {
       subscription.unsubscribe();
