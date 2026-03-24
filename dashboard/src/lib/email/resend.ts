@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'BusinessHub Pro <noreply@businessprohub.me>';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003';
 
 export interface SendVerificationEmailParams {
   to: string;
@@ -163,12 +163,10 @@ export async function sendPasswordResetEmail({
   to: string;
   token: string;
 }) {
-  const LOCAL_URL = 'http://localhost:3002';
   const PROD_URL = process.env.NEXT_PUBLIC_PRODUCTION_URL || APP_URL;
 
-  const localLink = `${LOCAL_URL}/auth/reset-password?token=${token}`;
   const prodLink  = `${PROD_URL}/auth/reset-password?token=${token}`;
-  const isDifferent = LOCAL_URL !== PROD_URL;
+  const isDifferent = false; // local dev link removed — use Supabase built-in reset flow
 
   try {
     const { data, error } = await resend.emails.send({
@@ -261,7 +259,7 @@ Reset Your Password - BusinessHub Pro
 We received a request to reset your password. Click the link below (expires in 15 minutes):
 
 ${prodLink}
-${isDifferent ? `\nLocal development link:\n${localLink}\n` : ''}
+
 If you did not request this, ignore this email — your password will not change.
 
 © ${new Date().getFullYear()} BusinessHub Pro. All rights reserved.

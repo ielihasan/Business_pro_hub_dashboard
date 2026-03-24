@@ -90,7 +90,7 @@ async function generateQr(
   businessId: string,
   format: string
 ): Promise<{ qrCodeData: string; joinUrl: string }> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3002";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3003";
   const joinUrl = `${baseUrl}/join-queue/${businessId}`;
 
   const qrOptions = {
