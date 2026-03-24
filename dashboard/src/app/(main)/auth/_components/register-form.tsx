@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,6 +27,8 @@ const FormSchema = z
 export function RegisterForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -87,9 +90,26 @@ export function RegisterForm() {
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem>
             <FormLabel>Password</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" placeholder="••••••••" autoComplete="new-password" name="passwordField123" />
-            </FormControl>
+            <div className="relative">
+              <FormControl>
+                <Input
+                  {...field}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Min. 6 characters"
+                  autoComplete="new-password"
+                  name="passwordField123"
+                  className="pr-10"
+                />
+              </FormControl>
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
             <FormMessage />
           </FormItem>
         )} />
@@ -97,9 +117,26 @@ export function RegisterForm() {
         <FormField control={form.control} name="confirmPassword" render={({ field }) => (
           <FormItem>
             <FormLabel>Confirm Password</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" placeholder="••••••••" autoComplete="new-password" name="confirmPasswordField123" />
-            </FormControl>
+            <div className="relative">
+              <FormControl>
+                <Input
+                  {...field}
+                  type={showConfirm ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  autoComplete="new-password"
+                  name="confirmPasswordField123"
+                  className="pr-10"
+                />
+              </FormControl>
+              <button
+                type="button"
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
             <FormMessage />
           </FormItem>
         )} />

@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ const FormSchema = z.object({
 
 export function LoginForm() {
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
 
   // ✅ Load last registered email
   const lastRegisteredEmail = typeof window !== "undefined" ? sessionStorage.getItem("lastRegisteredEmail") || "" : "";
@@ -205,9 +208,25 @@ export function LoginForm() {
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem>
             <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
-            <FormControl>
-              <Input {...field} type="password" placeholder="••••••••" autoComplete="current-password" />
-            </FormControl>
+            <div className="relative">
+              <FormControl>
+                <Input
+                  {...field}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  className="pr-10"
+                />
+              </FormControl>
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
             <FormMessage />
           </FormItem>
         )} />

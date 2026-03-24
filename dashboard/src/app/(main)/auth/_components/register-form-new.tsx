@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase-client";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,10 @@ export function RegisterFormNew() {
   const [businessTypes, setBusinessTypes] = useState<any[]>([]);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [customBusinessType, setCustomBusinessType] = useState("");
+  const [showBizPass,     setShowBizPass]     = useState(false);
+  const [showBizConfirm,  setShowBizConfirm]  = useState(false);
+  const [showAdminPass,   setShowAdminPass]   = useState(false);
+  const [showAdminConfirm,setShowAdminConfirm]= useState(false);
 
   // Static business types (business_types table was removed)
   useState(() => {
@@ -244,9 +249,15 @@ export function RegisterFormNew() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" placeholder="••••••••" />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input {...field} type={showBizPass ? "text" : "password"} placeholder="Min. 6 characters" className="pr-10" />
+                    </FormControl>
+                    <button type="button" onClick={() => setShowBizPass(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                      {showBizPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -258,9 +269,15 @@ export function RegisterFormNew() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Confirm Password <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" placeholder="••••••••" />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input {...field} type={showBizConfirm ? "text" : "password"} placeholder="Repeat your password" className="pr-10" />
+                    </FormControl>
+                    <button type="button" onClick={() => setShowBizConfirm(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                      {showBizConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -451,9 +468,15 @@ export function RegisterFormNew() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" placeholder="••••••••" />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input {...field} type={showAdminPass ? "text" : "password"} placeholder="Min. 6 characters" className="pr-10" />
+                    </FormControl>
+                    <button type="button" onClick={() => setShowAdminPass(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                      {showAdminPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -465,9 +488,15 @@ export function RegisterFormNew() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Confirm Password <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" placeholder="••••••••" />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input {...field} type={showAdminConfirm ? "text" : "password"} placeholder="Repeat your password" className="pr-10" />
+                    </FormControl>
+                    <button type="button" onClick={() => setShowAdminConfirm(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                      {showAdminConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
