@@ -166,7 +166,6 @@ export async function sendPasswordResetEmail({
   const PROD_URL = process.env.NEXT_PUBLIC_PRODUCTION_URL || APP_URL;
 
   const prodLink  = `${PROD_URL}/auth/reset-password?token=${token}`;
-  const isDifferent = false; // local dev link removed — use Supabase built-in reset flow
 
   try {
     const { data, error } = await resend.emails.send({
@@ -216,12 +215,6 @@ export async function sendPasswordResetEmail({
                       </tr>
                     </table>
 
-                    ${isDifferent ? `
-                    <!-- Local Dev Link -->
-                    <div style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:24px;">
-                      <p style="color:#166534;margin:0 0 8px;font-size:13px;font-weight:600;">Local Development Link:</p>
-                      <a href="${localLink}" style="color:#15803d;font-size:13px;word-break:break-all;">${localLink}</a>
-                    </div>` : ''}
 
                     <p style="color:#6b7280;margin:0 0 8px;font-size:14px;line-height:1.6;">
                       Or copy and paste this link into your browser:
