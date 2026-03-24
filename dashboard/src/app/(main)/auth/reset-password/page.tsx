@@ -41,14 +41,17 @@ function ResetPasswordForm() {
       }
     });
 
-    // PKCE flow: Supabase emails a link with ?code= query param.
-    // We must exchange it for a session — this triggers the PASSWORD_RECOVERY event above.
+    // PKCE flow: ?code= in URL → exchange for session (fires PASSWORD_RECOVERY above)
     const code = new URLSearchParams(window.location.search).get("code");
     if (code) {
       supabase.auth.exchangeCodeForSession(window.location.href).catch(() => {
         if (!handled.current) setPageState("invalid");
       });
     }
+
+    // Implicit flow: #access_token=...&type=recovery in hash
+    // Supabase JS detects the hash automatically; PASSWORD_RECOVERY fires on its own.
+    // Nothing extra needed — the onAuthStateChange above handles it.
 
     // Safety timeout — if no event fires in 10s, the link is invalid/expired
     const timeout = setTimeout(() => {

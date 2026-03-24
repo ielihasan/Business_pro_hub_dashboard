@@ -38,6 +38,15 @@ export default function LandingPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
 
+  // Supabase password-reset emails redirect to the Site URL (this page) with
+  // the recovery token in the hash.  Catch it and forward to the reset page.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery") && hash.includes("access_token")) {
+      window.location.replace("/auth/reset-password" + hash);
+    }
+  }, []);
+
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
