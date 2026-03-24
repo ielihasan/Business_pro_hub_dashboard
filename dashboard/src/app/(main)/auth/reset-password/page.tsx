@@ -33,9 +33,19 @@ function ResetPasswordForm() {
   const handled = useRef(false);
 
   useEffect(() => {
-    // Listen for Supabase's PASSWORD_RECOVERY event.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" && !handled.current) {
+    // Whether we arrived via PKCE (?code=) or implicit (#access_token=) flow,
+    // mark that we expect a recovery session on this page load.
+    const isRecoveryFlow =
+      !!new URLSearchParams(window.location.search).get("code") ||
+      window.location.hash.includes("type=recovery");
+
+    // Listen for PASSWORD_RECOVERY (implicit flow) or SIGNED_IN (PKCE exchange).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (handled.current) return;
+      if (
+        event === "PASSWORD_RECOVERY" ||
+        (event === "SIGNED_IN" && isRecoveryFlow && session)
+      ) {
         handled.current = true;
         setPageState("ready");
       }

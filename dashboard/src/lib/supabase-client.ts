@@ -25,6 +25,10 @@ if (typeof window !== "undefined") {
   });
 
   supabase.auth.getSession().then(({ data: { session }, error }) => {
+    // Never apply session management on the password-reset page —
+    // signing out here would wipe the PKCE code-verifier and break the flow.
+    if (window.location.pathname === "/auth/reset-password") return;
+
     // Invalid refresh token — clear session cleanly
     if (error?.message?.toLowerCase().includes("refresh token")) {
       supabase.auth.signOut();
