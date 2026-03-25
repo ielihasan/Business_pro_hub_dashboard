@@ -267,7 +267,7 @@ function ResetPasswordForm() {
                       <Input
                         id="password"
                         type={showPass ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Enter new password"
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setErrorMsg(""); }}
                         disabled={pageState === "loading"}
@@ -299,7 +299,7 @@ function ResetPasswordForm() {
                       <Input
                         id="confirm"
                         type={showConfirm ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Re-enter new password"
                         value={confirm}
                         onChange={(e) => { setConfirm(e.target.value); setErrorMsg(""); }}
                         disabled={pageState === "loading"}
