@@ -226,14 +226,18 @@ public class QueueService {
         // Store pricing in queue_pricing table
         savePricing(saved.getId(), businessId, quantity, unitPrice, totalPrice, now);
 
-        // Estimate wait time
+        // AI Wait Time Predictor — real average from completed queues today
         long peopleAhead = queueRepo.countByBusinessIdAndStatusAndPositionLessThanAndCreatedAtAfter(
                 businessId, "waiting", position, dayStart);
-        int estimatedWait = (int)(peopleAhead * 5);
+        double avgMinutes = calcAvgServiceMinutes(businessId, queueTypeId, dayStart);
+        int estimatedWait = (int) Math.max(1, Math.ceil(peopleAhead * avgMinutes));
+        long dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart);
 
         Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position, unitPrice, totalPrice);
         data.put("people_ahead", peopleAhead);
         data.put("estimated_wait_minutes", estimatedWait);
+        data.put("avg_service_minutes", Math.round(avgMinutes * 10.0) / 10.0);
+        data.put("wait_data_points", dataPoints);
         return Map.of("data", data, "message", "Successfully joined the queue!");
     }
 
@@ -250,13 +254,17 @@ public class QueueService {
         Optional<Queue> serving = queueRepo.findFirstByBusinessIdAndStatusInOrderByStartedAtAsc(
                 businessId, List.of("in_progress", "called"));
 
+        double avgMinutes = calcAvgServiceMinutes(businessId, queueTypeId, dayStart);
+        long dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart);
+
         return Map.of("data", Map.of(
                 "business_name", business.getBusinessName(),
                 "is_open", true,
                 "current_serving_number", serving.map(q -> pad(q.getPosition())).orElse(""),
                 "current_serving_name", serving.map(q -> q.getCustomerName() != null ? q.getCustomerName() : "").orElse(""),
                 "total_waiting", waitingCount,
-                "avg_wait_time", 5
+                "avg_wait_time", (int) Math.ceil(avgMinutes),
+                "wait_data_points", dataPoints
         ));
     }
 
@@ -297,8 +305,12 @@ public class QueueService {
         data.put("display_number", pad(entry.getPosition()));
         data.put("position", entry.getPosition());
         data.put("status", uiStatus);
+        double avgMinutesStatus = calcAvgServiceMinutes(entry.getBusinessId(), entry.getServiceType(), dayStart);
+        long dataPointsStatus = queueRepo.countCompletedWithTimingToday(entry.getBusinessId(), dayStart);
         data.put("people_ahead", peopleAhead);
-        data.put("estimated_wait_minutes", peopleAhead * 5);
+        data.put("estimated_wait_minutes", (int) Math.max(1, Math.ceil(peopleAhead * avgMinutesStatus)));
+        data.put("avg_service_minutes", Math.round(avgMinutesStatus * 10.0) / 10.0);
+        data.put("wait_data_points", dataPointsStatus);
         data.put("business_name", business != null ? business.getBusinessName() : "");
         data.put("service_type", entry.getServiceType());
         data.put("quantity", entry.getQuantity() != null ? entry.getQuantity() : 1);
@@ -345,6 +357,21 @@ public class QueueService {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * AI Wait Time Predictor — calculates real average service duration (minutes).
+     * Priority: today's data for service type → today's business-wide → default 5 min.
+     */
+    private double calcAvgServiceMinutes(String businessId, String serviceType, OffsetDateTime dayStart) {
+        final double DEFAULT_MINUTES = 5.0;
+        if (serviceType != null && !serviceType.isBlank()) {
+            Double avg = queueRepo.avgServiceMinutesByTypeToday(businessId, serviceType, dayStart);
+            if (avg != null && avg > 0) return Math.max(1.0, avg);
+        }
+        Double avgAll = queueRepo.avgServiceMinutesToday(businessId, dayStart);
+        if (avgAll != null && avgAll > 0) return Math.max(1.0, avgAll);
+        return DEFAULT_MINUTES;
+    }
 
     private void savePricing(String queueId, String businessId, int quantity,
                               BigDecimal unitPrice, BigDecimal totalPrice, OffsetDateTime now) {

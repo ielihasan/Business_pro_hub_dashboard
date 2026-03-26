@@ -46,6 +46,8 @@ interface QueueTicket {
   business_name: string;
   estimated_wait_minutes: number;
   people_ahead: number;
+  avg_service_minutes?: number;
+  wait_data_points?: number;
   service_type?: string;
   queue_type_id?: string;
   queue_type_name?: string;
@@ -544,6 +546,13 @@ export default function JoinQueuePage({
                     ~{ticket.estimated_wait_minutes}
                   </p>
                   <p className="text-sm text-gray-500">Minutes Wait</p>
+                  {(ticket.wait_data_points ?? 0) >= 3 ? (
+                    <p className="text-xs text-green-600 mt-1 font-medium">
+                      ✦ AI estimate · {ticket.wait_data_points} served today
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">Based on avg pace</p>
+                  )}
                 </div>
               </div>
             )}
