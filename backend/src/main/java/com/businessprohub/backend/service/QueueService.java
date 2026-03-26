@@ -232,6 +232,7 @@ public class QueueService {
         double avgMinutes = calcAvgServiceMinutes(businessId, queueTypeId, dayStart);
         int estimatedWait = (int) Math.max(1, Math.ceil(peopleAhead * avgMinutes));
         long dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart);
+        if (dataPoints == 0) dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart.minusDays(7));
 
         Map<String, Object> data = buildTicketResponse(saved, business.getBusinessName(), queueTypeId, queueTypeName, position, unitPrice, totalPrice);
         data.put("people_ahead", peopleAhead);
@@ -256,6 +257,7 @@ public class QueueService {
 
         double avgMinutes = calcAvgServiceMinutes(businessId, queueTypeId, dayStart);
         long dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart);
+        if (dataPoints == 0) dataPoints = queueRepo.countCompletedWithTimingToday(businessId, dayStart.minusDays(7));
 
         return Map.of("data", Map.of(
                 "business_name", business.getBusinessName(),
@@ -360,16 +362,27 @@ public class QueueService {
 
     /**
      * AI Wait Time Predictor — calculates real average service duration (minutes).
-     * Priority: today's data for service type → today's business-wide → default 5 min.
+     * Priority: today by service type → today all types → last 7 days by type → last 7 days all → default 5 min.
      */
     private double calcAvgServiceMinutes(String businessId, String serviceType, OffsetDateTime dayStart) {
         final double DEFAULT_MINUTES = 5.0;
+        // Try today first
         if (serviceType != null && !serviceType.isBlank()) {
             Double avg = queueRepo.avgServiceMinutesByTypeToday(businessId, serviceType, dayStart);
             if (avg != null && avg > 0) return Math.max(1.0, avg);
         }
         Double avgAll = queueRepo.avgServiceMinutesToday(businessId, dayStart);
         if (avgAll != null && avgAll > 0) return Math.max(1.0, avgAll);
+
+        // Fall back to last 7 days if today has no completed data
+        OffsetDateTime weekStart = dayStart.minusDays(7);
+        if (serviceType != null && !serviceType.isBlank()) {
+            Double avg7 = queueRepo.avgServiceMinutesByTypeToday(businessId, serviceType, weekStart);
+            if (avg7 != null && avg7 > 0) return Math.max(1.0, avg7);
+        }
+        Double avgAll7 = queueRepo.avgServiceMinutesToday(businessId, weekStart);
+        if (avgAll7 != null && avgAll7 > 0) return Math.max(1.0, avgAll7);
+
         return DEFAULT_MINUTES;
     }
 
