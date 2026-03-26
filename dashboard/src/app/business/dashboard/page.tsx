@@ -3,11 +3,13 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, Package, CheckCircle, Banknote, QrCode, ArrowRight } from "lucide-react";
+import { Users, Clock, Package, CheckCircle, Banknote, QrCode, ArrowRight, Zap, TrendingUp, TrendingDown, AlertTriangle, Trophy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+
+interface Alert { type: "success"|"warning"|"danger"|"info"; icon: React.ReactNode; title: string; message: string }
 
 interface BusinessStats {
   activeQueues: number;
@@ -48,8 +50,9 @@ export default function BusinessDashboardPage() {
     averageRating: 0,
   });
   const [recentQueues, setRecentQueues] = useState<RecentQueue[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [businessId,   setBusinessId]   = useState<string | null>(null);
+  const [alerts,       setAlerts]       = useState<Alert[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -119,6 +122,60 @@ export default function BusinessDashboardPage() {
       const totalRevenue = ordersArr.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
 
       setStats((prev) => ({ ...prev, totalOrders, pendingOrders, completedOrders, totalRevenue }));
+
+      // ── AI Anomaly Detection ──────────────────────────────────────────────
+      try {
+        const fourWeeksAgo = new Date(); fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+        const { data: history } = await supabase
+          .from("queues")
+          .select("joined_at,status,completed_at")
+          .eq("business_id", businessId!)
+          .gte("joined_at", fourWeeksAgo.toISOString())
+          .lt("joined_at", new Date(today).toISOString()); // exclude today
+
+        if (history && history.length > 0) {
+          // Group by day to get daily averages (last 28 days excluding today)
+          const byDay: Record<string,{total:number;completed:number}> = {};
+          history.forEach(r => {
+            const d = (r.joined_at||"").substring(0,10);
+            if (!byDay[d]) byDay[d] = {total:0,completed:0};
+            byDay[d].total++;
+            if (r.status==="completed") byDay[d].completed++;
+          });
+          const days      = Object.values(byDay);
+          const avgDaily  = days.reduce((s,d)=>s+d.total,0) / Math.max(days.length,1);
+          const avgComp   = days.reduce((s,d)=>s+d.completed,0) / Math.max(days.length,1);
+          const avgRate   = avgComp / Math.max(avgDaily,1);
+
+          const newAlerts: Alert[] = [];
+
+          // 🏆 Record day
+          const maxEver = Math.max(...days.map(d=>d.total));
+          if (totalQueuesToday > 0 && totalQueuesToday > maxEver) {
+            newAlerts.push({ type:"success", icon:<Trophy className="size-4"/>, title:"Record Day!", message:`${totalQueuesToday} queues today — your busiest day ever!` });
+          }
+          // 📈 Queue spike (>1.5× average)
+          else if (avgDaily > 3 && totalQueuesToday > avgDaily * 1.5) {
+            newAlerts.push({ type:"info", icon:<TrendingUp className="size-4"/>, title:"High Demand", message:`${totalQueuesToday} queues today vs avg ${Math.round(avgDaily)} — consider adding staff.` });
+          }
+          // 📉 Queue drop (<40% of average, only if past peak hours)
+          else if (avgDaily > 5 && totalQueuesToday < avgDaily * 0.4 && new Date().getHours() >= 14) {
+            newAlerts.push({ type:"warning", icon:<TrendingDown className="size-4"/>, title:"Below Average", message:`Only ${totalQueuesToday} queues today vs avg ${Math.round(avgDaily)}. Check if your queue is open.` });
+          }
+
+          // ⚠️ Low completion rate (>10 served but completion rate dropped >20%)
+          const todayRate = completedToday / Math.max(totalQueuesToday,1);
+          if (totalQueuesToday >= 8 && todayRate < avgRate - 0.2) {
+            newAlerts.push({ type:"danger", icon:<AlertTriangle className="size-4"/>, title:"High Drop-off", message:`${Math.round(todayRate*100)}% completion today vs usual ${Math.round(avgRate*100)}%. Customers may be leaving the queue.` });
+          }
+
+          // 🟢 All good
+          if (newAlerts.length === 0 && totalQueuesToday > 0) {
+            newAlerts.push({ type:"success", icon:<CheckCircle className="size-4"/>, title:"All Good", message:`Everything is running normally today. Completion rate: ${Math.round(todayRate*100)}%.` });
+          }
+          setAlerts(newAlerts);
+        }
+      } catch { /* silent — anomaly alerts are non-critical */ }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -242,6 +299,36 @@ export default function BusinessDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Anomaly Alerts */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Zap className="size-4 text-[#3D4127]"/>
+            <h2 className="text-sm font-semibold text-gray-700">Smart Alerts</h2>
+            <Badge className="bg-[#3D4127] text-white text-xs">AI</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {alerts.map((a, i) => {
+              const styles = {
+                success: "bg-green-50  border-green-200  text-green-800",
+                info:    "bg-blue-50   border-blue-200   text-blue-800",
+                warning: "bg-amber-50  border-amber-200  text-amber-800",
+                danger:  "bg-red-50    border-red-200    text-red-800",
+              };
+              return (
+                <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${styles[a.type]}`}>
+                  <div className="mt-0.5 shrink-0">{a.icon}</div>
+                  <div>
+                    <p className="text-sm font-semibold">{a.title}</p>
+                    <p className="text-xs mt-0.5 opacity-80">{a.message}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Queue Management CTA */}
       <Card className="border-2 border-gray-200 bg-gray-50">
