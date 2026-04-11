@@ -49,7 +49,7 @@ public class Queue {
     private String status; // "waiting" | "in_progress" | "called" | "completed" | "cancelled" | "no_show"
 
     @Column(name = "quantity")
-    private Integer quantity; // number of items/persons — from customer
+    private Integer quantity;
 
     @Column(name = "unit_price", precision = 10, scale = 2)
     private BigDecimal unitPrice;
@@ -57,14 +57,32 @@ public class Queue {
     @Column(name = "total_price", precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    @Column(name = "advance_paid", precision = 10, scale = 2)
+    private BigDecimal advancePaid;
+
+    @Column(name = "payment_left", precision = 10, scale = 2)
+    private BigDecimal paymentLeft;
+
+    @Column(name = "ticket_no")
+    private String ticketNo;
+
+    @Column(name = "estimated_wait_time")
+    private Integer estimatedWaitTime;
+
     @Column(name = "joined_at")
     private OffsetDateTime joinedAt;
+
+    @Column(name = "called_at")
+    private OffsetDateTime calledAt;
 
     @Column(name = "started_at")
     private OffsetDateTime startedAt;
 
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
+
+    @Column(name = "cancelled_at")
+    private OffsetDateTime cancelledAt;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;

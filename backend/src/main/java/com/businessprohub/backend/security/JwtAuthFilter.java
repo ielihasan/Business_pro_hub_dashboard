@@ -52,10 +52,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
 
-            // Check if this user has an admin role in the admins table
+            // Check roles in the admins table
             boolean isAdmin = adminRepository.findByIdAndRole(userId, "admin").isPresent();
             if (isAdmin) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+            boolean isBusinessOwner = adminRepository.findByIdAndRole(userId, "business_owner").isPresent();
+            if (isBusinessOwner) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_BUSINESS_OWNER"));
             }
 
             UsernamePasswordAuthenticationToken authToken =

@@ -58,6 +58,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/app-user/profile").permitAll()
                 // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Staff management — business owners and admins only
+                // /api/staff/me is kept open to any authenticated user (staff self-lookup)
+                .requestMatchers(HttpMethod.POST,   "/api/staff").hasAnyRole("BUSINESS_OWNER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT,    "/api/staff/*").hasAnyRole("BUSINESS_OWNER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/staff/*").hasAnyRole("BUSINESS_OWNER", "ADMIN")
+                .requestMatchers(HttpMethod.GET,    "/api/staff/*/queues").hasAnyRole("BUSINESS_OWNER", "ADMIN")
                 // Everything else requires valid Supabase JWT
                 .anyRequest().authenticated()
             )

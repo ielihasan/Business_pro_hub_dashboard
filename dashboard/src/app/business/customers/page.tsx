@@ -88,6 +88,7 @@ interface Customer {
   total_visits: number;
   completed_visits: number;
   cancelled_visits: number;
+  total_spent: number;
   first_visit: string;
   last_visit: string;
   services_used: string[];
@@ -186,21 +187,27 @@ export default function CustomersPage() {
         phone: c.customer_phone || "",
         email: c.customer_email,
         total_visits: c.visit_count || 1,
-        completed_visits: c.visit_count || 1,
-        cancelled_visits: 0,
-        first_visit: c.last_visit || new Date().toISOString(),
+        completed_visits: c.completed_visits || 0,
+        cancelled_visits: c.cancelled_visits || 0,
+        total_spent: parseFloat(c.total_spent || 0),
+        first_visit: c.first_visit || c.last_visit || new Date().toISOString(),
         last_visit: c.last_visit || new Date().toISOString(),
-        services_used: [],
-        visit_history: [],
+        services_used: c.services_used || [],
+        visit_history: (c.visit_history || []).map((v: any) => ({
+          date: v.date,
+          service: v.service || "Queue Visit",
+          status: v.status || "completed",
+        })),
       }));
       setCustomers(list);
       setTotalCount(inner.total || 0);
       setTotalPages(inner.total_pages || 1);
+      const s = inner.stats || {};
       setStats({
-        total_customers: inner.total || list.length,
-        new_customers_today: 0,
-        repeat_customers: list.filter((c) => c.total_visits > 1).length,
-        total_visits: list.reduce((sum, c) => sum + c.total_visits, 0),
+        total_customers: s.total_customers ?? inner.total ?? list.length,
+        new_customers_today: s.new_customers_today ?? 0,
+        repeat_customers: s.repeat_customers ?? list.filter((c) => c.total_visits > 1).length,
+        total_visits: s.total_visits ?? list.reduce((sum, c) => sum + c.total_visits, 0),
       });
     } catch (error: any) {
       setApiError(error.message || "Failed to load customers");
@@ -610,6 +617,7 @@ export default function CustomersPage() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Visits</TableHead>
+                    <TableHead>Total Spent</TableHead>
                     <TableHead>Services</TableHead>
                     <TableHead>Last Visit</TableHead>
                     <TableHead>Status</TableHead>
@@ -666,6 +674,13 @@ export default function CustomersPage() {
                               )}
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium text-green-700">
+                            {customer.total_spent > 0
+                              ? `Rs. ${customer.total_spent.toLocaleString()}`
+                              : <span className="text-gray-400">—</span>}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -820,7 +835,7 @@ export default function CustomersPage() {
               </div>
 
               {/* Visit Stats */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <p className="text-2xl font-bold text-green-600">
                     {selectedCustomer.completed_visits}
@@ -838,6 +853,14 @@ export default function CustomersPage() {
                     {selectedCustomer.services_used.length}
                   </p>
                   <p className="text-xs text-gray-600">Services</p>
+                </div>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <p className="text-lg font-bold text-yellow-700">
+                    {selectedCustomer.total_spent > 0
+                      ? `Rs.${selectedCustomer.total_spent.toLocaleString()}`
+                      : "—"}
+                  </p>
+                  <p className="text-xs text-gray-600">Total Spent</p>
                 </div>
               </div>
 

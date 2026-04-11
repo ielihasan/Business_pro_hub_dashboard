@@ -53,7 +53,6 @@ export default function PendingBusinessesPage() {
         .eq("is_rejected", false)
         .order("created_at", { ascending: false });
 
-      console.log("Pending businesses query result:", { data, error, count: data?.length });
       if (error) throw error;
       setBusinesses(data || []);
       setLoading(false);

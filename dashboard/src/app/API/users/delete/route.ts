@@ -38,8 +38,6 @@ export async function DELETE(req: Request) {
 
     // 2️⃣ Delete from Auth
     for (const id of ids) {
-      console.log("Deleting auth user:", id);
-
       const { error: authError } =
         await supabaseAdmin.auth.admin.deleteUser(id);
 

@@ -295,7 +295,7 @@ export async function POST(req: Request) {
         if (!insertError) subscriptionUpdated = true;
       }
     } catch (e) {
-      console.log("Subscriptions table might not exist, using admins table");
+      // subscriptions table unavailable — fall back to admins table
     }
 
     // Always update admins table as the source of truth
@@ -332,7 +332,7 @@ export async function POST(req: Request) {
           console.error("Payment record error:", paymentError);
         }
       } catch (e) {
-        console.log("Payments table might not exist");
+        // payments table unavailable — skip payment record
       }
     }
 
@@ -377,7 +377,7 @@ export async function DELETE(req: Request) {
         .eq("business_id", businessId)
         .eq("status", "active");
     } catch (e) {
-      console.log("Subscriptions table might not exist");
+      // subscriptions table unavailable — fall back to admins table
     }
 
     // Always update admins table
