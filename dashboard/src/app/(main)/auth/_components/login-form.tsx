@@ -150,7 +150,7 @@ export function LoginForm() {
       if (userAccount.is_pending) {
         // Check if email is verified
         if (!userAccount.email_verified) {
-          sessionStorage.setItem("pendingVerificationEmail", userAccount.email);
+          sessionStorage.setItem("pendingVerificationEmail", userAccount.email ?? "");
           toast.warning("Please verify your email first.");
           router.push("/auth/verify-email-pending");
           return;

@@ -52,7 +52,7 @@ export default function SelectRolePage() {
       if (role.is_pending) {
         // Check if email is verified
         if (!role.email_verified) {
-          sessionStorage.setItem("pendingVerificationEmail", role.email);
+          sessionStorage.setItem("pendingVerificationEmail", role.email ?? "");
           toast.warning("Please verify your email first.");
           router.push("/auth/verify-email-pending");
           return;
