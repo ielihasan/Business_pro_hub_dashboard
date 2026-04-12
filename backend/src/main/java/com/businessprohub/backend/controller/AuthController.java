@@ -7,6 +7,7 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,7 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -61,7 +63,9 @@ public class AuthController {
 
         try {
             emailService.sendVerificationEmail(email, token, businessName != null ? businessName : email);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Failed to send verification email to {}: {}", email, e.getMessage());
+        }
 
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("user_id", userId, "application_id", app.getId()),

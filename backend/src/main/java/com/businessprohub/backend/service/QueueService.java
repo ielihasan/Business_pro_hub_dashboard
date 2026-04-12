@@ -11,6 +11,7 @@ import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.repository.QueuePricingRepository;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.ServiceEntityRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.*;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class QueueService {
 
@@ -477,7 +479,9 @@ public class QueueService {
         if (date != null && !date.isBlank()) {
             try {
                 return java.time.LocalDate.parse(date).atStartOfDay().atOffset(ZoneOffset.UTC);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.debug("Invalid date string '{}' for todayStart filter, using current date: {}", date, e.getMessage());
+            }
         }
         return OffsetDateTime.now(ZoneOffset.UTC).toLocalDate()
                 .atStartOfDay().atOffset(ZoneOffset.UTC);

@@ -12,6 +12,8 @@ import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -63,8 +65,9 @@ public class BusinessController {
         return ResponseEntity.ok(ApiResponse.success(businesses));
     }
 
-    // POST /api/businesses
+    // POST /api/businesses — admin creates a business directly (bypasses application flow)
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<?>> create(@RequestBody Map<String, Object> body) {
         String email = (String) body.get("email");
         String password = (String) body.get("password");
@@ -84,7 +87,9 @@ public class BusinessController {
                 String orphanId = authAdmin.findUserIdByEmail(email);
                 if (orphanId != null && !businessRepo.existsById(orphanId)) {
                     // Safe to delete — no approved business linked to this auth user
-                    try { authAdmin.deleteUser(orphanId); } catch (Exception ignored) {}
+                    try { authAdmin.deleteUser(orphanId); } catch (Exception ex) {
+                        log.warn("Failed to delete orphaned auth user {}: {}", orphanId, ex.getMessage());
+                    }
                     // Retry creation with a clean slate
                     authUser = authAdmin.createUserWithMeta(email, password,
                             Map.of("role", "business_owner", "business_name", businessName));
@@ -136,17 +141,32 @@ public class BusinessController {
             return ResponseEntity.ok(ApiResponse.success(business, "Business created successfully"));
         } catch (Exception dbEx) {
             // Rollback: delete the auth user we just created so the email can be reused
-            try { authAdmin.deleteUser(userId); } catch (Exception ignored) {}
+            try { authAdmin.deleteUser(userId); } catch (Exception ex) {
+                log.warn("Rollback: failed to delete auth user {} after DB error: {}", userId, ex.getMessage());
+            }
             throw dbEx;
         }
     }
 
-    // PATCH /api/businesses/{id}
+    // PATCH /api/businesses/{id} — admin or the business owner themselves
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     public ResponseEntity<ApiResponse<?>> update(@PathVariable String id,
-                                                  @RequestBody Map<String, Object> body) {
+                                                  @RequestBody Map<String, Object> body,
+                                                  Authentication auth) {
         Business business = businessRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Business not found"));
+        // Extra ownership guard: non-admins can only update their own record
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !id.equals(auth.getPrincipal())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("You can only update your own business"));
+        }
+        // Non-owners cannot change subscription plan or active status
+        if (!isAdmin) {
+            body.remove("subscription_plan");
+            body.remove("is_active");
+        }
 
         if (body.containsKey("business_name")) business.setBusinessName((String) body.get("business_name"));
         if (body.containsKey("business_type")) business.setBusinessType((String) body.get("business_type"));
@@ -171,8 +191,9 @@ public class BusinessController {
         return ResponseEntity.ok(ApiResponse.success(business, "Business updated"));
     }
 
-    // POST /api/businesses/approve/{applicationId}
+    // POST /api/businesses/approve/{applicationId} — admin only
     @PostMapping("/approve/{applicationId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<?>> approve(@PathVariable String applicationId) {
         String approvedBy = (String) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
@@ -248,15 +269,18 @@ public class BusinessController {
         return ResponseEntity.ok(ApiResponse.success(null, "Business approved successfully"));
     }
 
-    // DELETE /api/businesses/application/{applicationId} — remove a pre-approval (unverified) application
+    // DELETE /api/businesses/application/{applicationId} — admin only
     @DeleteMapping("/application/{applicationId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<?>> deleteApplication(@PathVariable String applicationId) {
         BusinessApplication app = applicationRepo.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
         // Delete auth user if one was created (may not exist if registration never completed)
         if (app.getUserId() != null) {
-            try { authAdmin.deleteUser(app.getUserId()); } catch (Exception ignored) {}
+            try { authAdmin.deleteUser(app.getUserId()); } catch (Exception e) {
+                log.warn("Failed to delete auth user {} for application {}: {}", app.getUserId(), applicationId, e.getMessage());
+            }
             // Also clean up any stale admins row created during registration
             adminRepo.findByIdAndRole(app.getUserId(), "business_owner").ifPresent(adminRepo::delete);
         }
@@ -265,8 +289,9 @@ public class BusinessController {
         return ResponseEntity.ok(ApiResponse.success(null, "Application removed successfully"));
     }
 
-    // DELETE /api/businesses/{id}
+    // DELETE /api/businesses/{id} — admin only
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<?>> delete(@PathVariable String id) {
         if (!businessRepo.existsById(id)) {
             throw new ResourceNotFoundException("Business not found");

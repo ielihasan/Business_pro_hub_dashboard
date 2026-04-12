@@ -59,7 +59,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/queue-types").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/queue/*/leave").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/app-user/profile").permitAll()
-                // Admin-only endpoints
+                // ── Admin-only management endpoints ─────────────────────────────────
+                .requestMatchers("/api/admins/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST,   "/api/businesses").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST,   "/api/businesses/approve/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/businesses/application/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/businesses/*").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET,    "/api/settings/system").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH,  "/api/settings/system").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Staff management — business owners and admins only
                 // /api/staff/me is kept open to any authenticated user (staff self-lookup)

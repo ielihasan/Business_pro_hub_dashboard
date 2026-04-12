@@ -7,6 +7,7 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.ServiceEntityRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/queue-types")
 public class QueueTypeController {
@@ -60,7 +62,9 @@ public class QueueTypeController {
                     Map<String, Object> desc = objectMapper.readValue(svc.getDescription(), Map.class);
                     colorMap.put(svc.getId(), (String) desc.getOrDefault("color", "#6B7280"));
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.debug("Could not parse description JSON for service {}: {}", svc.getId(), e.getMessage());
+            }
         }
 
         LocalDate today          = LocalDate.now(ZoneOffset.UTC);
@@ -267,7 +271,7 @@ public class QueueTypeController {
                 "estimated_service_time", body.getOrDefault("estimated_service_time", 5)
         );
         try { svc.setDescription(objectMapper.writeValueAsString(desc)); }
-        catch (Exception ignored) {}
+        catch (Exception e) { log.warn("Failed to serialize description for new queue type: {}", e.getMessage()); }
 
         if (body.get("price") != null)
             svc.setPrice(new BigDecimal(body.get("price").toString()));
@@ -296,7 +300,9 @@ public class QueueTypeController {
             if (body.containsKey("max_capacity"))           existing.put("max_capacity",           body.get("max_capacity"));
             if (body.containsKey("estimated_service_time")) existing.put("estimated_service_time", body.get("estimated_service_time"));
             svc.setDescription(objectMapper.writeValueAsString(existing));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Failed to update description JSON for queue type {}: {}", id, e.getMessage());
+        }
 
         if (body.containsKey("is_active")) {
             Object ia = body.get("is_active");
@@ -333,7 +339,9 @@ public class QueueTypeController {
                 dto.put("estimated_service_time", desc.get("estimated_service_time"));
                 dto.put("description",            desc.get("label")); // frontend uses 'description'
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.debug("Could not parse description JSON for service {} in toDto: {}", svc.getId(), e.getMessage());
+        }
         return dto;
     }
 }

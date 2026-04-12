@@ -6,6 +6,7 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AdminRepository;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admins")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     private final AdminRepository adminRepo;

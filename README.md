@@ -355,7 +355,7 @@ Any valid email
 ### Example .env.local File
 
 ```env
-# Supabase (REQUIRED)NEXT_PUBLIC_SUPABASE_URL=https://hjblbmmyfznxomsrxhme.supabase.coNEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...# App URL (REQUIRED)NEXT_PUBLIC_APP_URL=http://localhost:3001# Resend Email Service (REQUIRED)RESEND_API_KEY=re_M3sMJX4L_NwVNFRLcqXnJTZCHnpXbvTsVRESEND_FROM_EMAIL=BusinessHub Pro <noreply@businessprohub.me># OptionalADMIN_NOTIFICATION_EMAIL=admin@businessprohub.me
+# Supabase (REQUIRED)NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.coNEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_hereSUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here# App URL (REQUIRED)NEXT_PUBLIC_APP_URL=http://localhost:3002# Resend Email Service (REQUIRED)RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxRESEND_FROM_EMAIL=BusinessHub Pro <noreply@yourdomain.com># OptionalADMIN_NOTIFICATION_EMAIL=admin@example.com
 ```
 
 ---
