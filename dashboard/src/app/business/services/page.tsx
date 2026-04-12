@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Store,
   Clock,
@@ -30,13 +39,29 @@ import {
   Loader2,
   Banknote,
   RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  CheckCircle,
+  CreditCard,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import { getErrorMessage } from "@/lib/utils";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
+/* ─── Types ─────────────────────────────────────────────────── */
 interface QueueType {
   id: string;
   business_id: string;
@@ -55,11 +80,47 @@ interface QueueEntry {
   status: string;
 }
 
-export default function ServicesPage() {
+interface ServiceRevenue {
+  service_id: string | null;
+  service_name: string;
+  color: string;
+  total_revenue: number;
+  today_revenue: number;
+  advance_collected: number;
+  payment_outstanding: number;
+  customers_served: number;
+  total_customers: number;
+  avg_revenue_per_customer: number;
+}
+
+interface RevenueSummary {
+  total_revenue: number;
+  today_revenue: number;
+  advance_collected: number;
+  payment_outstanding: number;
+  total_served: number;
+}
+
+interface DailyTrend {
+  date: string;
+  day: string;
+  revenue: number;
+}
+
+interface RevenueData {
+  summary: RevenueSummary;
+  by_service: ServiceRevenue[];
+  daily_trend: DailyTrend[];
+}
+
+/* ─── Component ─────────────────────────────────────────────── */
+export default function ServicesRevenuePage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [queueTypes, setQueueTypes] = useState<QueueType[]>([]);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [revenueLoading, setRevenueLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Create / Edit dialog
@@ -70,6 +131,7 @@ export default function ServicesPage() {
   // Delete confirmation dialog
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -109,7 +171,7 @@ export default function ServicesPage() {
     }
   }, [businessId]);
 
-  /* ── Fetch live queue entries (for waiting/serving counts) */
+  /* ── Fetch live queue entries */
   const fetchEntries = useCallback(async () => {
     if (!businessId) return;
     try {
@@ -125,12 +187,38 @@ export default function ServicesPage() {
     } catch { /* silent */ }
   }, [businessId]);
 
+  /* ── Fetch revenue data */
+  const fetchRevenue = useCallback(async () => {
+    if (!businessId) return;
+    setRevenueLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types/revenue?business_id=${businessId}`,
+        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+      );
+      if (res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setRevenueData(j.data ?? null);
+      }
+    } catch { /* silent */ }
+    finally { setRevenueLoading(false); }
+  }, [businessId]);
+
   useEffect(() => {
     if (businessId) {
       fetchQueueTypes();
       fetchEntries();
+      fetchRevenue();
     }
-  }, [businessId, fetchQueueTypes, fetchEntries]);
+  }, [businessId, fetchQueueTypes, fetchEntries, fetchRevenue]);
+
+  const handleRefresh = () => {
+    fetchQueueTypes();
+    fetchEntries();
+    fetchRevenue();
+    toast.success("Refreshed");
+  };
 
   /* ── CRUD helpers */
   const resetForm = () => {
@@ -174,6 +262,7 @@ export default function ServicesPage() {
       setDialogOpen(false);
       resetForm();
       fetchQueueTypes();
+      fetchRevenue();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to save service");
     } finally {
@@ -181,9 +270,7 @@ export default function ServicesPage() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    setDeleteTarget({ id, name });
-  };
+  const handleDelete = (id: string, name: string) => setDeleteTarget({ id, name });
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -199,6 +286,7 @@ export default function ServicesPage() {
       toast.success("Service deleted!");
       setDeleteTarget(null);
       fetchQueueTypes();
+      fetchRevenue();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to delete service");
     } finally {
@@ -210,25 +298,41 @@ export default function ServicesPage() {
   const countForType = (qtId: string, status: string) =>
     queueEntries.filter(e => e.service_type === qtId && e.status === status).length;
 
-  /* ── Render */
+  const fmt = (n: number) => `Rs. ${Number(n || 0).toLocaleString()}`;
+
+  /* ── Trend change % */
+  const trendPct = (() => {
+    if (!revenueData?.daily_trend || revenueData.daily_trend.length < 2) return null;
+    const trend = revenueData.daily_trend;
+    const last = Number(trend[trend.length - 1].revenue);
+    const prev = Number(trend[trend.length - 2].revenue);
+    if (prev === 0) return last > 0 ? 100 : 0;
+    return ((last - prev) / prev) * 100;
+  })();
+
+  /* ── Skeleton */
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-4 w-56" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 rounded-xl" />
-          ))}
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
         </div>
       </div>
     );
   }
+
+  /* ── Render ── */
+  const summary = revenueData?.summary;
 
   return (
     <div className="space-y-6">
@@ -236,13 +340,13 @@ export default function ServicesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Services &amp; Revenue</h1>
           <p className="mt-1 text-gray-500">
-            Manage the services you offer — each becomes its own queue lane with a unique QR code
+            Manage your services and track revenue per queue type
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => { fetchQueueTypes(); fetchEntries(); }} disabled={refreshing}>
+          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={openCreate}>
@@ -251,129 +355,412 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      {/* Summary strip */}
-      {queueTypes.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border text-sm">
-            <Store className="h-4 w-4 text-gray-400" />
-            <span className="font-semibold text-gray-900">{queueTypes.length}</span>
-            <span className="text-gray-500">{queueTypes.length === 1 ? "service" : "services"}</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border text-sm">
-            <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
-            <span className="font-semibold text-gray-900">{queueTypes.filter(q => q.is_active).length}</span>
-            <span className="text-gray-500">active</span>
-          </div>
-        </div>
-      )}
-
-      {/* Services grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Store className="h-5 w-5" />Your Services
-          </CardTitle>
-          <p className="text-sm text-gray-500">
-            Each service appears as its own lane in Queue Management with its own QR code
-          </p>
-        </CardHeader>
-        <CardContent>
-          {queueTypes.length === 0 ? (
-            <div className="text-center py-14 text-gray-400">
-              <Store className="h-14 w-14 mx-auto mb-4 text-gray-200" />
-              <p className="text-lg font-medium text-gray-600">No services configured</p>
-              <p className="text-sm mt-2 max-w-xs mx-auto">
-                Add services you offer to your customers — each gets its own queue lane and QR code
-              </p>
-              <Button className="mt-5" onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />Add Your First Service
-              </Button>
+      {/* Top Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-green-700">Total Revenue</p>
+              <div className="p-1.5 bg-green-200 rounded-lg">
+                <Banknote className="h-4 w-4 text-green-700" />
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {queueTypes.map(qt => {
-                const waiting = countForType(qt.id, "waiting");
-                const serving = countForType(qt.id, "in_progress") + countForType(qt.id, "serving");
-                return (
-                  <div
-                    key={qt.id}
-                    className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
-                    style={{ borderColor: qt.color + "40", backgroundColor: qt.color + "08" }}
-                  >
-                    {/* Active badge */}
-                    {!qt.is_active && (
-                      <Badge className="absolute top-3 right-3 bg-gray-100 text-gray-400 border-0 text-[10px]">
-                        Inactive
-                      </Badge>
-                    )}
+            <p className="text-2xl font-bold text-green-800">{fmt(summary?.total_revenue ?? 0)}</p>
+            <p className="text-xs text-green-600 mt-1">All time, completed orders</p>
+          </CardContent>
+        </Card>
 
-                    {/* Top row */}
-                    <div className="flex items-start justify-between pr-6">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0"
-                          style={{ backgroundColor: qt.color }}
-                        >
-                          {qt.name.charAt(0).toUpperCase()}
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-blue-700">Today&apos;s Revenue</p>
+              <div className="p-1.5 bg-blue-200 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-blue-700" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-blue-800">{fmt(summary?.today_revenue ?? 0)}</p>
+            {trendPct !== null && (
+              <p className={`text-xs mt-1 flex items-center gap-1 ${trendPct >= 0 ? "text-green-600" : "text-red-500"}`}>
+                {trendPct >= 0
+                  ? <TrendingUp className="h-3 w-3" />
+                  : <TrendingDown className="h-3 w-3" />}
+                {Math.abs(trendPct).toFixed(1)}% vs yesterday
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-amber-700">Advance Collected</p>
+              <div className="p-1.5 bg-amber-200 rounded-lg">
+                <CreditCard className="h-4 w-4 text-amber-700" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-amber-800">{fmt(summary?.advance_collected ?? 0)}</p>
+            <p className="text-xs text-amber-600 mt-1">From all active queues</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-purple-700">Outstanding</p>
+              <div className="p-1.5 bg-purple-200 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-purple-700" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-purple-800">{fmt(summary?.payment_outstanding ?? 0)}</p>
+            <p className="text-xs text-purple-600 mt-1">Remaining for active customers</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="services" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="services" className="flex items-center gap-2">
+            <Store className="h-4 w-4" />Services
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />Revenue Details
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ═══ SERVICES TAB ═══ */}
+        <TabsContent value="services">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Store className="h-5 w-5" />Your Services
+              </CardTitle>
+              <p className="text-sm text-gray-500">
+                Each service gets its own queue lane and QR code in Queue Management
+              </p>
+            </CardHeader>
+            <CardContent>
+              {queueTypes.length === 0 ? (
+                <div className="text-center py-14 text-gray-400">
+                  <Store className="h-14 w-14 mx-auto mb-4 text-gray-200" />
+                  <p className="text-lg font-medium text-gray-600">No services configured</p>
+                  <p className="text-sm mt-2 max-w-xs mx-auto">
+                    Add services you offer — each gets its own queue lane and QR code
+                  </p>
+                  <Button className="mt-5" onClick={openCreate}>
+                    <Plus className="h-4 w-4 mr-2" />Add Your First Service
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {queueTypes.map(qt => {
+                    const waiting = countForType(qt.id, "waiting");
+                    const serving = countForType(qt.id, "in_progress") + countForType(qt.id, "serving");
+                    // Revenue for this service from the revenue data
+                    const svcRev = revenueData?.by_service.find(s => s.service_id === qt.id);
+                    return (
+                      <div
+                        key={qt.id}
+                        className="relative p-4 rounded-xl border-2 transition-all hover:shadow-md"
+                        style={{ borderColor: qt.color + "40", backgroundColor: qt.color + "08" }}
+                      >
+                        {!qt.is_active && (
+                          <Badge className="absolute top-3 right-3 bg-gray-100 text-gray-400 border-0 text-[10px]">
+                            Inactive
+                          </Badge>
+                        )}
+
+                        <div className="flex items-start justify-between pr-6">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0"
+                              style={{ backgroundColor: qt.color }}
+                            >
+                              {qt.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{qt.name}</h3>
+                              <p className="text-xs text-gray-500">{qt.description || "No description"}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{qt.name}</h3>
-                          <p className="text-xs text-gray-500">{qt.description || "No description"}</p>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />Max {qt.max_capacity}
+                          </span>
+                          {(qt.price ?? 0) > 0 && (
+                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                              <Banknote className="h-3.5 w-3.5" />Rs.{Number(qt.price).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                          {waiting > 0 && (
+                            <Badge className="bg-gray-100 text-gray-700 text-[11px]">{waiting} waiting</Badge>
+                          )}
+                          {serving > 0 && (
+                            <Badge className="bg-blue-100 text-blue-700 text-[11px]">{serving} serving</Badge>
+                          )}
+                          {waiting === 0 && serving === 0 && (
+                            <Badge className="bg-green-50 text-green-600 text-[11px]">Queue clear</Badge>
+                          )}
+                        </div>
+
+                        {/* Mini revenue strip */}
+                        {svcRev && Number(svcRev.total_revenue) > 0 && (
+                          <div className="mt-3 pt-3 border-t border-dashed flex items-center justify-between text-xs"
+                               style={{ borderColor: qt.color + "40" }}>
+                            <span className="text-gray-500 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3 text-green-500" />
+                              {svcRev.customers_served} served
+                            </span>
+                            <span className="font-semibold text-green-700">
+                              {fmt(Number(svcRev.total_revenue))}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm" variant="outline" className="flex-1 text-xs"
+                            onClick={() => openEdit(qt)}
+                            style={{ borderColor: qt.color + "60", color: qt.color }}
+                          >
+                            <Edit2 className="h-3.5 w-3.5 mr-1" />Edit
+                          </Button>
+                          <Button
+                            size="sm" variant="ghost" className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDelete(qt.id, qt.name)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                    {/* Specs */}
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />~{qt.estimated_service_time} min
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" />Max {qt.max_capacity}
-                      </span>
-                      {(qt.price ?? 0) > 0 && (
-                        <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                          <Banknote className="h-3.5 w-3.5" />Rs.{Number(qt.price).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
+        {/* ═══ REVENUE TAB ═══ */}
+        <TabsContent value="revenue" className="space-y-6">
 
-                    {/* Live counts */}
-                    <div className="mt-2 flex gap-2">
-                      {waiting > 0 && (
-                        <Badge className="bg-gray-100 text-gray-700 text-[11px]">{waiting} waiting</Badge>
-                      )}
-                      {serving > 0 && (
-                        <Badge className="bg-blue-100 text-blue-700 text-[11px]">{serving} serving</Badge>
-                      )}
-                      {waiting === 0 && serving === 0 && (
-                        <Badge className="bg-green-50 text-green-600 text-[11px]">Queue clear</Badge>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="mt-3 flex gap-2">
-                      <Button
-                        size="sm" variant="outline" className="flex-1 text-xs"
-                        onClick={() => openEdit(qt)}
-                        style={{ borderColor: qt.color + "60", color: qt.color }}
-                      >
-                        <Edit2 className="h-3.5 w-3.5 mr-1" />Edit
-                      </Button>
-                      <Button
-                        size="sm" variant="ghost" className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleDelete(qt.id, qt.name)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+          {revenueLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             </div>
+          ) : (
+            <>
+              {/* 7-Day Trend Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <TrendingUp className="h-5 w-5" />7-Day Revenue Trend
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">Daily completed-order revenue for the last 7 days</p>
+                </CardHeader>
+                <CardContent>
+                  {revenueData?.daily_trend && revenueData.daily_trend.some(d => Number(d.revenue) > 0) ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={revenueData.daily_trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                        <YAxis
+                          tick={{ fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(v) => `Rs.${(v / 1000).toFixed(0)}k`}
+                          width={55}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => [fmt(value), "Revenue"]}
+                          contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          fill="url(#revGradient)"
+                          dot={{ r: 3, fill: "#10b981" }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+                      <BarChart3 className="h-10 w-10 mb-2 text-gray-200" />
+                      <p className="text-sm">No revenue data yet — complete some queue entries to see the trend</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Per-Service Revenue Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <BarChart3 className="h-5 w-5" />Revenue by Service
+                  </CardTitle>
+                  <p className="text-sm text-gray-500">
+                    Breakdown of earned revenue, advance collected, and outstanding per queue lane
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {!revenueData?.by_service || revenueData.by_service.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">
+                      <Banknote className="h-10 w-10 mx-auto mb-3 text-gray-200" />
+                      <p>No revenue data available yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Service</TableHead>
+                            <TableHead className="text-right">Customers</TableHead>
+                            <TableHead className="text-right">Total Revenue</TableHead>
+                            <TableHead className="text-right">Today</TableHead>
+                            <TableHead className="text-right">Advance Collected</TableHead>
+                            <TableHead className="text-right">Outstanding</TableHead>
+                            <TableHead className="text-right">Avg / Customer</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {revenueData.by_service.map((svc, i) => (
+                            <TableRow key={i}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                    style={{ backgroundColor: svc.color }}
+                                  >
+                                    {svc.service_name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm text-gray-900">{svc.service_name}</p>
+                                    <p className="text-xs text-gray-400">{svc.total_customers} total visits</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1 text-sm">
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                  <span>{svc.customers_served}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-green-700">
+                                {fmt(Number(svc.total_revenue))}
+                              </TableCell>
+                              <TableCell className="text-right text-blue-700">
+                                {fmt(Number(svc.today_revenue))}
+                              </TableCell>
+                              <TableCell className="text-right text-amber-700">
+                                {fmt(Number(svc.advance_collected))}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {Number(svc.payment_outstanding) > 0 ? (
+                                  <span className="text-red-600 font-medium">
+                                    {fmt(Number(svc.payment_outstanding))}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right text-gray-600 text-sm">
+                                {Number(svc.avg_revenue_per_customer) > 0
+                                  ? fmt(Number(svc.avg_revenue_per_customer))
+                                  : <span className="text-gray-400">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {/* Totals row */}
+                          {summary && (
+                            <TableRow className="bg-gray-50 font-semibold border-t-2">
+                              <TableCell className="text-gray-700">Total</TableCell>
+                              <TableCell className="text-right text-gray-700">{summary.total_served}</TableCell>
+                              <TableCell className="text-right text-green-700">{fmt(Number(summary.total_revenue))}</TableCell>
+                              <TableCell className="text-right text-blue-700">{fmt(Number(summary.today_revenue))}</TableCell>
+                              <TableCell className="text-right text-amber-700">{fmt(Number(summary.advance_collected))}</TableCell>
+                              <TableCell className="text-right text-red-600">
+                                {Number(summary.payment_outstanding) > 0 ? fmt(Number(summary.payment_outstanding)) : "—"}
+                              </TableCell>
+                              <TableCell />
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Additional info cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Customers Served</p>
+                        <p className="text-2xl font-bold text-gray-900">{summary?.total_served ?? 0}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">Total completed queue visits across all services</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Store className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Active Services</p>
+                        <p className="text-2xl font-bold text-gray-900">{queueTypes.filter(q => q.is_active).length}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">Of {queueTypes.length} total configured services</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Banknote className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Avg per Customer</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {summary && summary.total_served > 0
+                            ? fmt(Math.round(Number(summary.total_revenue) / summary.total_served))
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">Average revenue per completed visit</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -446,7 +833,7 @@ export default function ServicesPage() {
                   className="pl-10" placeholder="0.00"
                 />
               </div>
-              <p className="text-xs text-gray-400">Used to estimate queue revenue in Queue Management</p>
+              <p className="text-xs text-gray-400">Used for revenue tracking and customer invoice estimation</p>
             </div>
           </div>
 

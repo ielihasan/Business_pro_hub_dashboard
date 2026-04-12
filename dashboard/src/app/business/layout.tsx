@@ -41,7 +41,7 @@ const fullNavigation = [
   { name: "Queue Management", href: "/business/queue",     icon: Clock,            staffAllowed: true  },
   { name: "Customers",        href: "/business/customers", icon: Users,            staffAllowed: true  },
   { name: "Staff",            href: "/business/staff",     icon: UserCog,          staffAllowed: false }, // owner only
-  { name: "Services",         href: "/business/services",  icon: Store,            staffAllowed: true  },
+  { name: "Services & Revenue", href: "/business/services",  icon: Store,            staffAllowed: true  },
   { name: "Business Hours",   href: "/business/hours",     icon: Calendar,         staffAllowed: true  },
   { name: "Pricing & Plans",  href: "/business/pricing",   icon: CreditCard,       staffAllowed: false }, // owner only
   { name: "Settings",         href: "/business/settings",  icon: Settings,         staffAllowed: false }, // owner only
