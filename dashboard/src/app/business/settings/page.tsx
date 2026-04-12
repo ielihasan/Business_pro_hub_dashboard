@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Building2, Mail, Phone, MapPin, Camera, Upload, Trash2, Loader2 } from "lucide-react";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
@@ -110,8 +111,8 @@ export default function SettingsPage() {
       }
 
       toast.success("Business settings updated successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update settings");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update settings");
     } finally {
       setSaving(false);
     }
@@ -186,8 +187,8 @@ export default function SettingsPage() {
         new CustomEvent("business-avatar-updated", { detail: { avatar_url: publicUrl } })
       );
       toast.success("Profile photo updated");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to upload photo");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to upload photo");
     } finally {
       setAvatarUploading(false);
     }
@@ -205,8 +206,8 @@ export default function SettingsPage() {
         new CustomEvent("business-avatar-updated", { detail: { avatar_url: null } })
       );
       toast.success("Profile photo removed");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove photo");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to remove photo");
     } finally {
       setAvatarUploading(false);
     }

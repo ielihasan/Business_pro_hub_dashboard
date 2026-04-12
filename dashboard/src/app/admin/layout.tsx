@@ -17,6 +17,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface AdminRecord {
+  id: string;
+  role: string;
+  full_name?: string;
+  email?: string;
+  avatar_url?: string | null;
+  [key: string]: unknown;
+}
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -33,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [admin, setAdmin] = useState<any>(null);
+  const [admin, setAdmin] = useState<AdminRecord | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -44,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const handleAvatarUpdate = (e: Event) => {
       const { avatar_url } = (e as CustomEvent<{ avatar_url: string | null }>).detail;
-      setAdmin((prev: any) => prev ? { ...prev, avatar_url } : prev);
+      setAdmin((prev) => prev ? { ...prev, avatar_url } : prev);
     };
     window.addEventListener("admin-avatar-updated", handleAvatarUpdate);
     return () => window.removeEventListener("admin-avatar-updated", handleAvatarUpdate);

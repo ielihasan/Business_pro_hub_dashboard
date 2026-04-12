@@ -16,6 +16,7 @@ import {
 import { Building2, Mail, Phone, MapPin, CheckCircle, XCircle, Clock, AlertCircle, MailCheck, MailX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getErrorMessage } from "@/lib/utils";
 
 interface PendingBusiness {
   id: string;
@@ -109,11 +110,11 @@ export default function PendingBusinessesPage() {
           isApproved: true,
         }),
       }).catch(() => {});
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert optimistic update on failure
       setBusinesses(optimisticSnapshot);
       console.error("Error approving business:", error);
-      toast.error(error.message || "Failed to approve business");
+      toast.error(getErrorMessage(error) || "Failed to approve business");
     } finally {
       setProcessing(false);
     }
@@ -198,10 +199,10 @@ export default function PendingBusinessesPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to remove application");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert optimistic update on failure
       setBusinesses(optimisticSnapshot);
-      toast.error(error.message || "Failed to remove application");
+      toast.error(getErrorMessage(error) || "Failed to remove application");
     } finally {
       setProcessing(false);
     }

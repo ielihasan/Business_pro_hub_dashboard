@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -187,8 +188,8 @@ export function LoginForm() {
         await supabase.auth.signOut();
         return;
       }
-    } catch (err: any) {
-      toast.error(err.message || "Login failed.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Login failed.");
     }
   };
 

@@ -73,7 +73,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Plan {
@@ -323,7 +323,7 @@ export default function PricingPage() {
         }
         if (data.data.payments) setPayments(data.data.payments);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Pricing API unavailable, using mock data");
     } finally {
       setLoading(false);
@@ -469,8 +469,8 @@ export default function PricingPage() {
       }
 
       toast.success(`Successfully upgraded to ${selectedPlan.name} plan!`);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to upgrade plan");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to upgrade plan");
       setProcessing(false);
     }
   };
@@ -499,8 +499,8 @@ export default function PricingPage() {
       });
       toast.success("Subscription cancelled. You are now on the Free plan.");
       setIsCancelDialogOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to cancel subscription");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to cancel subscription");
     } finally {
       setCancelling(false);
     }

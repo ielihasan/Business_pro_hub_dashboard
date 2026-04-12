@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function VerifyEmailPendingPage() {
   const router = useRouter();
@@ -50,8 +51,8 @@ export default function VerifyEmailPendingPage() {
 
       toast.success("Verification email sent! Please check your inbox.");
       setResendCooldown(60); // 60 second cooldown
-    } catch (error: any) {
-      toast.error(error.message || "Failed to resend verification email");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to resend verification email");
     } finally {
       setIsResending(false);
     }

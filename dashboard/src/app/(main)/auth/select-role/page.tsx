@@ -8,10 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Building2, ArrowRight, Clock, CheckCircle, MailX, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 
+interface RoleRecord {
+  role: string;
+  is_approved?: boolean;
+  is_pending?: boolean;
+  email_verified?: boolean;
+  email?: string;
+  business_name?: string;
+  business_type?: string;
+  [key: string]: unknown;
+}
+
 export default function SelectRolePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
 
   useEffect(() => {
     loadRoles();
@@ -35,7 +46,7 @@ export default function SelectRolePage() {
     }
   };
 
-  const handleRoleSelect = async (role: any) => {
+  const handleRoleSelect = async (role: RoleRecord) => {
     try {
       // Check if this is a pending application
       if (role.is_pending) {

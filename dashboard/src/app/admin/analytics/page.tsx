@@ -63,7 +63,21 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 interface Payment {
   id: string;
@@ -104,7 +118,7 @@ interface Subscription {
   plan_details: { name: string; price: number };
 }
 
-const paymentMethodIcons: Record<string, any> = {
+const paymentMethodIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   card: CreditCard,
   jazzcash: Smartphone,
   easypaisa: Smartphone,
@@ -112,7 +126,7 @@ const paymentMethodIcons: Record<string, any> = {
   free: Sparkles,
 };
 
-const planIcons: Record<string, any> = {
+const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   free: Sparkles,
   starter: Zap,
   professional: Crown,
@@ -166,7 +180,7 @@ export default function AnalyticsPaymentsPage() {
 
       if (data.error) throw new Error(data.error);
       setStats(data.data?.stats ?? null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Stats API unavailable, backend may be offline");
       toast.error("Failed to load statistics");
     }
@@ -194,7 +208,7 @@ export default function AnalyticsPaymentsPage() {
 
       setPayments(Array.isArray(data.data?.payments) ? data.data.payments : []);
       setTotalPages(data.pagination?.totalPages || 1);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Payments API unavailable, backend may be offline");
       setPayments([]);
     } finally {
@@ -213,7 +227,7 @@ export default function AnalyticsPaymentsPage() {
 
       if (data.error) throw new Error(data.error);
       setSubscriptions(Array.isArray(data.data?.subscriptions) ? data.data.subscriptions : []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Subscriptions API unavailable, backend may be offline");
     }
   };
@@ -537,46 +551,38 @@ export default function AnalyticsPaymentsPage() {
           </CardHeader>
           <CardContent>
             {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 ? (
-              <div>
-                {/* Bars */}
-                <div className="flex items-end gap-3" style={{ height: "180px" }}>
-                  {stats.monthlyRevenue.map((item, index) => {
-                    const maxRevenue = Math.max(
-                      ...stats.monthlyRevenue.map((m) => Number(m.revenue) || 0)
-                    );
-                    const revenue = Number(item.revenue) || 0;
-                    const barH = maxRevenue > 0
-                      ? Math.max((revenue / maxRevenue) * 140, 4)
-                      : 4;
-                    return (
-                      <div
-                        key={index}
-                        className="flex-1 flex flex-col items-center justify-end h-full"
-                      >
-                        <span className="text-xs text-gray-500 mb-1 text-center leading-tight">
-                          {revenue > 0 ? formatCurrency(revenue) : "—"}
-                        </span>
-                        <div
-                          className="w-full bg-black rounded-t transition-all duration-500"
-                          style={{ height: `${barH}px` }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* X-axis labels */}
-                <div className="flex gap-3 mt-2 border-t pt-2">
-                  {stats.monthlyRevenue.map((item, index) => (
-                    <div key={index} className="flex-1 text-center">
-                      <span className="text-xs text-gray-600">{item.month}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm mt-3">
-                  <div className="w-3 h-3 bg-black rounded" />
-                  <span className="text-gray-600">Monthly Revenue (PKR)</span>
-                </div>
-              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={stats.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `Rs.${(v / 1000).toFixed(0)}k`}
+                    width={55}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+                    contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    fill="url(#revenueGradient)"
+                    dot={{ r: 3, fill: "#6366f1" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             ) : (
               <div className="flex flex-col items-center justify-center h-48 text-gray-500">
                 <BarChart3 className="h-12 w-12 mb-2 text-gray-300" />
@@ -596,48 +602,66 @@ export default function AnalyticsPaymentsPage() {
             <CardDescription>Active subscriptions by plan</CardDescription>
           </CardHeader>
           <CardContent>
-            {stats?.planDistribution ? (
-              <div className="space-y-4">
-                {Object.entries(stats.planDistribution).map(([plan, count]) => {
-                  const total = Object.values(stats.planDistribution).reduce((a, b) => a + b, 0);
-                  const percentage = total > 0 ? (count / total) * 100 : 0;
-                  const PlanIcon = planIcons[plan] || Sparkles;
-
-                  return (
-                    <div key={plan} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
+            {stats?.planDistribution && Object.keys(stats.planDistribution).length > 0 ? (() => {
+              const PIE_COLORS: Record<string, string> = {
+                free: "#9ca3af",
+                starter: "#3b82f6",
+                professional: "#8b5cf6",
+                enterprise: "#f59e0b",
+              };
+              const pieData = Object.entries(stats.planDistribution).map(([plan, count]) => ({
+                name: plan.charAt(0).toUpperCase() + plan.slice(1),
+                value: count,
+                color: PIE_COLORS[plan] ?? "#6366f1",
+              }));
+              const total = pieData.reduce((s, d) => s + d.value, 0);
+              return (
+                <div>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <RechartsPie>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => [
+                          `${value} (${((value / total) * 100).toFixed(0)}%)`,
+                          "Businesses",
+                        ]}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                      />
+                    </RechartsPie>
+                  </ResponsiveContainer>
+                  <div className="mt-2 space-y-1">
+                    {pieData.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <PlanIcon className="h-4 w-4" />
-                          <span className="capitalize font-medium">{plan}</span>
+                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
+                          <span className="font-medium">{entry.name}</span>
                         </div>
-                        <span className="text-gray-600">
-                          {count} ({percentage.toFixed(0)}%)
+                        <span className="text-gray-500">
+                          {entry.value} ({((entry.value / total) * 100).toFixed(0)}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-500 ${
-                            plan === "free"
-                              ? "bg-gray-400"
-                              : plan === "starter"
-                              ? "bg-blue-500"
-                              : plan === "professional"
-                              ? "bg-purple-500"
-                              : "bg-amber-500"
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                <Separator className="my-4" />
-                <div className="flex justify-between text-sm font-medium">
-                  <span>Total Businesses</span>
-                  <span>{Object.values(stats.planDistribution).reduce((a, b) => a + b, 0)}</span>
+                    ))}
+                  </div>
+                  <Separator className="my-3" />
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Total Businesses</span>
+                    <span>{total}</span>
+                  </div>
                 </div>
-              </div>
-            ) : (
+              );
+            })() : (
               <div className="flex flex-col items-center justify-center h-48 text-gray-500">
                 <PieChart className="h-12 w-12 mb-2 text-gray-300" />
                 <p>No subscription data</p>

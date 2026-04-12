@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Shield } from "lucide-react";
+import type { Session, User } from "@supabase/supabase-js";
+import { getErrorMessage } from "@/lib/utils";
 
 // Business Owner Additional Info Schema
 const BusinessInfoSchema = z.object({
@@ -27,7 +29,7 @@ export default function OAuthCallbackPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"admin" | "business" | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [businessTypes, setBusinessTypes] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const handled = useRef(false);
@@ -99,7 +101,7 @@ export default function OAuthCallbackPage() {
     ]);
   };
 
-  const handleOAuthCallback = async (session: any) => {
+  const handleOAuthCallback = async (session: Session | null) => {
     try {
       if (!session) {
         toast.error("No authentication session found");
@@ -183,14 +185,14 @@ export default function OAuthCallbackPage() {
 
       // For business role, show the form to collect additional info
       setLoading(false);
-    } catch (error: any) {
-      console.error("OAuth callback error:", error);
+    } catch (error: unknown) {
+      console.error("OAuth callback error:", getErrorMessage(error));
       toast.error("Authentication failed");
       router.push("/auth/v1/register");
     }
   };
 
-  const createAdminApplication = async (user: any) => {
+  const createAdminApplication = async (user: User) => {
     try {
       const { error } = await supabase
         .from("business_applications")
@@ -213,8 +215,8 @@ export default function OAuthCallbackPage() {
       sessionStorage.removeItem("pendingOAuthRole");
       toast.success("Admin registration submitted! Awaiting approval.");
       router.push("/auth/waiting-approval-admin");
-    } catch (error: any) {
-      console.error("Error creating admin application:", error);
+    } catch (error: unknown) {
+      console.error("Error creating admin application:", getErrorMessage(error));
       toast.error("Failed to complete registration");
     }
   };
@@ -246,8 +248,8 @@ export default function OAuthCallbackPage() {
       sessionStorage.setItem("lastRegisteredEmail", user.email);
       toast.success("Business registration submitted! Awaiting admin approval.");
       router.push("/auth/waiting-approval-business");
-    } catch (error: any) {
-      console.error("Error submitting business info:", error);
+    } catch (error: unknown) {
+      console.error("Error submitting business info:", getErrorMessage(error));
       toast.error("Failed to complete registration");
     } finally {
       setIsSubmitting(false);

@@ -58,6 +58,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface AdminProfile {
@@ -173,8 +174,8 @@ export default function AdminSettingsPage() {
         email: data.data.email || "",
       });
       setAvatarUrl(data.data.avatar_url || null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to fetch profile");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to fetch profile");
     } finally {
       setProfileLoading(false);
     }
@@ -196,7 +197,7 @@ export default function AdminSettingsPage() {
       if (res.ok && data.data) {
         setSystemSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...data.data });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Settings API unavailable, backend may be offline");
     } finally {
       setSystemLoading(false);
@@ -227,8 +228,8 @@ export default function AdminSettingsPage() {
 
       setProfile(data.data);
       toast.success("Profile updated successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update profile");
     } finally {
       setProfileSaving(false);
     }
@@ -300,8 +301,8 @@ export default function AdminSettingsPage() {
       setAvatarUrl(publicUrl);
       window.dispatchEvent(new CustomEvent("admin-avatar-updated", { detail: { avatar_url: publicUrl } }));
       toast.success("Profile photo updated");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to upload photo");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to upload photo");
     } finally {
       setAvatarUploading(false);
     }
@@ -319,8 +320,8 @@ export default function AdminSettingsPage() {
       setAvatarUrl(null);
       window.dispatchEvent(new CustomEvent("admin-avatar-updated", { detail: { avatar_url: null } }));
       toast.success("Profile photo removed");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove photo");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to remove photo");
     } finally {
       setAvatarUploading(false);
     }
@@ -377,8 +378,8 @@ export default function AdminSettingsPage() {
         confirm_password: "",
       });
       toast.success("Password changed successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to change password");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to change password");
     } finally {
       setPasswordSaving(false);
     }
@@ -406,8 +407,8 @@ export default function AdminSettingsPage() {
       if (!res.ok) throw new Error(data.error);
 
       toast.success("System settings updated successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update system settings");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update system settings");
     } finally {
       setSystemSaving(false);
     }

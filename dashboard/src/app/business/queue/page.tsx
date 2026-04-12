@@ -75,6 +75,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import QRCodeLib from "qrcode";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -642,8 +643,8 @@ export default function QueueManagementPage() {
       const inner = resp.data || {};
       if (res.ok) {
         // inner.data = List<Queue> entities (DB statuses); map in_progress/called → serving
-        const rawEntries: any[] = inner.data || [];
-        const mapped = rawEntries.map((e: any) => ({
+        const rawEntries = inner.data || [];
+        const mapped = rawEntries.map((e: Record<string, unknown>) => ({
           ...e,
           status: e.status === "in_progress" || e.status === "called" ? "serving" : e.status,
         }));
@@ -712,8 +713,8 @@ export default function QueueManagementPage() {
       toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
       setAddDialogOpen(false);
       fetchQueue();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add customer");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to add customer");
     } finally { setAddingCustomer(false); }
   };
 
@@ -732,7 +733,7 @@ export default function QueueManagementPage() {
       toast.success(`Status → ${newStatus}`);
       // optimistic update
       setQueueEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
-    } catch (err: any) { toast.error(err.message || "Failed to update status"); }
+    } catch (err: unknown) { toast.error(getErrorMessage(err) || "Failed to update status"); }
   }, []);
 
   const handleCancelClick = useCallback((entry: QueueEntry) => {
@@ -781,8 +782,8 @@ export default function QueueManagementPage() {
       setEditDialogOpen(false);
       setEditingEntry(null);
       fetchQueue();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update entry");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to update entry");
     } finally { setSavingEdit(false); }
   };
 
@@ -804,8 +805,8 @@ export default function QueueManagementPage() {
       toast.success(`Removed ${deletingEntry.customer_name} from queue`);
       // optimistic remove
       setQueueEntries(prev => prev.filter(e => e.id !== deletingEntry.id));
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete entry");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to delete entry");
     } finally {
       setDeleteDialogOpen(false);
       setDeletingEntry(null);
@@ -843,12 +844,12 @@ export default function QueueManagementPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || json.message || "Failed to update queue status");
       toast.success(`${qt.name} queue ${newValue ? "opened" : "closed"}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert optimistic update on failure
       setQueueTypes(prev =>
         prev.map(qt => qt.id === queueTypeId ? { ...qt, is_active: !newValue } : qt)
       );
-      toast.error(err.message || "Failed to update queue status");
+      toast.error(getErrorMessage(err) || "Failed to update queue status");
     }
   }, [queueTypes]);
 

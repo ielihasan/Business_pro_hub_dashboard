@@ -66,6 +66,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderItem {
@@ -180,16 +181,16 @@ export default function OrdersPage() {
       if (!res.ok) throw new Error(json.error || "Failed to load orders");
 
       const inner = json.data || {};
-      const list: Order[] = (inner.data || []).map((o: any) => ({
-        ...o,
-        items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items); } catch { return []; } })() : (o.items ?? []),
+      const list: Order[] = (inner.data || []).map((o: Record<string, unknown>) => ({
+        ...(o as Order),
+        items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items as string); } catch { return []; } })() : ((o.items as Order["items"]) ?? []),
       }));
       setOrders(list);
       setTotalCount(inner.total || 0);
       setTotalPages(inner.total_pages || 1);
       setStats(calculateStats(list));
-    } catch (error: any) {
-      setApiError(error.message || "Failed to load orders");
+    } catch (error: unknown) {
+      setApiError(getErrorMessage(error) || "Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -277,8 +278,8 @@ export default function OrdersPage() {
       });
       setOrderItems([{ name: "", quantity: 1, price: 0 }]);
       setIsAddDialogOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create order");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to create order");
     } finally {
       setSubmitting(false);
     }
@@ -303,8 +304,8 @@ export default function OrdersPage() {
 
       toast.success(`Order status updated to ${newStatus}`);
       fetchOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update status");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update status");
     }
   };
 
@@ -327,8 +328,8 @@ export default function OrdersPage() {
 
       toast.success(`Payment marked as ${paymentStatus}`);
       fetchOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update payment");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update payment");
     }
   };
 
@@ -354,8 +355,8 @@ export default function OrdersPage() {
       toast.success("Order deleted successfully");
       setDeleteOrderTarget(null);
       fetchOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete order");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to delete order");
     } finally {
       setDeletingOrder(false);
     }

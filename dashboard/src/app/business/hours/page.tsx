@@ -46,6 +46,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DayHours {
@@ -159,7 +160,7 @@ export default function BusinessHoursPage() {
         // Map database hours to our format
         const mappedHours = DAYS_OF_WEEK.map((day) => {
           const dbHour = data.data.weekly_hours.find(
-            (h: any) => h.day_of_week === day.value
+            (h: Record<string, unknown>) => h.day_of_week === day.value
           );
           if (dbHour) {
             return {
@@ -187,13 +188,13 @@ export default function BusinessHoursPage() {
 
       // Backend returns "special" key; fall back to "special_hours" for compatibility
       const specialData = data.data.special ?? data.data.special_hours ?? [];
-      setSpecialHours(specialData.map((s: any) => ({
+      setSpecialHours(specialData.map((s: Record<string, unknown>) => ({
         ...s,
         is_closed: s.is_closed !== undefined ? s.is_closed : !s.is_open,
       })));
 
       setUseMockData(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Business hours API unavailable, using mock data");
       setUseMockData(true);
     } finally {
@@ -260,8 +261,8 @@ export default function BusinessHoursPage() {
 
       toast.success("Business hours saved successfully!");
       setHasChanges(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save hours");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to save hours");
     } finally {
       setSaving(false);
     }
@@ -315,8 +316,8 @@ export default function BusinessHoursPage() {
         reason: "",
       });
       setIsSpecialDialogOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add special hours");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to add special hours");
     }
   };
 
@@ -341,8 +342,8 @@ export default function BusinessHoursPage() {
 
       toast.success("Special hours removed!");
       fetchBusinessHours();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete special hours");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to delete special hours");
     }
   };
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -210,11 +211,11 @@ export default function ApprovedBusinessesPage() {
             totalPages: Math.max(1, Math.ceil(rows.length / prev.limit)),
           }));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.warn("Businesses API unavailable, backend may be offline");
         const msg = error instanceof TypeError && error.message === "Failed to fetch"
           ? "Backend server offline. Start it via start-dev.bat."
-          : error.message || "Failed to load businesses";
+          : getErrorMessage(error) || "Failed to load businesses";
         toast.error(msg);
       } finally {
         setLoading(false);
@@ -305,10 +306,10 @@ export default function ApprovedBusinessesPage() {
       setCreateDialogOpen(false);
       resetForm();
       fetchBusinesses(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const msg = error instanceof TypeError && error.message === "Failed to fetch"
         ? "Cannot reach backend server. Please start the backend (run start-dev.bat) and try again."
-        : error.message || "Failed to create business";
+        : getErrorMessage(error) || "Failed to create business";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -350,8 +351,8 @@ export default function ApprovedBusinessesPage() {
       setSelectedBusiness(null);
       resetForm();
       fetchBusinesses(true);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update business");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update business");
     } finally {
       setSubmitting(false);
     }
@@ -375,8 +376,8 @@ export default function ApprovedBusinessesPage() {
       setDeleteDialogOpen(false);
       setSelectedBusiness(null);
       fetchBusinesses(true);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete business");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to delete business");
     } finally {
       setSubmitting(false);
     }

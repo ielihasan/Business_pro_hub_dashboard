@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 
 interface QueueTicket {
   id: string;
@@ -386,11 +387,12 @@ export default function JoinQueuePage({
       toast.success("Successfully joined the queue!");
 
       fetchQueueInfo();
-    } catch (error: any) {
-      if (error.message?.includes("closed")) {
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error);
+      if (msg.includes("closed")) {
         setQueueClosed(true);
       }
-      toast.error(error.message || "Failed to join queue");
+      toast.error(msg || "Failed to join queue");
     } finally {
       setLoading(false);
     }

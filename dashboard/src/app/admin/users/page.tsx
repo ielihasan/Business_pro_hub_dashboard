@@ -74,6 +74,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 
 interface Admin {
   id: string;
@@ -177,9 +178,9 @@ export default function AdminManagementPage() {
           totalPages: Math.max(1, Math.ceil(rows.length / prev.limit)),
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.warn("Admins API unavailable, backend may be offline");
-      toast.error(error.message || "Failed to load admins");
+      toast.error(getErrorMessage(error) || "Failed to load admins");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -238,8 +239,8 @@ export default function AdminManagementPage() {
       setCreateDialogOpen(false);
       resetForm();
       fetchAdmins(true);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create admin");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to create admin");
     } finally {
       setSubmitting(false);
     }
@@ -274,8 +275,8 @@ export default function AdminManagementPage() {
       setSelectedAdmin(null);
       resetForm();
       fetchAdmins(true);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update admin");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update admin");
     } finally {
       setSubmitting(false);
     }
@@ -299,8 +300,8 @@ export default function AdminManagementPage() {
       setDeleteDialogOpen(false);
       setSelectedAdmin(null);
       fetchAdmins(true);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete admin");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to delete admin");
     } finally {
       setSubmitting(false);
     }

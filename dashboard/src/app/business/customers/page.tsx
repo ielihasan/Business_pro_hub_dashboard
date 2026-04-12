@@ -71,6 +71,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -181,22 +182,22 @@ export default function CustomersPage() {
       if (!res.ok) throw new Error(json.error || "Failed to load customers");
 
       const inner = json.data || {};
-      const list: Customer[] = (inner.data || []).map((c: any) => ({
-        id: c.customer_id || c.customer_phone || Math.random().toString(),
-        name: c.customer_name || "Unknown",
-        phone: c.customer_phone || "",
-        email: c.customer_email,
-        total_visits: c.visit_count || 1,
-        completed_visits: c.completed_visits || 0,
-        cancelled_visits: c.cancelled_visits || 0,
-        total_spent: parseFloat(c.total_spent || 0),
-        first_visit: c.first_visit || c.last_visit || new Date().toISOString(),
-        last_visit: c.last_visit || new Date().toISOString(),
-        services_used: c.services_used || [],
-        visit_history: (c.visit_history || []).map((v: any) => ({
-          date: v.date,
-          service: v.service || "Queue Visit",
-          status: v.status || "completed",
+      const list: Customer[] = (inner.data || []).map((c: Record<string, unknown>) => ({
+        id: (c.customer_id as string) || (c.customer_phone as string) || Math.random().toString(),
+        name: (c.customer_name as string) || "Unknown",
+        phone: (c.customer_phone as string) || "",
+        email: c.customer_email as string | undefined,
+        total_visits: (c.visit_count as number) || 1,
+        completed_visits: (c.completed_visits as number) || 0,
+        cancelled_visits: (c.cancelled_visits as number) || 0,
+        total_spent: parseFloat(String(c.total_spent ?? 0)),
+        first_visit: (c.first_visit as string) || (c.last_visit as string) || new Date().toISOString(),
+        last_visit: (c.last_visit as string) || new Date().toISOString(),
+        services_used: (c.services_used as string[]) || [],
+        visit_history: ((c.visit_history as Record<string, unknown>[]) || []).map((v) => ({
+          date: v.date as string,
+          service: (v.service as string) || "Queue Visit",
+          status: (v.status as string) || "completed",
         })),
       }));
       setCustomers(list);
@@ -209,8 +210,8 @@ export default function CustomersPage() {
         repeat_customers: s.repeat_customers ?? list.filter((c) => c.total_visits > 1).length,
         total_visits: s.total_visits ?? list.reduce((sum, c) => sum + c.total_visits, 0),
       });
-    } catch (error: any) {
-      setApiError(error.message || "Failed to load customers");
+    } catch (error: unknown) {
+      setApiError(getErrorMessage(error) || "Failed to load customers");
     } finally {
       setLoading(false);
     }
@@ -240,8 +241,8 @@ export default function CustomersPage() {
 
       setNewCustomer({ name: "", phone: "", email: "", notes: "" });
       setIsAddDialogOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add customer");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to add customer");
     } finally {
       setSubmitting(false);
     }

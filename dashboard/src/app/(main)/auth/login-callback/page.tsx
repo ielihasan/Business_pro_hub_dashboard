@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function LoginCallbackPage() {
   const router = useRouter();
@@ -122,8 +123,8 @@ export default function LoginCallbackPage() {
         await supabase.auth.signOut();
         router.push("/auth/v1/login");
       }
-    } catch (error: any) {
-      console.error("Login callback error:", error);
+    } catch (error: unknown) {
+      console.error("Login callback error:", getErrorMessage(error));
       toast.error("Authentication failed");
       router.push("/auth/v1/login");
     } finally {

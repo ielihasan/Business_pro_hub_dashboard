@@ -75,7 +75,7 @@ export default function BusinessDashboardPage() {
       ]);
 
       // Queue stats
-      const rawEntries: any[] = queueEntries || [];
+      const rawEntries = queueEntries || [];
 
       const activeQueues = rawEntries.filter(
         (q) => q.status === "waiting" || q.status === "in_progress" || q.status === "serving"
@@ -115,7 +115,7 @@ export default function BusinessDashboardPage() {
       }));
 
       // Orders stats
-      const ordersArr: any[] = orders || [];
+      const ordersArr = orders || [];
       const totalOrders = ordersArr.length;
       const pendingOrders = ordersArr.filter((o) => o.status === "pending" || o.status === "processing").length;
       const completedOrders = ordersArr.filter((o) => o.status === "completed").length;

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
+import { getErrorMessage } from "@/lib/utils";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -173,8 +174,8 @@ export default function ServicesPage() {
       setDialogOpen(false);
       resetForm();
       fetchQueueTypes();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save service");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to save service");
     } finally {
       setSaving(false);
     }
@@ -198,8 +199,8 @@ export default function ServicesPage() {
       toast.success("Service deleted!");
       setDeleteTarget(null);
       fetchQueueTypes();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete service");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to delete service");
     } finally {
       setDeleting(false);
     }

@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { registerUser } from "@/actions/auth/register";
+import { getErrorMessage } from "@/lib/utils";
 
 // Admin Registration Schema
 const AdminFormSchema = z
@@ -126,8 +127,8 @@ export function RegisterFormNew() {
 
       // Redirect to email verification pending page
       router.push("/auth/verify-email-pending");
-    } catch (err: any) {
-      toast.error(err.message || "Admin registration failed.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Admin registration failed.");
     } finally {
       setIsLoading(false);
     }
@@ -170,8 +171,8 @@ export function RegisterFormNew() {
 
       // Redirect to email verification pending page
       router.push("/auth/verify-email-pending");
-    } catch (err: any) {
-      toast.error(err.message || "Business registration failed.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Business registration failed.");
     } finally {
       setIsLoading(false);
     }
@@ -198,8 +199,8 @@ export function RegisterFormNew() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      toast.error(err.message || "Google sign-in failed");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Google sign-in failed");
       setIsGoogleLoading(false);
     }
   };

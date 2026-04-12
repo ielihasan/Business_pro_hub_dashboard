@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Loader2, ArrowRight, Store, Mail } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { getErrorMessage } from "@/lib/utils";
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -49,9 +50,9 @@ function VerifyEmailContent() {
         setBusinessName(data.businessName || "");
         setIsAdminApplication(data.isAdminApplication || false);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setStatus("error");
-      setMessage(error.message || "An error occurred during verification");
+      setMessage(getErrorMessage(error) || "An error occurred during verification");
     }
   };
 
