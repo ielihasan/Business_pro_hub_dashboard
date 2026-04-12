@@ -365,7 +365,9 @@ export default function ServicesRevenuePage() {
                 <Banknote className="h-4 w-4 text-green-700" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-green-800">{fmt(summary?.total_revenue ?? 0)}</p>
+            {revenueLoading
+              ? <Skeleton className="h-8 w-28 mt-1" />
+              : <p className="text-2xl font-bold text-green-800">{fmt(summary?.total_revenue ?? 0)}</p>}
             <p className="text-xs text-green-600 mt-1">All time, completed orders</p>
           </CardContent>
         </Card>
@@ -378,8 +380,10 @@ export default function ServicesRevenuePage() {
                 <TrendingUp className="h-4 w-4 text-blue-700" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-blue-800">{fmt(summary?.today_revenue ?? 0)}</p>
-            {trendPct !== null && (
+            {revenueLoading
+              ? <Skeleton className="h-8 w-24 mt-1" />
+              : <p className="text-2xl font-bold text-blue-800">{fmt(summary?.today_revenue ?? 0)}</p>}
+            {!revenueLoading && trendPct !== null && (
               <p className={`text-xs mt-1 flex items-center gap-1 ${trendPct >= 0 ? "text-green-600" : "text-red-500"}`}>
                 {trendPct >= 0
                   ? <TrendingUp className="h-3 w-3" />
@@ -398,7 +402,9 @@ export default function ServicesRevenuePage() {
                 <CreditCard className="h-4 w-4 text-amber-700" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-amber-800">{fmt(summary?.advance_collected ?? 0)}</p>
+            {revenueLoading
+              ? <Skeleton className="h-8 w-20 mt-1" />
+              : <p className="text-2xl font-bold text-amber-800">{fmt(summary?.advance_collected ?? 0)}</p>}
             <p className="text-xs text-amber-600 mt-1">From all active queues</p>
           </CardContent>
         </Card>
@@ -411,7 +417,9 @@ export default function ServicesRevenuePage() {
                 <AlertCircle className="h-4 w-4 text-purple-700" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-purple-800">{fmt(summary?.payment_outstanding ?? 0)}</p>
+            {revenueLoading
+              ? <Skeleton className="h-8 w-20 mt-1" />
+              : <p className="text-2xl font-bold text-purple-800">{fmt(summary?.payment_outstanding ?? 0)}</p>}
             <p className="text-xs text-purple-600 mt-1">Remaining for active customers</p>
           </CardContent>
         </Card>
@@ -553,8 +561,85 @@ export default function ServicesRevenuePage() {
         <TabsContent value="revenue" className="space-y-6">
 
           {revenueLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            /* ── Revenue skeleton — mirrors exact layout so tab feels instant ── */
+            <div className="space-y-6 animate-pulse">
+              {/* Chart card skeleton */}
+              <div className="bg-white rounded-xl border p-6 space-y-4">
+                <div className="space-y-1">
+                  <Skeleton className="h-5 w-44" />
+                  <Skeleton className="h-3 w-64" />
+                </div>
+                {/* Fake area chart */}
+                <div className="relative h-[200px] flex items-end gap-3 pt-6">
+                  {[55, 70, 45, 80, 60, 90, 65].map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
+                      <div
+                        className="w-full rounded-t bg-gradient-to-t from-emerald-100 to-emerald-50"
+                        style={{ height: `${h}%` }}
+                      />
+                    </div>
+                  ))}
+                  {/* Y-axis ghost */}
+                  <div className="absolute left-0 top-0 bottom-6 w-12 flex flex-col justify-between">
+                    {[3, 2, 1, 0].map(i => <Skeleton key={i} className="h-2.5 w-10" />)}
+                  </div>
+                </div>
+                {/* X labels */}
+                <div className="flex gap-3 border-t pt-2">
+                  {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+                    <div key={d} className="flex-1 flex justify-center">
+                      <Skeleton className="h-2.5 w-7" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table card skeleton */}
+              <div className="bg-white rounded-xl border p-6 space-y-4">
+                <div className="space-y-1">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-3 w-72" />
+                </div>
+                <div className="space-y-0 divide-y">
+                  {/* Header row */}
+                  <div className="flex gap-4 py-3">
+                    {[140, 80, 100, 80, 110, 90, 100].map((w, i) => (
+                      <Skeleton key={i} className="h-3 rounded" style={{ width: w }} />
+                    ))}
+                  </div>
+                  {/* Data rows */}
+                  {Array.from({ length: 4 }).map((_, row) => (
+                    <div key={row} className="flex items-center gap-4 py-3.5">
+                      <div className="flex items-center gap-2" style={{ width: 140 }}>
+                        <Skeleton className="w-7 h-7 rounded-md shrink-0" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-3 w-20" />
+                          <Skeleton className="h-2.5 w-14" />
+                        </div>
+                      </div>
+                      {[80, 100, 80, 110, 90, 100].map((w, i) => (
+                        <Skeleton key={i} className="h-3 rounded ml-auto" style={{ width: w }} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom 3 cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="w-9 h-9 rounded-lg shrink-0" />
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-3 w-28" />
+                        <Skeleton className="h-7 w-16" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-2.5 w-48" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <>
