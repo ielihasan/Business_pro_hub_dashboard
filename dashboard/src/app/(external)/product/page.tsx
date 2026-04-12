@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ElixaFooter } from "@/components/elixa-footer";
 import { motion } from "framer-motion";
 import {
   Store,
@@ -260,15 +261,7 @@ export default function ProductPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 bg-gray-50 border-t">
-        <div className="container mx-auto px-6 text-center">
-          <p className="text-gray-500 mb-2">© 2026 Business Pro Hub. All rights reserved.</p>
-          <p className="text-sm text-gray-400">
-            A product by <span className="font-medium">Elixa Software Private Limited</span>
-          </p>
-        </div>
-      </footer>
+      <ElixaFooter />
     </div>
   );
 }
