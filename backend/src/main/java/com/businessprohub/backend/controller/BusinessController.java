@@ -87,8 +87,8 @@ public class BusinessController {
                 String orphanId = authAdmin.findUserIdByEmail(email);
                 if (orphanId != null && !businessRepo.existsById(orphanId)) {
                     // Safe to delete — no approved business linked to this auth user
-                    try { authAdmin.deleteUser(orphanId); } catch (Exception ex) {
-                        log.warn("Failed to delete orphaned auth user {}: {}", orphanId, ex.getMessage());
+                    try { authAdmin.deleteUser(orphanId); } catch (Exception cleanupEx) {
+                        log.warn("Failed to delete orphaned auth user {}: {}", orphanId, cleanupEx.getMessage());
                     }
                     // Retry creation with a clean slate
                     authUser = authAdmin.createUserWithMeta(email, password,
