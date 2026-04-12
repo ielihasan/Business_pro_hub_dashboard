@@ -181,10 +181,15 @@ export default function OrdersPage() {
       if (!res.ok) throw new Error(json.error || "Failed to load orders");
 
       const inner = json.data || {};
-      const list: Order[] = (inner.data || []).map((o: Record<string, unknown>) => ({
-        ...(o as Order),
-        items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items as string); } catch { return []; } })() : ((o.items as Order["items"]) ?? []),
-      }));
+      const list: Order[] = (inner.data || []).map((o: unknown) => {
+        const order = o as Order;
+        return {
+          ...order,
+          items: typeof order.items === 'string'
+            ? (() => { try { return JSON.parse(order.items as string); } catch { return []; } })()
+            : (order.items ?? []),
+        };
+      });
       setOrders(list);
       setTotalCount(inner.total || 0);
       setTotalPages(inner.total_pages || 1);
