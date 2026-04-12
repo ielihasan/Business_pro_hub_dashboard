@@ -234,7 +234,15 @@ function QueueLane({ queueType, entries, isActive, onToggleActive, onOpen }: Que
           {queueType?.description ? (
             <p className="text-xs text-gray-400 truncate mt-0.5">{queueType.description}</p>
           ) : (
-            <p className="text-xs text-gray-400 mt-0.5">Open to all customers</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Open to all customers
+              {!queueType && (
+                <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">
+                  <Banknote className="h-2.5 w-2.5" />
+                  Rs.200 advance
+                </span>
+              )}
+            </p>
           )}
           {/* Capacity mini-bar */}
           <div className="mt-1.5 flex items-center gap-2">
@@ -559,7 +567,7 @@ export default function QueueManagementPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [generalQueueActive, setGeneralQueueActive] = useState(true);
+  const [generalQueueActive, setGeneralQueueActive] = useState(false);
 
   // Add customer dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -854,10 +862,13 @@ export default function QueueManagementPage() {
   }, [queueTypes]);
 
   /* ── QR helpers */
+  const GENERAL_QUEUE_ADVANCE = 200;
+
   const buildJoinUrl = (queueTypeId?: string, price?: number) => {
     const bId = business?.id || "demo-business";
     const base = `${window.location.origin}/join-queue/${bId}`;
-    if (!queueTypeId) return base;
+    // General Queue always carries the advance payment amount
+    if (!queueTypeId) return `${base}?advance=${GENERAL_QUEUE_ADVANCE}`;
     const priceParam = price && price > 0 ? `&price=${price}` : "";
     return `${base}?queue_type=${queueTypeId}${priceParam}`;
   };

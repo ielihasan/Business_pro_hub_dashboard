@@ -91,6 +91,8 @@ export default function JoinQueuePage({
   const searchParams = useSearchParams();
   const queueTypeFromUrl = searchParams.get("queue_type");
   const priceFromUrl = parseFloat(searchParams.get("price") || "0") || 0;
+  /** Advance payment required for the General Queue (no specific queue type) */
+  const advanceFromUrl = parseFloat(searchParams.get("advance") || "0") || 0;
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -352,6 +354,9 @@ export default function JoinQueuePage({
       const unitPrice = selectedType?.price ?? 0;
       const totalPrice = unitPrice * quantity;
 
+      // Advance payment applies to General Queue (no specific queue type)
+      const advancePaid = !selectedQueueType && advanceFromUrl > 0 ? advanceFromUrl : 0;
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -363,6 +368,8 @@ export default function JoinQueuePage({
           quantity,
           unit_price: unitPrice,
           total_price: totalPrice,
+          advance_paid: advancePaid > 0 ? advancePaid : undefined,
+          payment_left: advancePaid > 0 ? Math.max(0, totalPrice - advancePaid) : undefined,
           // Pass user_id if this is a logged-in app user
           user_id: appUser?.id || undefined,
         }),
@@ -590,6 +597,15 @@ export default function JoinQueuePage({
                   </span>
                 </div>
               )}
+              {advanceFromUrl > 0 && !selectedQueueType && (
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-amber-200 bg-amber-50 -mx-1 px-1 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Banknote className="h-4 w-4 text-amber-500" />
+                    <span className="text-amber-700 font-medium">Advance due on arrival</span>
+                  </div>
+                  <span className="font-bold text-amber-700">Rs.{advanceFromUrl.toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Instructions */}
@@ -703,6 +719,24 @@ export default function JoinQueuePage({
               style={{ borderColor: selectedTypeDetails.color, backgroundColor: selectedTypeDetails.color + "10" }}
             >
               <p className="text-sm text-gray-600">{selectedTypeDetails.description}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Advance payment notice — shown for General Queue (no specific type) */}
+        {!selectedQueueType && advanceFromUrl > 0 && (
+          <div className="px-6 pb-4">
+            <div className="p-4 rounded-xl border bg-amber-50 border-amber-200 space-y-2">
+              <div className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-amber-600 shrink-0" />
+                <span className="font-semibold text-amber-800">
+                  Rs. {advanceFromUrl.toLocaleString()} Advance Payment Required
+                </span>
+              </div>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                An advance payment of <strong>Rs. {advanceFromUrl.toLocaleString()}</strong> is collected
+                when you arrive. This will be applied toward your total bill.
+              </p>
             </div>
           </div>
         )}
