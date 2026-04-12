@@ -245,7 +245,7 @@ export default function OAuthCallbackPage() {
       if (error) throw error;
 
       sessionStorage.removeItem("pendingOAuthRole");
-      sessionStorage.setItem("lastRegisteredEmail", user.email);
+      sessionStorage.setItem("lastRegisteredEmail", user.email ?? "");
       toast.success("Business registration submitted! Awaiting admin approval.");
       router.push("/auth/waiting-approval-business");
     } catch (error: unknown) {
