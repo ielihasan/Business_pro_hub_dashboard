@@ -84,33 +84,54 @@ interface ServiceRevenue {
   service_id: string | null;
   service_name: string;
   color: string;
-  total_revenue: number;
-  today_revenue: number;
+  total_booked: number;
+  completed_revenue: number;
   advance_collected: number;
   payment_outstanding: number;
-  customers_served: number;
-  total_customers: number;
-  avg_revenue_per_customer: number;
+  total_visits: number;
+  paid_visits: number;
+  completed_count: number;
+  avg_booking_value: number;
 }
 
 interface RevenueSummary {
-  total_revenue: number;
-  today_revenue: number;
+  total_booked: number;
+  completed_revenue: number;
   advance_collected: number;
   payment_outstanding: number;
-  total_served: number;
+  total_visits: number;
+  paid_visits: number;
+  completed_count: number;
 }
 
 interface DailyTrend {
   date: string;
   day: string;
-  revenue: number;
+  booked: number;
+  advance: number;
+}
+
+interface RecentTransaction {
+  id: string;
+  ticket_no: string;
+  customer_name: string;
+  customer_phone: string;
+  service_name: string;
+  service_color: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  advance_paid: number;
+  payment_left: number;
+  status: string;
+  created_at: string;
 }
 
 interface RevenueData {
   summary: RevenueSummary;
   by_service: ServiceRevenue[];
   daily_trend: DailyTrend[];
+  recent_transactions: RecentTransaction[];
 }
 
 /* ─── Component ─────────────────────────────────────────────── */
@@ -304,8 +325,8 @@ export default function ServicesRevenuePage() {
   const trendPct = (() => {
     if (!revenueData?.daily_trend || revenueData.daily_trend.length < 2) return null;
     const trend = revenueData.daily_trend;
-    const last = Number(trend[trend.length - 1].revenue);
-    const prev = Number(trend[trend.length - 2].revenue);
+    const last = Number(trend[trend.length - 1].booked);
+    const prev = Number(trend[trend.length - 2].booked);
     if (prev === 0) return last > 0 ? 100 : 0;
     return ((last - prev) / prev) * 100;
   })();
@@ -360,29 +381,29 @@ export default function ServicesRevenuePage() {
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-green-700">Total Revenue</p>
+              <p className="text-xs font-medium text-green-700">Total Booked</p>
               <div className="p-1.5 bg-green-200 rounded-lg">
                 <Banknote className="h-4 w-4 text-green-700" />
               </div>
             </div>
             {revenueLoading
               ? <Skeleton className="h-8 w-28 mt-1" />
-              : <p className="text-2xl font-bold text-green-800">{fmt(summary?.total_revenue ?? 0)}</p>}
-            <p className="text-xs text-green-600 mt-1">All time, completed orders</p>
+              : <p className="text-2xl font-bold text-green-800">{fmt(summary?.total_booked ?? 0)}</p>}
+            <p className="text-xs text-green-600 mt-1">All paid queue entries</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-medium text-blue-700">Today&apos;s Revenue</p>
+              <p className="text-xs font-medium text-blue-700">Completed Revenue</p>
               <div className="p-1.5 bg-blue-200 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-blue-700" />
               </div>
             </div>
             {revenueLoading
               ? <Skeleton className="h-8 w-24 mt-1" />
-              : <p className="text-2xl font-bold text-blue-800">{fmt(summary?.today_revenue ?? 0)}</p>}
+              : <p className="text-2xl font-bold text-blue-800">{fmt(summary?.completed_revenue ?? 0)}</p>}
             {!revenueLoading && trendPct !== null && (
               <p className={`text-xs mt-1 flex items-center gap-1 ${trendPct >= 0 ? "text-green-600" : "text-red-500"}`}>
                 {trendPct >= 0
@@ -520,15 +541,15 @@ export default function ServicesRevenuePage() {
                         </div>
 
                         {/* Mini revenue strip */}
-                        {svcRev && Number(svcRev.total_revenue) > 0 && (
+                        {svcRev && Number(svcRev.total_booked) > 0 && (
                           <div className="mt-3 pt-3 border-t border-dashed flex items-center justify-between text-xs"
                                style={{ borderColor: qt.color + "40" }}>
                             <span className="text-gray-500 flex items-center gap-1">
                               <CheckCircle className="h-3 w-3 text-green-500" />
-                              {svcRev.customers_served} served
+                              {svcRev.paid_visits} paid visits
                             </span>
                             <span className="font-semibold text-green-700">
-                              {fmt(Number(svcRev.total_revenue))}
+                              {fmt(Number(svcRev.total_booked))}
                             </span>
                           </div>
                         )}
@@ -643,44 +664,57 @@ export default function ServicesRevenuePage() {
             </div>
           ) : (
             <>
-              {/* 7-Day Trend Chart */}
+              {/* 14-Day Trend Chart */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <TrendingUp className="h-5 w-5" />7-Day Revenue Trend
+                    <TrendingUp className="h-5 w-5" />14-Day Revenue Trend
                   </CardTitle>
-                  <p className="text-sm text-gray-500">Daily completed-order revenue for the last 7 days</p>
+                  <p className="text-sm text-gray-500">Daily booked revenue and advance collected over the last 14 days</p>
                 </CardHeader>
                 <CardContent>
-                  {revenueData?.daily_trend && revenueData.daily_trend.some(d => Number(d.revenue) > 0) ? (
+                  {revenueData?.daily_trend && revenueData.daily_trend.some(d => Number(d.booked) > 0 || Number(d.advance) > 0) ? (
                     <ResponsiveContainer width="100%" height={200}>
                       <AreaChart data={revenueData.daily_trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id="bookedGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                           </linearGradient>
+                          <linearGradient id="advanceGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                          </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                        <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                         <YAxis
                           tick={{ fontSize: 11 }}
                           tickLine={false}
                           axisLine={false}
-                          tickFormatter={(v) => `Rs.${(v / 1000).toFixed(0)}k`}
-                          width={55}
+                          tickFormatter={(v) => v >= 1000 ? `Rs.${(v / 1000).toFixed(0)}k` : `Rs.${v}`}
+                          width={60}
                         />
                         <Tooltip
-                          formatter={(value: number) => [fmt(value), "Revenue"]}
+                          formatter={(value: number, name: string) => [fmt(value), name === "booked" ? "Total Booked" : "Advance"]}
                           contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
                         />
                         <Area
                           type="monotone"
-                          dataKey="revenue"
+                          dataKey="booked"
                           stroke="#10b981"
                           strokeWidth={2}
-                          fill="url(#revGradient)"
+                          fill="url(#bookedGradient)"
                           dot={{ r: 3, fill: "#10b981" }}
+                          activeDot={{ r: 5 }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="advance"
+                          stroke="#f59e0b"
+                          strokeWidth={2}
+                          fill="url(#advanceGradient)"
+                          dot={{ r: 3, fill: "#f59e0b" }}
                           activeDot={{ r: 5 }}
                         />
                       </AreaChart>
@@ -716,12 +750,12 @@ export default function ServicesRevenuePage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Service</TableHead>
-                            <TableHead className="text-right">Customers</TableHead>
-                            <TableHead className="text-right">Total Revenue</TableHead>
-                            <TableHead className="text-right">Today</TableHead>
+                            <TableHead className="text-right">Paid Visits</TableHead>
+                            <TableHead className="text-right">Total Booked</TableHead>
+                            <TableHead className="text-right">Completed</TableHead>
                             <TableHead className="text-right">Advance Collected</TableHead>
                             <TableHead className="text-right">Outstanding</TableHead>
-                            <TableHead className="text-right">Avg / Customer</TableHead>
+                            <TableHead className="text-right">Avg / Visit</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -737,21 +771,23 @@ export default function ServicesRevenuePage() {
                                   </div>
                                   <div>
                                     <p className="font-medium text-sm text-gray-900">{svc.service_name}</p>
-                                    <p className="text-xs text-gray-400">{svc.total_customers} total visits</p>
+                                    <p className="text-xs text-gray-400">{svc.total_visits} total visits</p>
                                   </div>
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1 text-sm">
                                   <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                                  <span>{svc.customers_served}</span>
+                                  <span>{svc.paid_visits}</span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-right font-semibold text-green-700">
-                                {fmt(Number(svc.total_revenue))}
+                                {fmt(Number(svc.total_booked))}
                               </TableCell>
                               <TableCell className="text-right text-blue-700">
-                                {fmt(Number(svc.today_revenue))}
+                                {Number(svc.completed_revenue) > 0
+                                  ? fmt(Number(svc.completed_revenue))
+                                  : <span className="text-gray-400 text-xs">—</span>}
                               </TableCell>
                               <TableCell className="text-right text-amber-700">
                                 {fmt(Number(svc.advance_collected))}
@@ -766,8 +802,8 @@ export default function ServicesRevenuePage() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right text-gray-600 text-sm">
-                                {Number(svc.avg_revenue_per_customer) > 0
-                                  ? fmt(Number(svc.avg_revenue_per_customer))
+                                {Number(svc.avg_booking_value) > 0
+                                  ? fmt(Number(svc.avg_booking_value))
                                   : <span className="text-gray-400">—</span>}
                               </TableCell>
                             </TableRow>
@@ -776,9 +812,11 @@ export default function ServicesRevenuePage() {
                           {summary && (
                             <TableRow className="bg-gray-50 font-semibold border-t-2">
                               <TableCell className="text-gray-700">Total</TableCell>
-                              <TableCell className="text-right text-gray-700">{summary.total_served}</TableCell>
-                              <TableCell className="text-right text-green-700">{fmt(Number(summary.total_revenue))}</TableCell>
-                              <TableCell className="text-right text-blue-700">{fmt(Number(summary.today_revenue))}</TableCell>
+                              <TableCell className="text-right text-gray-700">{summary.paid_visits}</TableCell>
+                              <TableCell className="text-right text-green-700">{fmt(Number(summary.total_booked))}</TableCell>
+                              <TableCell className="text-right text-blue-700">
+                                {Number(summary.completed_revenue) > 0 ? fmt(Number(summary.completed_revenue)) : "—"}
+                              </TableCell>
                               <TableCell className="text-right text-amber-700">{fmt(Number(summary.advance_collected))}</TableCell>
                               <TableCell className="text-right text-red-600">
                                 {Number(summary.payment_outstanding) > 0 ? fmt(Number(summary.payment_outstanding)) : "—"}
@@ -802,11 +840,11 @@ export default function ServicesRevenuePage() {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Customers Served</p>
-                        <p className="text-2xl font-bold text-gray-900">{summary?.total_served ?? 0}</p>
+                        <p className="text-sm font-medium text-gray-700">Completed Visits</p>
+                        <p className="text-2xl font-bold text-gray-900">{summary?.completed_count ?? 0}</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400">Total completed queue visits across all services</p>
+                    <p className="text-xs text-gray-400">Paid visits with status = completed</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -830,18 +868,96 @@ export default function ServicesRevenuePage() {
                         <Banknote className="h-5 w-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Avg per Customer</p>
+                        <p className="text-sm font-medium text-gray-700">Avg per Paid Visit</p>
                         <p className="text-2xl font-bold text-gray-900">
-                          {summary && summary.total_served > 0
-                            ? fmt(Math.round(Number(summary.total_revenue) / summary.total_served))
+                          {summary && (summary.paid_visits ?? 0) > 0
+                            ? fmt(Math.round(Number(summary.total_booked) / summary.paid_visits))
                             : "—"}
                         </p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400">Average revenue per completed visit</p>
+                    <p className="text-xs text-gray-400">Average booking value across paid visits</p>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Recent Transactions */}
+              {revenueData?.recent_transactions && revenueData.recent_transactions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CreditCard className="h-5 w-5" />Recent Transactions
+                    </CardTitle>
+                    <p className="text-sm text-gray-500">Last {revenueData.recent_transactions.length} paid queue entries</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ticket</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Service</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Advance</TableHead>
+                            <TableHead className="text-right">Left</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {revenueData.recent_transactions.map((txn, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs font-semibold text-gray-700">
+                                #{txn.ticket_no}
+                              </TableCell>
+                              <TableCell>
+                                <p className="text-sm font-medium">{txn.customer_name || "—"}</p>
+                                <p className="text-xs text-gray-400">{txn.customer_phone || ""}</p>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <div
+                                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: txn.service_color }}
+                                  />
+                                  <span className="text-sm">{txn.service_name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-green-700 text-sm">
+                                {fmt(Number(txn.total_price))}
+                              </TableCell>
+                              <TableCell className="text-right text-amber-700 text-sm">
+                                {Number(txn.advance_paid) > 0 ? fmt(Number(txn.advance_paid)) : <span className="text-gray-400">—</span>}
+                              </TableCell>
+                              <TableCell className="text-right text-sm">
+                                {Number(txn.payment_left) > 0
+                                  ? <span className="text-red-600 font-medium">{fmt(Number(txn.payment_left))}</span>
+                                  : <span className="text-gray-400">—</span>}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={`text-[10px] capitalize ${
+                                    txn.status === "completed" ? "bg-green-100 text-green-700 border-green-200" :
+                                    txn.status === "cancelled" ? "bg-red-100 text-red-600 border-red-200" :
+                                    txn.status === "waiting"   ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                    "bg-gray-100 text-gray-600 border-gray-200"
+                                  }`}
+                                >
+                                  {txn.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-500">
+                                {txn.created_at ? new Date(txn.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric" }) : "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </TabsContent>
