@@ -867,45 +867,15 @@ export default function LandingPage() {
             </div>
           </DialogHeader>
           <div className="relative aspect-video bg-gray-900">
-            {/* Placeholder for demo video - replace with actual video embed */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-              <div className="h-24 w-24 rounded-full bg-white/10 flex items-center justify-center mb-6 hover:bg-white/20 transition-colors cursor-pointer">
-                <Play className="h-12 w-12 text-white ml-1" />
-              </div>
-              <h3 className="text-2xl font-semibold mb-2">Product Demo Video</h3>
-              <p className="text-gray-400 text-center max-w-md px-4">
-                See how BusinessHub Pro can transform your business operations with smart queue management and real-time analytics.
-              </p>
-              <div className="mt-8 grid grid-cols-3 gap-8 text-center">
-                <div>
-                  <div className="text-3xl font-bold text-white">40%</div>
-                  <div className="text-sm text-gray-400">Reduced Wait Times</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-white">10K+</div>
-                  <div className="text-sm text-gray-400">Active Businesses</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-white">4.9/5</div>
-                  <div className="text-sm text-gray-400">Customer Rating</div>
-                </div>
-              </div>
-              <div className="mt-8 flex gap-4">
-                <Link href="/auth/v1/register">
-                  <Button className="bg-white text-black hover:bg-gray-100">
-                    Start Free Trial
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Button
-                  className="bg-white/10 text-white border-2 border-white hover:bg-white hover:text-black transition-colors"
-                  onClick={() => setIsDemoOpen(false)}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Close
-                </Button>
-              </div>
-            </div>
+            {isDemoOpen && (
+              <iframe
+                src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
+                title="Business Pro Hub Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              />
+            )}
           </div>
           <div className="p-4 bg-gray-900 border-t border-gray-800">
             <p className="text-xs text-gray-500 text-center">
