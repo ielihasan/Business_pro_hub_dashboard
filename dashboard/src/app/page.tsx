@@ -854,7 +854,7 @@ export default function LandingPage() {
       {/* Demo Video Modal */}
       {isDemoOpen && (
         <div
-          className="fixed inset-0 z-[200] bg-black flex items-center justify-center p-6"
+          className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => setIsDemoOpen(false)}
         >
           <div
@@ -867,14 +867,13 @@ export default function LandingPage() {
             >
               <X className="h-5 w-5 text-white" />
             </button>
-            <div className="relative aspect-video overflow-hidden">
+            <div className="aspect-video">
               <iframe
                 src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1&rel=0&modestbranding=1"
                 title="Business Pro Hub Demo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
-                className="absolute top-0 left-0 w-full"
-                style={{ height: "calc(100% + 48px)" }}
+                className="w-full h-full"
               />
             </div>
           </div>
