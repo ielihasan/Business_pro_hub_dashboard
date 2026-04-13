@@ -867,13 +867,14 @@ export default function LandingPage() {
             >
               <X className="h-5 w-5 text-white" />
             </button>
-            <div className="aspect-video">
+            <div className="relative aspect-video overflow-hidden">
               <iframe
-                src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
+                src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1&rel=0&modestbranding=1"
                 title="Business Pro Hub Demo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
-                className="w-full h-full"
+                className="absolute top-0 left-0 w-full"
+                style={{ height: "calc(100% + 48px)" }}
               />
             </div>
           </div>
