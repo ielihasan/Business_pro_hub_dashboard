@@ -854,7 +854,7 @@ export default function LandingPage() {
       {/* Demo Video Modal */}
       {isDemoOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-6"
+          className="fixed inset-0 z-[200] bg-black flex items-center justify-center p-6"
           onClick={() => setIsDemoOpen(false)}
         >
           <div
