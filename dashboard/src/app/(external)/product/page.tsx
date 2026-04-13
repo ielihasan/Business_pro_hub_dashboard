@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ElixaFooter } from "@/components/elixa-footer";
 import { motion } from "framer-motion";
@@ -16,12 +17,16 @@ import {
   Play,
   Zap,
   Star,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+const DEMO_VIDEO_ID = "UhjPdHN2jlA";
+
 export default function ProductPage() {
+  const [showVideo, setShowVideo] = useState(false);
   const features = [
     {
       icon: Clock,
@@ -118,7 +123,7 @@ export default function ProductPage() {
                 Start Free Trial
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="gap-2">
+            <Button size="lg" variant="outline" className="gap-2" onClick={() => setShowVideo(true)}>
               <Play className="h-4 w-4" />
               Watch Demo
             </Button>
@@ -250,9 +255,12 @@ export default function ProductPage() {
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
             Watch our product demo to see how BusinessHub Pro can transform your business operations.
           </p>
-          <div className="max-w-4xl mx-auto bg-gray-800 rounded-2xl aspect-video flex items-center justify-center">
+          <div
+            className="max-w-4xl mx-auto bg-gray-800 rounded-2xl aspect-video flex items-center justify-center cursor-pointer group"
+            onClick={() => setShowVideo(true)}
+          >
             <div className="text-center">
-              <div className="h-20 w-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-white/20 transition-colors">
+              <div className="h-20 w-20 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center mx-auto mb-4 transition-colors">
                 <Play className="h-10 w-10 text-white ml-1" />
               </div>
               <p className="text-gray-400">Click to play demo video</p>
@@ -262,6 +270,33 @@ export default function ProductPage() {
       </section>
 
       <ElixaFooter />
+
+      {/* Video Modal */}
+      {showVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setShowVideo(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowVideo(false)}
+              className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <iframe
+              src={`https://www.youtube.com/embed/${DEMO_VIDEO_ID}?autoplay=1`}
+              title="Business Pro Hub Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
