@@ -50,6 +50,19 @@ const BusinessOwnerFormSchema = z
     path: ["confirmPassword"],
   });
 
+// ── Address data ─────────────────────────────────────────────────────────────
+const COUNTRIES = ["Pakistan", "United Arab Emirates", "Saudi Arabia", "United Kingdom", "United States", "Canada", "Australia", "Other"];
+
+const STATE_CITIES: Record<string, string[]> = {
+  Punjab: ["Lahore", "Faisalabad", "Rawalpindi", "Gujranwala", "Multan", "Sialkot", "Bahawalpur", "Sargodha", "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat", "Kasur", "Sahiwal", "Okara"],
+  Sindh: ["Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Mirpur Khas", "Khairpur", "Thatta", "Dadu", "Jacobabad", "Shikarpur"],
+  "Khyber Pakhtunkhwa": ["Peshawar", "Abbottabad", "Mardan", "Mingora", "Nowshera", "Dera Ismail Khan", "Kohat", "Mansehra", "Swabi", "Charsadda"],
+  Balochistan: ["Quetta", "Gwadar", "Turbat", "Khuzdar", "Hub", "Chaman", "Zhob", "Dera Murad Jamali"],
+  "Islamabad Capital Territory": ["Islamabad"],
+  "Gilgit-Baltistan": ["Gilgit", "Skardu", "Chilas", "Hunza", "Ghanche"],
+  "Azad Jammu & Kashmir": ["Muzaffarabad", "Mirpur", "Rawalakot", "Kotli", "Bagh"],
+};
+
 export function RegisterFormNew() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -369,47 +382,98 @@ export function RegisterFormNew() {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={businessForm.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>City <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="e.g. Karachi" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={businessForm.control}
-                name="state"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>State / Province <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="e.g. Sindh" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <FormField
               control={businessForm.control}
               name="country"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="e.g. Pakistan" />
-                  </FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      businessForm.setValue("state", "");
+                      businessForm.setValue("city", "");
+                    }}
+                  >
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={businessForm.control}
+              name="state"
+              render={({ field }) => {
+                const selectedCountry = businessForm.watch("country");
+                const isPakistan = selectedCountry === "Pakistan";
+                return (
+                  <FormItem>
+                    <FormLabel>State / Province <span className="text-red-500">*</span></FormLabel>
+                    {isPakistan ? (
+                      <Select
+                        value={field.value}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          businessForm.setValue("city", "");
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.keys(STATE_CITIES).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <FormControl>
+                        <Input {...field} placeholder="Enter state / province" />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={businessForm.control}
+              name="city"
+              render={({ field }) => {
+                const selectedCountry = businessForm.watch("country");
+                const selectedState  = businessForm.watch("state");
+                const isPakistan = selectedCountry === "Pakistan";
+                const cities = isPakistan && selectedState ? STATE_CITIES[selectedState] ?? [] : [];
+                return (
+                  <FormItem>
+                    <FormLabel>City <span className="text-red-500">*</span></FormLabel>
+                    {isPakistan ? (
+                      <Select value={field.value} onValueChange={field.onChange} disabled={!selectedState}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={selectedState ? "Select city" : "Select province first"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <FormControl>
+                        <Input {...field} placeholder="Enter city" />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
