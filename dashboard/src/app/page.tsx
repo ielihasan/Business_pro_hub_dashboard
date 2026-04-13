@@ -851,29 +851,31 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Demo Video Fullscreen Overlay */}
+      {/* Demo Video Modal */}
       {isDemoOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-6"
           onClick={() => setIsDemoOpen(false)}
         >
-          <button
-            onClick={() => setIsDemoOpen(false)}
-            className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-          >
-            <X className="h-5 w-5 text-white" />
-          </button>
           <div
-            className="w-full h-full"
+            className="relative w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <iframe
-              src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
-              title="Business Pro Hub Demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              className="w-full h-full"
-            />
+            <button
+              onClick={() => setIsDemoOpen(false)}
+              className="absolute top-3 right-3 z-10 h-9 w-9 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition-colors"
+            >
+              <X className="h-5 w-5 text-white" />
+            </button>
+            <div className="aspect-video">
+              <iframe
+                src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
+                title="Business Pro Hub Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
           </div>
         </div>
       )}
