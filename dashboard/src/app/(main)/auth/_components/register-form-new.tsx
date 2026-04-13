@@ -42,7 +42,8 @@ const BusinessOwnerFormSchema = z
     city: z.string().min(2, "City is required"),
     state: z.string().min(2, "State / Province is required"),
     country: z.string().min(2, "Country is required"),
-    businessPhone: z.string().min(10, "Valid phone number required"),
+    phoneCode: z.string().min(1, "Select a country code"), // stores country name, code looked up at submit
+    businessPhone: z.string().min(7, "Valid phone number required"),
     businessDescription: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -50,17 +51,76 @@ const BusinessOwnerFormSchema = z
     path: ["confirmPassword"],
   });
 
-// ── Address data ─────────────────────────────────────────────────────────────
-const COUNTRIES = ["Pakistan", "United Arab Emirates", "Saudi Arabia", "United Kingdom", "United States", "Canada", "Australia", "Other"];
+// ── Address & phone data ──────────────────────────────────────────────────────
+const COUNTRIES = [
+  "Pakistan",
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "United Kingdom",
+  "United States",
+  "Canada",
+  "Australia",
+  "Other",
+];
+
+const COUNTRY_CODES: Record<string, string> = {
+  Pakistan: "+92",
+  "United Arab Emirates": "+971",
+  "Saudi Arabia": "+966",
+  "United Kingdom": "+44",
+  "United States": "+1",
+  Canada: "+1",
+  Australia: "+61",
+  Other: "",
+};
 
 const STATE_CITIES: Record<string, string[]> = {
-  Punjab: ["Lahore", "Faisalabad", "Rawalpindi", "Gujranwala", "Multan", "Sialkot", "Bahawalpur", "Sargodha", "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat", "Kasur", "Sahiwal", "Okara"],
-  Sindh: ["Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Mirpur Khas", "Khairpur", "Thatta", "Dadu", "Jacobabad", "Shikarpur"],
-  "Khyber Pakhtunkhwa": ["Peshawar", "Abbottabad", "Mardan", "Mingora", "Nowshera", "Dera Ismail Khan", "Kohat", "Mansehra", "Swabi", "Charsadda"],
-  Balochistan: ["Quetta", "Gwadar", "Turbat", "Khuzdar", "Hub", "Chaman", "Zhob", "Dera Murad Jamali"],
+  Punjab: [
+    "Lahore", "Faisalabad", "Rawalpindi", "Gujranwala", "Multan", "Sialkot",
+    "Bahawalpur", "Sargodha", "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat",
+    "Kasur", "Sahiwal", "Okara", "Kharian", "Wazirabad", "Mandi Bahauddin",
+    "Narowal", "Chiniot", "Hafizabad", "Chakwal", "Jhelum", "Khushab", "Bhakkar",
+    "Layyah", "Muzaffargarh", "Vehari", "Pakpattan", "Khanewal", "Lodhran",
+    "Nankana Sahib", "Toba Tek Singh", "Gojra", "Kamalia", "Daska", "Sambrial",
+    "Pasrur", "Zafarwal", "Phalia", "Kot Addu", "Ahmedpur East", "Hasilpur",
+    "Bahawalnagar", "Burewala", "Mailsi", "Renala Khurd", "Depalpur", "Chunian",
+    "Ferozewala", "Muridke", "Wah Cantt", "Taxila", "Attock", "Kamoke",
+    "Pattoki", "Bhalwal", "Jaranwala", "Sammundri", "Chichawatni", "Dipalpur",
+    "Kot Momin", "Shahkot", "Tandlianwala", "Shakargarh", "Manga Mandi",
+    "Talagang", "Gujar Khan", "Rawat", "Murree", "Fatehjang", "Hazro",
+  ],
+  Sindh: [
+    "Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Mirpur Khas",
+    "Khairpur", "Thatta", "Dadu", "Jacobabad", "Shikarpur", "Kandhkot",
+    "Kashmore", "Ghotki", "Sanghar", "Umerkot", "Tando Adam", "Tando Allahyar",
+    "Badin", "Matiari", "Jamshoro", "Naushahro Feroze", "Qambar", "Shahdadkot",
+    "Kotri", "Mehrabpur", "Digri", "Mithi", "Islamkot", "Tharparkar",
+    "Daharki", "Rohri", "Pano Aqil", "Gambat", "Ratodero", "Dokri",
+  ],
+  "Khyber Pakhtunkhwa": [
+    "Peshawar", "Abbottabad", "Mardan", "Mingora", "Nowshera", "Dera Ismail Khan",
+    "Kohat", "Mansehra", "Swabi", "Charsadda", "Haripur", "Battagram",
+    "Hangu", "Karak", "Bannu", "Lakki Marwat", "Tank", "Shangla",
+    "Chitral", "Dir", "Timergara", "Buner", "Malakand", "Topi",
+    "Takht-i-Bahi", "Daggar", "Drosh", "Matta", "Kabal", "Bahrain",
+    "Alpuri", "Thall", "Parachinar", "Dera Adam Khel",
+  ],
+  Balochistan: [
+    "Quetta", "Gwadar", "Turbat", "Khuzdar", "Hub", "Chaman", "Zhob",
+    "Dera Murad Jamali", "Loralai", "Sibi", "Mastung", "Kalat", "Kharan",
+    "Panjgur", "Nushki", "Pishin", "Qila Saifullah", "Qila Abdullah",
+    "Dalbandin", "Washuk", "Dera Allah Yar", "Usta Mohammad", "Jaffarabad",
+    "Nasirabad", "Bolan", "Kohlu", "Barkhan", "Musakhel", "Ziarat",
+  ],
   "Islamabad Capital Territory": ["Islamabad"],
-  "Gilgit-Baltistan": ["Gilgit", "Skardu", "Chilas", "Hunza", "Ghanche"],
-  "Azad Jammu & Kashmir": ["Muzaffarabad", "Mirpur", "Rawalakot", "Kotli", "Bagh"],
+  "Gilgit-Baltistan": [
+    "Gilgit", "Skardu", "Chilas", "Hunza", "Ghanche", "Ghizer",
+    "Astore", "Diamer", "Nagar", "Khaplu", "Shigar",
+  ],
+  "Azad Jammu & Kashmir": [
+    "Muzaffarabad", "Mirpur", "Rawalakot", "Kotli", "Bagh",
+    "Bhimber", "Neelum", "Haveli", "Hattian Bala", "Poonch", "Sudhnoti",
+  ],
 };
 
 export function RegisterFormNew() {
@@ -116,6 +176,7 @@ export function RegisterFormNew() {
       city: "",
       state: "",
       country: "Pakistan",
+      phoneCode: "Pakistan",
       businessPhone: "",
       businessDescription: "",
     },
@@ -175,7 +236,7 @@ export function RegisterFormNew() {
           state: data.state,
           country: data.country,
           businessAddress: `${data.addressLine}, ${data.city}, ${data.state}, ${data.country}`,
-          businessPhone: data.businessPhone,
+          businessPhone: `${COUNTRY_CODES[data.phoneCode] ?? ""}${data.businessPhone}`,
           businessDescription: data.businessDescription || "",
         },
       });
@@ -354,19 +415,39 @@ export function RegisterFormNew() {
               )}
             />
 
-            <FormField
-              control={businessForm.control}
-              name="businessPhone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Business Phone <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="+1 (555) 123-4567" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormItem>
+              <FormLabel>Business Phone <span className="text-red-500">*</span></FormLabel>
+              <div className="flex gap-2">
+                <FormField
+                  control={businessForm.control}
+                  name="phoneCode"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-28 shrink-0">
+                        <span className="text-sm">{COUNTRY_CODES[field.value] || "Code"}</span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.filter(c => c !== "Other").map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {COUNTRY_CODES[c]} — {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FormField
+                  control={businessForm.control}
+                  name="businessPhone"
+                  render={({ field }) => (
+                    <FormControl>
+                      <Input {...field} placeholder="3001234567" className="flex-1" />
+                    </FormControl>
+                  )}
+                />
+              </div>
+              <FormMessage>{businessForm.formState.errors.phoneCode?.message || businessForm.formState.errors.businessPhone?.message}</FormMessage>
+            </FormItem>
 
             <FormField
               control={businessForm.control}
@@ -394,6 +475,7 @@ export function RegisterFormNew() {
                       field.onChange(val);
                       businessForm.setValue("state", "");
                       businessForm.setValue("city", "");
+                      businessForm.setValue("phoneCode", val);
                     }}
                   >
                     <FormControl>
