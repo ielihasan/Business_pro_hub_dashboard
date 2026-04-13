@@ -114,7 +114,9 @@
       "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot\" /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn clean package -q --no-transfer-progress -f /c/Users/X/FYP/Business_pro_hub_dashboard/backend/pom.xml)",
       "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.18.8-hotspot\" /c/Users/X/AppData/Local/Temp/mvn_ext/apache-maven-3.9.6/bin/mvn clean package --no-transfer-progress -f /c/Users/X/FYP/Business_pro_hub_dashboard/backend/pom.xml)",
       "Skill(claude-api)",
-      "Skill(claude-api:*)"
+      "Skill(claude-api:*)",
+      "mcp__1812bf29-510d-41c2-8df8-7e653044fe84__get_logs",
+      "Bash(python -m json.tool)"
     ]
   }
 }

@@ -24,6 +24,10 @@ export async function registerUser(data: {
   businessData?: {
     businessName: string;
     businessType: string;
+    addressLine: string;
+    city: string;
+    state: string;
+    country: string;
     businessAddress: string;
     businessPhone: string;
     businessDescription: string;
@@ -147,6 +151,10 @@ export async function registerUser(data: {
           business_name: businessData.businessName,
           business_type: businessData.businessType,
           business_address: businessData.businessAddress,
+          address_line: businessData.addressLine,
+          city: businessData.city,
+          state: businessData.state,
+          country: businessData.country,
           business_phone: businessData.businessPhone,
           business_description: businessData.businessDescription || "",
           is_approved: false,

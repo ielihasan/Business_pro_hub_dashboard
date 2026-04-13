@@ -44,6 +44,18 @@ public class Admin {
     @Column(name = "business_address")
     private String businessAddress;
 
+    @Column(name = "address_line")
+    private String addressLine;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "state")
+    private String state;
+
+    @Column(name = "country")
+    private String country;
+
     @Column(name = "business_description")
     private String businessDescription;
 

@@ -115,6 +115,10 @@ public class BusinessController {
             business.setEmail(email);
             business.setBusinessPhone((String) body.get("phone"));
             business.setBusinessAddress((String) body.get("address"));
+            business.setAddressLine((String) body.get("address_line"));
+            business.setCity((String) body.get("city"));
+            business.setState((String) body.get("state"));
+            business.setCountry((String) body.getOrDefault("country", "Pakistan"));
             business.setIsActive(true);
             business.setSubscriptionPlan((String) body.getOrDefault("subscription_plan", "free"));
             business.setSubscriptionStatus("active");
@@ -132,6 +136,10 @@ public class BusinessController {
             admin.setBusinessType((String) body.get("business_type"));
             admin.setBusinessPhone((String) body.get("phone"));
             admin.setBusinessAddress((String) body.get("address"));
+            admin.setAddressLine((String) body.get("address_line"));
+            admin.setCity((String) body.get("city"));
+            admin.setState((String) body.get("state"));
+            admin.setCountry((String) body.getOrDefault("country", "Pakistan"));
             admin.setSubscriptionPlan((String) body.getOrDefault("subscription_plan", "free"));
             admin.setSubscriptionStatus("active");
             admin.setCreatedAt(now);
@@ -172,6 +180,10 @@ public class BusinessController {
         if (body.containsKey("business_type")) business.setBusinessType((String) body.get("business_type"));
         if (body.containsKey("phone")) business.setBusinessPhone((String) body.get("phone"));
         if (body.containsKey("address")) business.setBusinessAddress((String) body.get("address"));
+        if (body.containsKey("address_line")) business.setAddressLine((String) body.get("address_line"));
+        if (body.containsKey("city")) business.setCity((String) body.get("city"));
+        if (body.containsKey("state")) business.setState((String) body.get("state"));
+        if (body.containsKey("country")) business.setCountry((String) body.get("country"));
         if (body.containsKey("is_active")) business.setIsActive((Boolean) body.get("is_active"));
         if (body.containsKey("subscription_plan")) business.setSubscriptionPlan((String) body.get("subscription_plan"));
         business.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
@@ -183,6 +195,10 @@ public class BusinessController {
             if (body.containsKey("business_type")) a.setBusinessType((String) body.get("business_type"));
             if (body.containsKey("phone")) a.setBusinessPhone((String) body.get("phone"));
             if (body.containsKey("address")) a.setBusinessAddress((String) body.get("address"));
+            if (body.containsKey("address_line")) a.setAddressLine((String) body.get("address_line"));
+            if (body.containsKey("city")) a.setCity((String) body.get("city"));
+            if (body.containsKey("state")) a.setState((String) body.get("state"));
+            if (body.containsKey("country")) a.setCountry((String) body.get("country"));
             if (body.containsKey("subscription_plan")) a.setSubscriptionPlan((String) body.get("subscription_plan"));
             a.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
             adminRepo.save(a);
@@ -224,6 +240,10 @@ public class BusinessController {
         admin.setBusinessType(isBusinessOwner ? app.getBusinessType() : null);
         admin.setBusinessPhone(isBusinessOwner ? app.getBusinessPhone() : null);
         admin.setBusinessAddress(isBusinessOwner ? app.getBusinessAddress() : null);
+        admin.setAddressLine(isBusinessOwner ? app.getAddressLine() : null);
+        admin.setCity(isBusinessOwner ? app.getCity() : null);
+        admin.setState(isBusinessOwner ? app.getState() : null);
+        admin.setCountry(isBusinessOwner ? app.getCountry() : null);
         admin.setBusinessDescription(isBusinessOwner ? app.getBusinessDescription() : null);
         if (admin.getCreatedAt() == null) admin.setCreatedAt(now);
         admin.setUpdatedAt(now);
@@ -242,6 +262,10 @@ public class BusinessController {
             business.setBusinessType(app.getBusinessType());
             business.setBusinessPhone(app.getBusinessPhone());
             business.setBusinessAddress(app.getBusinessAddress());
+            business.setAddressLine(app.getAddressLine());
+            business.setCity(app.getCity());
+            business.setState(app.getState());
+            business.setCountry(app.getCountry());
             business.setBusinessDescription(app.getBusinessDescription());
             business.setIsActive(true);
             if (business.getSubscriptionPlan() == null) business.setSubscriptionPlan("free");

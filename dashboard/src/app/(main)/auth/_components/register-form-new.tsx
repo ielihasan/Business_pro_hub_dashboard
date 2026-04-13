@@ -38,7 +38,10 @@ const BusinessOwnerFormSchema = z
     confirmPassword: z.string().min(6),
     businessName: z.string().min(2, "Business name is required"),
     businessType: z.string().min(1, "Please select a business type"),
-    businessAddress: z.string().min(5, "Address must be at least 5 characters"),
+    addressLine: z.string().min(3, "Street address is required"),
+    city: z.string().min(2, "City is required"),
+    state: z.string().min(2, "State / Province is required"),
+    country: z.string().min(2, "Country is required"),
     businessPhone: z.string().min(10, "Valid phone number required"),
     businessDescription: z.string().optional(),
   })
@@ -96,7 +99,10 @@ export function RegisterFormNew() {
       confirmPassword: "",
       businessName: "",
       businessType: "",
-      businessAddress: "",
+      addressLine: "",
+      city: "",
+      state: "",
+      country: "Pakistan",
       businessPhone: "",
       businessDescription: "",
     },
@@ -151,7 +157,11 @@ export function RegisterFormNew() {
         businessData: {
           businessName: data.businessName,
           businessType: resolvedType,
-          businessAddress: data.businessAddress,
+          addressLine: data.addressLine,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          businessAddress: `${data.addressLine}, ${data.city}, ${data.state}, ${data.country}`,
           businessPhone: data.businessPhone,
           businessDescription: data.businessDescription || "",
         },
@@ -347,12 +357,55 @@ export function RegisterFormNew() {
 
             <FormField
               control={businessForm.control}
-              name="businessAddress"
+              name="addressLine"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Address <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>Address Line <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="123 Main St, City, State" />
+                    <Input {...field} placeholder="Street no., Building, Area" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={businessForm.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g. Karachi" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={businessForm.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State / Province <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g. Sindh" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={businessForm.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="e.g. Pakistan" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
