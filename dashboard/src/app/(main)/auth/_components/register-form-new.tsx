@@ -6,13 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase-client";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { registerUser } from "@/actions/auth/register";
 import { getErrorMessage } from "@/lib/utils";
 
@@ -134,6 +137,7 @@ export function RegisterFormNew() {
   const [showBizConfirm,  setShowBizConfirm]  = useState(false);
   const [showAdminPass,   setShowAdminPass]   = useState(false);
   const [showAdminConfirm,setShowAdminConfirm]= useState(false);
+  const [cityOpen,        setCityOpen]        = useState(false);
 
   // Static business types (business_types table was removed)
   useState(() => {
@@ -537,16 +541,41 @@ export function RegisterFormNew() {
                   <FormItem>
                     <FormLabel>City <span className="text-red-500">*</span></FormLabel>
                     {isPakistan ? (
-                      <Select value={field.value} onValueChange={field.onChange} disabled={!selectedState}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={selectedState ? "Select city" : "Select province first"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              disabled={!selectedState}
+                              className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+                            >
+                              {field.value || (selectedState ? "Type or select city…" : "Select province first")}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Type city name…" />
+                            <CommandList>
+                              <CommandEmpty>No city found.</CommandEmpty>
+                              <CommandGroup>
+                                {cities.map((c) => (
+                                  <CommandItem
+                                    key={c}
+                                    value={c}
+                                    onSelect={() => { field.onChange(c); setCityOpen(false); }}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", field.value === c ? "opacity-100" : "opacity-0")} />
+                                    {c}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     ) : (
                       <FormControl>
                         <Input {...field} placeholder="Enter city" />
