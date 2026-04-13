@@ -851,39 +851,32 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Demo Video Dialog */}
-      <Dialog open={isDemoOpen} onOpenChange={setIsDemoOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 bg-black border-gray-800 overflow-hidden [&>button]:hidden">
-          <DialogHeader className="p-4 pb-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-white text-lg">BusinessHub Pro Demo</DialogTitle>
-              {/* Custom Close Button */}
-              <button
-                onClick={() => setIsDemoOpen(false)}
-                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
-            </div>
-          </DialogHeader>
-          <div className="relative aspect-video bg-gray-900">
-            {isDemoOpen && (
-              <iframe
-                src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
-                title="Business Pro Hub Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full"
-              />
-            )}
+      {/* Demo Video Fullscreen Overlay */}
+      {isDemoOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+          onClick={() => setIsDemoOpen(false)}
+        >
+          <button
+            onClick={() => setIsDemoOpen(false)}
+            className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          <div
+            className="w-full h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src="https://www.youtube.com/embed/UhjPdHN2jlA?autoplay=1"
+              title="Business Pro Hub Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              className="w-full h-full"
+            />
           </div>
-          <div className="p-4 bg-gray-900 border-t border-gray-800">
-            <p className="text-xs text-gray-500 text-center">
-              A product by <span className="text-gray-400 font-medium">Elixa Software Private Limited</span>
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </motion.div>
   );
 }
