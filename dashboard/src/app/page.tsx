@@ -821,9 +821,9 @@ export default function LandingPage() {
               <h3 className="text-gray-900 font-semibold mb-3 text-xs uppercase tracking-wider">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li><a href="https://elixasoftware.tech/about" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">About Elixa</a></li>
-                <li><a href="https://elixasoftware.tech" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Blog</a></li>
-                <li><a href="https://elixasoftware.tech/contact" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Careers</a></li>
-                <li><a href="https://elixasoftware.tech/projects" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Press Kit</a></li>
+                <li><a href="https://elixasoftware.tech/services" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Services</a></li>
+                <li><a href="https://elixasoftware.tech/contact" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Contact</a></li>
+                <li><a href="https://elixasoftware.tech/projects" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-[#3D4127] transition-colors">Projects</a></li>
               </ul>
             </div>
 
