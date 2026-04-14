@@ -50,7 +50,7 @@ class AppUserControllerSecurityTest {
 
     @Test
     void shouldRejectUnauthenticatedProfileRequest() throws Exception {
-        mockMvc.perform(get("/api/app-user/profile").param("user_id", "user-1"))
+        mockMvc.perform(get("/api/app-user/profile"))
                 .andExpect(status().isForbidden());
     }
 

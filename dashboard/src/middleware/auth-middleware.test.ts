@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { authMiddleware } from "./auth-middleware";
 
-function createRequest(pathname: string, loggedIn = false): any {
+type MockCookieValue = { value: string } | undefined;
+type MockRequest = {
+  url: string;
+  nextUrl: { pathname: string };
+  cookies: { get: (name: string) => MockCookieValue };
+};
+
+function createRequest(pathname: string, loggedIn = false): MockRequest {
   return {
     url: "http://localhost:3002" + pathname,
     nextUrl: { pathname },

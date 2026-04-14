@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "prettier --check src/lib/api/route-auth.ts src/middleware/auth-middleware.ts src/middleware/auth-middleware.test.ts src/proxy.ts src/app/API/admin/create-user/route.ts src/app/API/admins/delete/route.ts src/app/API/businesses/delete/route.ts src/app/API/users/delete/route.ts package.json",
+    "lint": "prettier --check \"src/lib/api/**/*.ts\" \"src/middleware/**/*.ts\" \"src/app/API/{admins,businesses,users}/delete/route.ts\" \"src/app/API/admin/create-user/route.ts\" src/proxy.ts package.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
