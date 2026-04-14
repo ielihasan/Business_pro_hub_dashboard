@@ -1,5 +1,6 @@
 package com.businessprohub.backend.controller;
 
+import com.businessprohub.backend.entity.Admin;
 import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
@@ -108,7 +109,7 @@ class AuthControllerValidationTest {
 
     @Test
     void shouldRejectInvalidApprovalNotificationStatus() throws Exception {
-        com.businessprohub.backend.entity.Admin admin = new com.businessprohub.backend.entity.Admin();
+        Admin admin = new Admin();
         admin.setId("admin-1");
         admin.setRole("admin");
         Mockito.when(jwtService.isTokenValid("valid-admin-token")).thenReturn(true);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type AllowedRole = "admin" | "business_owner";
+// NOTE: business_owner role entries are also stored in the "admins" table.
 
 type AuthzSuccess = {
   ok: true;
