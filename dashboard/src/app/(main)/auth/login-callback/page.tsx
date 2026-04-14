@@ -108,6 +108,7 @@ export default function LoginCallbackPage() {
       const userRole = adminData[0];
 
       if (userRole.role === "admin") {
+        sessionStorage.setItem("bph-session-active", "true");
         toast.success("Welcome, Admin!");
         router.push("/admin/dashboard");
       } else if (userRole.role === "business_owner") {
@@ -116,6 +117,7 @@ export default function LoginCallbackPage() {
           router.push("/auth/waiting-approval-business");
           return;
         }
+        sessionStorage.setItem("bph-session-active", "true");
         toast.success(`Welcome back, ${userRole.business_name}!`);
         router.push("/business/dashboard");
       } else {
