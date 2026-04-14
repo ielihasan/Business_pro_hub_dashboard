@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky",
     "generate:presets": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/scripts/generate-theme-presets.ts"
   },
@@ -84,5 +86,7 @@
     "tw-animate-css": "^1.3.7",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.41.0"
+    ,
+    "vitest": "^3.2.4"
   }
 }

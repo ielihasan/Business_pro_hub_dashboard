@@ -1,5 +1,6 @@
 package com.businessprohub.backend.controller;
 
+import com.businessprohub.backend.dto.request.AuthRegisterRequest;
 import com.businessprohub.backend.dto.response.ApiResponse;
 import com.businessprohub.backend.entity.BusinessApplication;
 import com.businessprohub.backend.exception.BadRequestException;
@@ -7,6 +8,7 @@ import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,23 +37,23 @@ public class AuthController {
 
     // POST /api/auth/register
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<?>> register(@RequestBody Map<String, Object> body) {
-        String email = (String) body.get("email");
-        String password = (String) body.get("password");
-        String businessName = (String) body.get("business_name");
-        String role = (String) body.getOrDefault("role", "business_owner");
+    public ResponseEntity<ApiResponse<?>> register(@Valid @RequestBody AuthRegisterRequest request) {
+        String role = (request.role() == null || request.role().isBlank()) ? "business_owner" : request.role();
+        if (!"business_owner".equals(role) && !"admin".equals(role)) {
+            throw new BadRequestException("role must be either 'business_owner' or 'admin'");
+        }
 
-        Map<?, ?> authUser = authAdmin.createUserWithMeta(email, password,
-                Map.of("role", role, "business_name", businessName != null ? businessName : ""));
+        Map<?, ?> authUser = authAdmin.createUserWithMeta(request.email(), request.password(),
+                Map.of("role", role, "business_name", request.businessName()));
         String userId = (String) authUser.get("id");
 
         BusinessApplication app = new BusinessApplication();
         app.setUserId(userId);
-        app.setEmail(email);
-        app.setBusinessName(businessName);
-        app.setBusinessType((String) body.get("business_type"));
-        app.setBusinessPhone((String) body.get("phone"));
-        app.setBusinessAddress((String) body.get("address"));
+        app.setEmail(request.email());
+        app.setBusinessName(request.businessName());
+        app.setBusinessType(request.businessType());
+        app.setBusinessPhone(request.phone());
+        app.setBusinessAddress(request.address());
         app.setIsApproved(false);
         app.setEmailVerified(false);
 
@@ -62,9 +64,9 @@ public class AuthController {
         appRepo.save(app);
 
         try {
-            emailService.sendVerificationEmail(email, token, businessName != null ? businessName : email);
+            emailService.sendVerificationEmail(request.email(), token, request.businessName());
         } catch (Exception e) {
-            log.warn("Failed to send verification email to {}: {}", email, e.getMessage());
+            log.warn("Failed to send verification email to {}: {}", request.email(), e.getMessage());
         }
 
         return ResponseEntity.ok(ApiResponse.success(

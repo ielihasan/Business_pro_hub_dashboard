@@ -12,7 +12,8 @@ export function proxy(req: NextRequest) {
 // matcher: only run proxy for auth and dashboard routes (adjust if you need extra routes)
 export const config = {
   matcher: [
-    "/app/main/dashboard/:path*",      // protect all dashboard routes
-    "/app/main/auth/:path*",           // allow/handle auth routes
+    "/auth/:path*",
+    "/admin/:path*",
+    "/business/:path*",
   ],
 };

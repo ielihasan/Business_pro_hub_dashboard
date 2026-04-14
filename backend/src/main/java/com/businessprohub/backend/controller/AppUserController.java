@@ -5,6 +5,8 @@ import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AppUserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -21,9 +23,17 @@ public class AppUserController {
         this.userRepo = userRepo;
     }
 
-    // GET /api/app-user/profile?user_id=
+    // GET /api/app-user/profile?user_id= (admin can query any user, others can only query self)
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<?>> getProfile(@RequestParam("user_id") String userId) {
+    public ResponseEntity<ApiResponse<?>> getProfile(Authentication auth,
+                                                     @RequestParam(value = "user_id", required = false) String userIdParam) {
+        String principalId = (String) auth.getPrincipal();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        String userId = (userIdParam == null || userIdParam.isBlank()) ? principalId : userIdParam;
+        if (!isAdmin && !principalId.equals(userId)) {
+            throw new AccessDeniedException("You can only access your own profile");
+        }
         AppUser user = userRepo.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return ResponseEntity.ok(ApiResponse.success(user));
@@ -31,8 +41,15 @@ public class AppUserController {
 
     // POST /api/app-user/profile — upsert
     @PostMapping("/profile")
-    public ResponseEntity<ApiResponse<?>> upsert(@RequestBody Map<String, Object> body) {
-        String userId = (String) body.get("user_id");
+    public ResponseEntity<ApiResponse<?>> upsert(Authentication auth, @RequestBody Map<String, Object> body) {
+        String principalId = (String) auth.getPrincipal();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        String requestedUserId = (String) body.get("user_id");
+        String userId = (requestedUserId == null || requestedUserId.isBlank()) ? principalId : requestedUserId;
+        if (!isAdmin && !principalId.equals(userId)) {
+            throw new AccessDeniedException("You can only update your own profile");
+        }
         AppUser user = userRepo.findById(userId).orElse(new AppUser());
         user.setId(userId);
         if (body.containsKey("full_name")) user.setFullName((String) body.get("full_name"));
@@ -47,7 +64,7 @@ public class AppUserController {
 
     // PATCH /api/app-user/profile
     @PatchMapping("/profile")
-    public ResponseEntity<ApiResponse<?>> update(@RequestBody Map<String, Object> body) {
-        return upsert(body);
+    public ResponseEntity<ApiResponse<?>> update(Authentication auth, @RequestBody Map<String, Object> body) {
+        return upsert(auth, body);
     }
 }

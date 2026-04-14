@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function DELETE(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const body = await req.json();
     let ids: string[] = [];
 
@@ -16,14 +19,8 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // 🔐 Service role client
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // 1️⃣ Delete from "User" table first
-    const { error: tableError } = await supabaseAdmin
+    const { error: tableError } = await authz.supabaseAdmin
       .from("users")
       .delete()
       .in("id", ids);
@@ -39,7 +36,7 @@ export async function DELETE(req: Request) {
     // 2️⃣ Delete from Auth
     for (const id of ids) {
       const { error: authError } =
-        await supabaseAdmin.auth.admin.deleteUser(id);
+        await authz.supabaseAdmin.auth.admin.deleteUser(id);
 
       if (authError) {
         console.error("Auth delete error:", authError);

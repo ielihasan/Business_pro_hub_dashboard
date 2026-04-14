@@ -58,7 +58,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/queue/qrcode").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/queue-types").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/queue/*/leave").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/api/app-user/profile").permitAll()
                 // ── Admin-only management endpoints ─────────────────────────────────
                 .requestMatchers("/api/admins/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST,   "/api/businesses").hasRole("ADMIN")

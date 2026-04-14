@@ -4,12 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 export function authMiddleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // cookie key used to identify logged-in user (change if you use another key)
-  const isLoggedIn = !!req.cookies.get("auth-token");
+  const isLoggedIn =
+    !!req.cookies.get("auth-token") ||
+    !!req.cookies.get("sb-access-token") ||
+    !!req.cookies.get("sb-refresh-token");
 
-  const login = "/app/main/auth/v1/login";
-  const register = "/app/main/auth/v1/register";
-  const dashboardRoot = "/app/main/dashboard";
+  const login = "/auth/v1/login";
+  const register = "/auth/v1/register";
+  const dashboardRoot = "/business/dashboard";
+  const protectedPrefixes = ["/admin", "/business"];
 
   const publicRoutes = [login, register];
 
@@ -22,8 +25,8 @@ export function authMiddleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // If user not logged in and trying to access dashboard -> redirect to login
-  if (!isLoggedIn && pathname.startsWith(dashboardRoot)) {
+  // If user not logged in and trying to access protected areas -> redirect to login
+  if (!isLoggedIn && protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.redirect(new URL(login, req.url));
   }
 

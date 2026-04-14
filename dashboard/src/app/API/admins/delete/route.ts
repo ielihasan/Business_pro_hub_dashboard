@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 // Default admin email that cannot be deleted
 const DEFAULT_ADMIN_EMAIL = "admin@test.com";
 
 export async function DELETE(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const body = await req.json();
     let ids: string[] = [];
 
@@ -27,7 +24,7 @@ export async function DELETE(req: Request) {
     }
 
     // Check if trying to delete the default admin
-    const { data: adminsToDelete } = await supabase
+    const { data: adminsToDelete } = await authz.supabaseAdmin
       .from("admins")
       .select("id, email")
       .in("id", ids);
@@ -45,21 +42,15 @@ export async function DELETE(req: Request) {
     }
 
     // Get current user to prevent self-deletion
-    const authHeader = req.headers.get("authorization");
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-
-      if (user && ids.includes(user.id)) {
-        return NextResponse.json(
-          { error: "You cannot delete your own admin account" },
-          { status: 400 }
-        );
-      }
+    if (ids.includes(authz.userId)) {
+      return NextResponse.json(
+        { error: "You cannot delete your own admin account" },
+        { status: 400 }
+      );
     }
 
     // Delete from admins table first
-    const { error: tableError } = await supabase
+    const { error: tableError } = await authz.supabaseAdmin
       .from("admins")
       .delete()
       .in("id", ids);
@@ -72,7 +63,7 @@ export async function DELETE(req: Request) {
     // Delete from Auth
     const deleteErrors: string[] = [];
     for (const id of ids) {
-      const { error: authError } = await supabase.auth.admin.deleteUser(id);
+      const { error: authError } = await authz.supabaseAdmin.auth.admin.deleteUser(id);
 
       if (authError) {
         console.error(`Auth delete error for ${id}:`, authError);
