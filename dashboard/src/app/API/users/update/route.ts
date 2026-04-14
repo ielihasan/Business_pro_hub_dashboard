@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function PATCH(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const body = await req.json();
     const { id, username, full_name, email, phone_no, status } = body;
 
@@ -13,16 +16,10 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // 🔐 Supabase Admin client (Service Role)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // 1️⃣ Update Auth user (email only)
     if (email) {
       const { error: authError } =
-        await supabaseAdmin.auth.admin.updateUserById(id, {
+        await authz.supabaseAdmin.auth.admin.updateUserById(id, {
           email,
         });
 
@@ -44,7 +41,7 @@ export async function PATCH(req: Request) {
 
     // 3️⃣ Update "User" table
     if (Object.keys(updateData).length > 0) {
-      const { error: dbError } = await supabaseAdmin
+      const { error: dbError } = await authz.supabaseAdmin
         .from('users')
         .update(updateData)
         .eq("id", id);

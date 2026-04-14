@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// 🔐 Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function POST(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const { username, email, full_name, phone_no, password } =
       await req.json();
 
@@ -25,7 +22,7 @@ export async function POST(req: Request) {
 
     // 2️⃣ Create Auth User
     const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
+      await authz.supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -35,7 +32,7 @@ export async function POST(req: Request) {
     // 3️⃣ If email already exists
     if (authError && authError.message.includes("already been registered")) {
       const { data: listData, error: listError } =
-        await supabase.auth.admin.listUsers({ perPage: 1000 });
+        await authz.supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
 
       if (listError)
         return NextResponse.json({ error: listError.message }, { status: 400 });
@@ -54,7 +51,7 @@ export async function POST(req: Request) {
 
       // 🔍 Check User table
       const { data: existingUserRow, error: fetchError } =
-        await supabase
+        await authz.supabaseAdmin
           .from('users')
           .select("*")
           .eq("id", userId)
@@ -68,7 +65,7 @@ export async function POST(req: Request) {
 
       // ➕ If not exists → create
       if (!existingUserRow) {
-        const { data, error } = await supabase
+        const { data, error } = await authz.supabaseAdmin
           .from('users')
           .insert({
             id: userId,
@@ -107,7 +104,7 @@ export async function POST(req: Request) {
     userId = authData.user.id;
 
     const { data: createdUser, error: insertError } =
-      await supabase
+      await authz.supabaseAdmin
         .from('users')
         .insert({
           id: userId,
@@ -119,7 +116,7 @@ export async function POST(req: Request) {
         .single();
 
     if (insertError) {
-      await supabase.auth.admin.deleteUser(userId);
+      await authz.supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         { error: insertError.message },
         { status: 400 }

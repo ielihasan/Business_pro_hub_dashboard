@@ -3,6 +3,7 @@ package com.businessprohub.backend.controller;
 import com.businessprohub.backend.repository.BusinessApplicationRepository;
 import com.businessprohub.backend.service.EmailService;
 import com.businessprohub.backend.service.SupabaseAuthAdminService;
+import org.mockito.Mockito;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -72,6 +73,59 @@ class AuthControllerValidationTest {
                 """;
 
         mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidSendVerificationPayload() throws Exception {
+        String payload = """
+                {
+                  "email": "not-an-email"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/send-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidVerifyEmailPostPayload() throws Exception {
+        String payload = """
+                {
+                  "token": ""
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidApprovalNotificationStatus() throws Exception {
+        com.businessprohub.backend.entity.Admin admin = new com.businessprohub.backend.entity.Admin();
+        admin.setId("admin-1");
+        admin.setRole("admin");
+        Mockito.when(jwtService.isTokenValid("valid-admin-token")).thenReturn(true);
+        Mockito.when(jwtService.extractUserId("valid-admin-token")).thenReturn("admin-1");
+        Mockito.when(adminRepository.findByIdAndRole("admin-1", "admin"))
+                .thenReturn(java.util.Optional.of(admin));
+
+        String payload = """
+                {
+                  "email": "owner@example.com",
+                  "business_name": "Acme",
+                  "status": "pending"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/send-approval-notification")
+                        .header("Authorization", "Bearer valid-admin-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isBadRequest());

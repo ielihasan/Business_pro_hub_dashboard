@@ -1,6 +1,9 @@
 package com.businessprohub.backend.controller;
 
+import com.businessprohub.backend.dto.request.AuthApprovalNotificationRequest;
 import com.businessprohub.backend.dto.request.AuthRegisterRequest;
+import com.businessprohub.backend.dto.request.AuthSendVerificationRequest;
+import com.businessprohub.backend.dto.request.AuthVerifyEmailRequest;
 import com.businessprohub.backend.dto.response.ApiResponse;
 import com.businessprohub.backend.entity.BusinessApplication;
 import com.businessprohub.backend.exception.BadRequestException;
@@ -76,9 +79,8 @@ public class AuthController {
 
     // POST /api/auth/send-verification
     @PostMapping("/send-verification")
-    public ResponseEntity<ApiResponse<?>> sendVerification(@RequestBody Map<String, Object> body) {
-        String email = (String) body.get("email");
-        BusinessApplication app = appRepo.findByEmail(email)
+    public ResponseEntity<ApiResponse<?>> sendVerification(@Valid @RequestBody AuthSendVerificationRequest request) {
+        BusinessApplication app = appRepo.findByEmail(request.email())
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
         String token = UUID.randomUUID().toString();
@@ -86,15 +88,15 @@ public class AuthController {
         app.setVerificationTokenExpires(OffsetDateTime.now(ZoneOffset.UTC).plusHours(24));
         appRepo.save(app);
 
-        emailService.sendVerificationEmail(email, token,
-                app.getBusinessName() != null ? app.getBusinessName() : email);
+        emailService.sendVerificationEmail(request.email(), token,
+                app.getBusinessName() != null ? app.getBusinessName() : request.email());
         return ResponseEntity.ok(ApiResponse.success(null, "Verification email sent"));
     }
 
     // POST /api/auth/resend-verification
     @PostMapping("/resend-verification")
-    public ResponseEntity<ApiResponse<?>> resendVerification(@RequestBody Map<String, Object> body) {
-        return sendVerification(body);
+    public ResponseEntity<ApiResponse<?>> resendVerification(@Valid @RequestBody AuthSendVerificationRequest request) {
+        return sendVerification(request);
     }
 
     // GET /api/auth/verify-email?token=
@@ -105,8 +107,8 @@ public class AuthController {
 
     // POST /api/auth/verify-email
     @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<?>> verifyEmailPost(@RequestBody Map<String, Object> body) {
-        return doVerify((String) body.get("token"));
+    public ResponseEntity<ApiResponse<?>> verifyEmailPost(@Valid @RequestBody AuthVerifyEmailRequest request) {
+        return doVerify(request.token());
     }
 
     private ResponseEntity<ApiResponse<?>> doVerify(String token) {
@@ -127,16 +129,13 @@ public class AuthController {
 
     // POST /api/auth/send-approval-notification
     @PostMapping("/send-approval-notification")
-    public ResponseEntity<ApiResponse<?>> sendApprovalNotification(@RequestBody Map<String, Object> body) {
-        String email = (String) body.get("email");
-        String businessName = (String) body.get("business_name");
-        String status = (String) body.get("status"); // "approved" | "rejected"
-        String reason = (String) body.get("reason");
-
-        if ("approved".equals(status)) {
-            emailService.sendApprovalEmail(email, businessName);
+    public ResponseEntity<ApiResponse<?>> sendApprovalNotification(
+            @Valid @RequestBody AuthApprovalNotificationRequest request
+    ) {
+        if ("approved".equals(request.status())) {
+            emailService.sendApprovalEmail(request.email(), request.businessName());
         } else {
-            emailService.sendRejectionEmail(email, businessName, reason);
+            emailService.sendRejectionEmail(request.email(), request.businessName(), request.reason());
         }
         return ResponseEntity.ok(ApiResponse.success(null, "Notification sent"));
     }

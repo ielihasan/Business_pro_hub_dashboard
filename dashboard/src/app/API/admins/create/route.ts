@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function POST(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const { full_name, email, password } = await req.json();
 
     // Validation
@@ -37,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     // Check if admin already exists
-    const { data: existingAdmin } = await supabase
+    const { data: existingAdmin } = await authz.supabaseAdmin
       .from("admins")
       .select("id")
       .eq("email", email)
@@ -52,7 +49,7 @@ export async function POST(req: Request) {
 
     // Create Auth User
     const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
+      await authz.supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -74,7 +71,7 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
 
     // Create admin record
-    const { data: adminData, error: adminError } = await supabase
+    const { data: adminData, error: adminError } = await authz.supabaseAdmin
       .from("admins")
       .insert({
         id: userId,
@@ -89,7 +86,7 @@ export async function POST(req: Request) {
 
     if (adminError) {
       // Rollback: delete auth user if admin record creation fails
-      await supabase.auth.admin.deleteUser(userId);
+      await authz.supabaseAdmin.auth.admin.deleteUser(userId);
       console.error("Admin insert error:", adminError);
       return NextResponse.json({ error: adminError.message }, { status: 400 });
     }

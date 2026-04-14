@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function PATCH(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const body = await req.json();
     const {
       id,
@@ -32,7 +29,7 @@ export async function PATCH(req: Request) {
     }
 
     // Verify business exists
-    const { data: existingBusiness, error: fetchError } = await supabase
+    const { data: existingBusiness, error: fetchError } = await authz.supabaseAdmin
       .from("admins")
       .select("*")
       .eq("id", id)
@@ -56,7 +53,7 @@ export async function PATCH(req: Request) {
     }
 
     if (Object.keys(authUpdates).length > 0) {
-      const { error: authError } = await supabase.auth.admin.updateUserById(
+      const { error: authError } = await authz.supabaseAdmin.auth.admin.updateUserById(
         id,
         authUpdates
       );
@@ -88,7 +85,7 @@ export async function PATCH(req: Request) {
     }
 
     // Update admins table (role/auth record)
-    const { error: updateAdminError } = await supabase
+    const { error: updateAdminError } = await authz.supabaseAdmin
       .from("admins")
       .update(updateData)
       .eq("id", id)
@@ -111,7 +108,7 @@ export async function PATCH(req: Request) {
     if (subscription_plan !== undefined)    businessUpdateData.subscription_plan = subscription_plan;
     if (is_approved !== undefined)          businessUpdateData.is_active = is_approved;
 
-    const { data: updatedBusiness, error: updateBusinessError } = await supabase
+    const { data: updatedBusiness, error: updateBusinessError } = await authz.supabaseAdmin
       .from("businesses")
       .update(businessUpdateData)
       .eq("id", id)

@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function PATCH(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const body = await req.json();
     const { id, full_name, email, password, is_approved } = body;
 
@@ -20,7 +17,7 @@ export async function PATCH(req: Request) {
     }
 
     // Verify admin exists
-    const { data: existingAdmin, error: fetchError } = await supabase
+    const { data: existingAdmin, error: fetchError } = await authz.supabaseAdmin
       .from("admins")
       .select("*")
       .eq("id", id)
@@ -43,7 +40,7 @@ export async function PATCH(req: Request) {
     }
 
     if (Object.keys(authUpdates).length > 0) {
-      const { error: authError } = await supabase.auth.admin.updateUserById(
+      const { error: authError } = await authz.supabaseAdmin.auth.admin.updateUserById(
         id,
         authUpdates
       );
@@ -69,7 +66,7 @@ export async function PATCH(req: Request) {
     }
 
     // Update admins table
-    const { data: updatedAdmin, error: updateError } = await supabase
+    const { data: updatedAdmin, error: updateError } = await authz.supabaseAdmin
       .from("admins")
       .update(updateData)
       .eq("id", id)

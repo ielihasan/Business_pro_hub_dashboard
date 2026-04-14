@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// Server-side Supabase (Service Role)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { requireApiRole } from "@/lib/api/route-auth";
 
 export async function POST(req: Request) {
   try {
+    const authz = await requireApiRole(req, ["admin"]);
+    if (!authz.ok) return authz.response;
+
     const {
       full_name,
       email,
@@ -47,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     // Check if business already exists
-    const { data: existingBusiness } = await supabase
+    const { data: existingBusiness } = await authz.supabaseAdmin
       .from("admins")
       .select("id")
       .eq("email", email)
@@ -62,7 +59,7 @@ export async function POST(req: Request) {
 
     // Create Auth User
     const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
+      await authz.supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -85,7 +82,7 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
 
     // Create role record in admins table (auth/role management)
-    const { error: adminError } = await supabase
+    const { error: adminError } = await authz.supabaseAdmin
       .from("admins")
       .insert({
         id: userId,
@@ -103,13 +100,13 @@ export async function POST(req: Request) {
       });
 
     if (adminError) {
-      await supabase.auth.admin.deleteUser(userId);
+      await authz.supabaseAdmin.auth.admin.deleteUser(userId);
       console.error("Admins insert error:", adminError);
       return NextResponse.json({ error: adminError.message }, { status: 400 });
     }
 
     // Create canonical business record — FK target for queues, services, subscriptions
-    const { data: businessData, error: businessError } = await supabase
+    const { data: businessData, error: businessError } = await authz.supabaseAdmin
       .from("businesses")
       .insert({
         id: userId,
@@ -129,8 +126,8 @@ export async function POST(req: Request) {
 
     if (businessError) {
       // Rollback admins row and auth user
-      await supabase.from("admins").delete().eq("id", userId).eq("role", "business_owner");
-      await supabase.auth.admin.deleteUser(userId);
+      await authz.supabaseAdmin.from("admins").delete().eq("id", userId).eq("role", "business_owner");
+      await authz.supabaseAdmin.auth.admin.deleteUser(userId);
       console.error("Businesses insert error:", businessError);
       return NextResponse.json({ error: businessError.message }, { status: 400 });
     }
