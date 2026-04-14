@@ -3,6 +3,7 @@ import { requireApiRole } from "@/lib/api/route-auth";
 
 // Default admin email that cannot be deleted
 const DEFAULT_ADMIN_EMAIL = "admin@test.com";
+type AdminDeleteCandidate = { id: string; email: string | null };
 
 export async function DELETE(req: Request) {
   try {
@@ -24,21 +25,21 @@ export async function DELETE(req: Request) {
     }
 
     // Check if trying to delete the default admin
-    const { data: adminsToDelete } = await authz.supabaseAdmin
+    const { data } = await authz.supabaseAdmin
       .from("admins")
       .select("id, email")
       .in("id", ids);
+    const adminsToDelete: AdminDeleteCandidate[] = (data ??
+      []) as AdminDeleteCandidate[];
 
-    if (adminsToDelete) {
-      const defaultAdmin = adminsToDelete.find(
-        (admin) => admin.email === DEFAULT_ADMIN_EMAIL,
+    const defaultAdmin = adminsToDelete.find(
+      (admin) => admin.email === DEFAULT_ADMIN_EMAIL,
+    );
+    if (defaultAdmin) {
+      return NextResponse.json(
+        { error: "Cannot delete the default system admin (admin@test.com)" },
+        { status: 403 },
       );
-      if (defaultAdmin) {
-        return NextResponse.json(
-          { error: "Cannot delete the default system admin (admin@test.com)" },
-          { status: 403 },
-        );
-      }
     }
 
     // Get current user to prevent self-deletion

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/api/route-auth";
 
+type BusinessDeleteCandidate = {
+  id: string;
+  role: string | null;
+  business_name: string | null;
+};
+
 export async function DELETE(req: Request) {
   try {
     const authz = await requireApiRole(req, ["admin"]);
@@ -21,23 +27,23 @@ export async function DELETE(req: Request) {
     }
 
     // Verify all IDs are business_owners (not admins)
-    const { data: businessesToDelete } = await authz.supabaseAdmin
+    const { data } = await authz.supabaseAdmin
       .from("admins")
       .select("id, role, business_name")
       .in("id", ids);
+    const businessesToDelete: BusinessDeleteCandidate[] = (data ??
+      []) as BusinessDeleteCandidate[];
 
-    if (businessesToDelete) {
-      const nonBusinessOwners = businessesToDelete.filter(
-        (b) => b.role !== "business_owner",
+    const nonBusinessOwners = businessesToDelete.filter(
+      (b) => b.role !== "business_owner",
+    );
+    if (nonBusinessOwners.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Cannot delete non-business accounts through this endpoint",
+        },
+        { status: 403 },
       );
-      if (nonBusinessOwners.length > 0) {
-        return NextResponse.json(
-          {
-            error: "Cannot delete non-business accounts through this endpoint",
-          },
-          { status: 403 },
-        );
-      }
     }
 
     // Delete from businesses table first (queues FK cascades automatically)

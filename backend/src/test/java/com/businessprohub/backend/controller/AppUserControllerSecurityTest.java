@@ -1,10 +1,9 @@
 package com.businessprohub.backend.controller;
 
-import com.businessprohub.backend.entity.Admin;
 import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.repository.AdminRepository;
-import com.businessprohub.backend.repository.AppUserRepository;
 import com.businessprohub.backend.security.JwtService;
+import com.businessprohub.backend.service.AppUserProfileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,7 +37,7 @@ class AppUserControllerSecurityTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AppUserRepository appUserRepository;
+    private AppUserProfileService appUserProfileService;
 
     @MockBean
     private AdminRepository adminRepository;
@@ -60,7 +62,8 @@ class AppUserControllerSecurityTest {
         user.setId("user-1");
         when(jwtService.isTokenValid("valid-token")).thenReturn(true);
         when(jwtService.extractUserId("valid-token")).thenReturn("user-1");
-        when(appUserRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(appUserProfileService.getProfile(any(), isNull()))
+                .thenReturn(user);
 
         mockMvc.perform(
                         get("/api/app-user/profile")
@@ -73,6 +76,8 @@ class AppUserControllerSecurityTest {
     void shouldBlockNonAdminFromReadingAnotherUsersProfile() throws Exception {
         when(jwtService.isTokenValid("valid-token")).thenReturn(true);
         when(jwtService.extractUserId("valid-token")).thenReturn("user-1");
+        when(appUserProfileService.getProfile(any(), anyString()))
+                .thenThrow(new org.springframework.security.access.AccessDeniedException("denied"));
 
         mockMvc.perform(
                         get("/api/app-user/profile")
@@ -86,14 +91,11 @@ class AppUserControllerSecurityTest {
     void shouldAllowAdminToReadAnotherUsersProfile() throws Exception {
         AppUser user = new AppUser();
         user.setId("user-2");
-        Admin admin = new Admin();
-        admin.setId("user-1");
-        admin.setRole("admin");
 
         when(jwtService.isTokenValid("admin-token")).thenReturn(true);
         when(jwtService.extractUserId("admin-token")).thenReturn("user-1");
-        when(adminRepository.findByIdAndRole("user-1", "admin")).thenReturn(Optional.of(admin));
-        when(appUserRepository.findById("user-2")).thenReturn(Optional.of(user));
+        when(appUserProfileService.getProfile(any(), eq("user-2")))
+                .thenReturn(user);
 
         mockMvc.perform(
                         get("/api/app-user/profile")

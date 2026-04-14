@@ -7,7 +7,7 @@ type AuthzSuccess = {
   ok: true;
   userId: string;
   role: AllowedRole;
-  supabaseAdmin: ReturnType<typeof createClient>;
+  supabaseAdmin: ReturnType<typeof createClient<any>>;
 };
 
 type AuthzFailure = {
