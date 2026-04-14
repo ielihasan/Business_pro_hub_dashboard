@@ -19,7 +19,7 @@ export async function DELETE(req: Request) {
     if (ids.length === 0) {
       return NextResponse.json(
         { error: "Admin ID(s) required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,12 +31,12 @@ export async function DELETE(req: Request) {
 
     if (adminsToDelete) {
       const defaultAdmin = adminsToDelete.find(
-        (admin) => admin.email === DEFAULT_ADMIN_EMAIL
+        (admin) => admin.email === DEFAULT_ADMIN_EMAIL,
       );
       if (defaultAdmin) {
         return NextResponse.json(
           { error: "Cannot delete the default system admin (admin@test.com)" },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -45,7 +45,7 @@ export async function DELETE(req: Request) {
     if (ids.includes(authz.userId)) {
       return NextResponse.json(
         { error: "You cannot delete your own admin account" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,11 +63,14 @@ export async function DELETE(req: Request) {
     // Delete from Auth
     const deleteErrors: string[] = [];
     for (const id of ids) {
-      const { error: authError } = await authz.supabaseAdmin.auth.admin.deleteUser(id);
+      const { error: authError } =
+        await authz.supabaseAdmin.auth.admin.deleteUser(id);
 
       if (authError) {
         console.error(`Auth delete error for ${id}:`, authError);
-        deleteErrors.push(`Failed to delete auth user ${id}: ${authError.message}`);
+        deleteErrors.push(
+          `Failed to delete auth user ${id}: ${authError.message}`,
+        );
       }
     }
 
@@ -77,7 +80,7 @@ export async function DELETE(req: Request) {
           message: "Admin(s) partially deleted",
           warnings: deleteErrors,
         },
-        { status: 207 }
+        { status: 207 },
       );
     }
 

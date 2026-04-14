@@ -19,7 +19,7 @@ type AuthzResult = AuthzSuccess | AuthzFailure;
 
 export async function requireApiRole(
   req: Request,
-  allowedRoles: AllowedRole[]
+  allowedRoles: AllowedRole[],
 ): Promise<AuthzResult> {
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -46,7 +46,7 @@ export async function requireApiRole(
       ok: false,
       response: NextResponse.json(
         { error: "Server auth configuration is incomplete" },
-        { status: 500 }
+        { status: 500 },
       ),
     };
   }
@@ -80,7 +80,7 @@ export async function requireApiRole(
       ok: false,
       response: NextResponse.json(
         { error: "Failed to validate permissions" },
-        { status: 500 }
+        { status: 500 },
       ),
     };
   }
@@ -89,7 +89,7 @@ export async function requireApiRole(
     (row) =>
       row &&
       allowedRoles.includes(row.role as AllowedRole) &&
-      row.is_approved === true
+      row.is_approved === true,
   )?.role as AllowedRole | undefined;
 
   if (!matchedRole) {

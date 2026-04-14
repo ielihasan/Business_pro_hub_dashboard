@@ -795,3 +795,39 @@ For issues or questions:
 -   Create an issue on GitHub
 -   Check Supabase documentation: [https://supabase.com/docs](https://supabase.com/docs)
 -   Check Resend documentation: [https://resend.com/docs](https://resend.com/docs)
+
+---
+
+## Testing and CI
+
+### Run tests locally
+
+Backend:
+
+```bash
+cd backend
+mvn --no-transfer-progress test
+```
+
+Frontend:
+
+```bash
+cd dashboard
+npm ci
+npm run lint
+npm run test
+```
+
+### CI workflows
+
+- `.github/workflows/frontend-ci.yml`:
+  - install dependencies
+  - lint
+  - run tests
+  - build
+- `.github/workflows/backend-ci.yml`:
+  - run backend tests
+  - package backend jar
+- `.github/workflows/security-ci.yml`:
+  - CodeQL analysis for Java and JavaScript/TypeScript
+  - npm production dependency audit

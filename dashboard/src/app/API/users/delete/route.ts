@@ -15,7 +15,7 @@ export async function DELETE(req: Request) {
     if (ids.length === 0) {
       return NextResponse.json(
         { error: "User ID(s) required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -27,10 +27,7 @@ export async function DELETE(req: Request) {
 
     if (tableError) {
       console.error("User table delete error:", tableError);
-      return NextResponse.json(
-        { error: tableError.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: tableError.message }, { status: 400 });
     }
 
     // 2️⃣ Delete from Auth
@@ -40,22 +37,15 @@ export async function DELETE(req: Request) {
 
       if (authError) {
         console.error("Auth delete error:", authError);
-        return NextResponse.json(
-          { error: authError.message },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: authError.message }, { status: 400 });
       }
     }
 
     return NextResponse.json({
       message: "User(s) deleted successfully",
     });
-
   } catch (err: any) {
     console.error("Delete API error:", err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

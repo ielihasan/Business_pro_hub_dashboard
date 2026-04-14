@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         com.businessprohub.backend.security.RateLimitService.class,
         com.businessprohub.backend.exception.GlobalExceptionHandler.class
 })
+@TestPropertySource(properties = "cors.allowed-origins=http://localhost:3002")
 class AuthControllerValidationTest {
 
     @Autowired

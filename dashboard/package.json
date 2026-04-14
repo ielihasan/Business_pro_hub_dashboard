@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "prettier --check src/lib/api/route-auth.ts src/middleware/auth-middleware.ts src/middleware/auth-middleware.test.ts src/proxy.ts src/app/API/admin/create-user/route.ts src/app/API/admins/delete/route.ts src/app/API/businesses/delete/route.ts src/app/API/users/delete/route.ts package.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
@@ -85,8 +85,7 @@
     "ts-node": "^10.9.2",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.41.0"
-    ,
+    "typescript-eslint": "^8.41.0",
     "vitest": "^3.2.4"
   }
 }

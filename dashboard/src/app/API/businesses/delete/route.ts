@@ -16,7 +16,7 @@ export async function DELETE(req: Request) {
     if (ids.length === 0) {
       return NextResponse.json(
         { error: "Business ID(s) required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,12 +28,14 @@ export async function DELETE(req: Request) {
 
     if (businessesToDelete) {
       const nonBusinessOwners = businessesToDelete.filter(
-        (b) => b.role !== "business_owner"
+        (b) => b.role !== "business_owner",
       );
       if (nonBusinessOwners.length > 0) {
         return NextResponse.json(
-          { error: "Cannot delete non-business accounts through this endpoint" },
-          { status: 403 }
+          {
+            error: "Cannot delete non-business accounts through this endpoint",
+          },
+          { status: 403 },
         );
       }
     }
@@ -46,7 +48,10 @@ export async function DELETE(req: Request) {
 
     if (bizTableError) {
       console.error("Businesses table delete error:", bizTableError);
-      return NextResponse.json({ error: bizTableError.message }, { status: 400 });
+      return NextResponse.json(
+        { error: bizTableError.message },
+        { status: 400 },
+      );
     }
 
     // Delete from admins table
@@ -63,11 +68,14 @@ export async function DELETE(req: Request) {
     // Delete from Auth
     const deleteErrors: string[] = [];
     for (const id of ids) {
-      const { error: authError } = await authz.supabaseAdmin.auth.admin.deleteUser(id);
+      const { error: authError } =
+        await authz.supabaseAdmin.auth.admin.deleteUser(id);
 
       if (authError) {
         console.error(`Auth delete error for ${id}:`, authError);
-        deleteErrors.push(`Failed to delete auth user ${id}: ${authError.message}`);
+        deleteErrors.push(
+          `Failed to delete auth user ${id}: ${authError.message}`,
+        );
       }
     }
 
@@ -77,7 +85,7 @@ export async function DELETE(req: Request) {
           message: "Business(es) partially deleted",
           warnings: deleteErrors,
         },
-        { status: 207 }
+        { status: 207 },
       );
     }
 

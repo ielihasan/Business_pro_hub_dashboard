@@ -6,7 +6,8 @@ function createRequest(pathname: string, loggedIn = false): any {
     url: "http://localhost:3002" + pathname,
     nextUrl: { pathname },
     cookies: {
-      get: (name: string) => (loggedIn && name === "auth-token" ? { value: "x" } : undefined),
+      get: (name: string) =>
+        loggedIn && name === "auth-token" ? { value: "x" } : undefined,
     },
   };
 }
@@ -17,7 +18,9 @@ describe("authMiddleware", () => {
     const res = authMiddleware(req);
 
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost:3002/auth/v1/login");
+    expect(res.headers.get("location")).toBe(
+      "http://localhost:3002/auth/v1/login",
+    );
   });
 
   it("redirects authenticated users away from login route", () => {
@@ -25,7 +28,9 @@ describe("authMiddleware", () => {
     const res = authMiddleware(req);
 
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost:3002/business/dashboard");
+    expect(res.headers.get("location")).toBe(
+      "http://localhost:3002/business/dashboard",
+    );
   });
 
   it("allows unauthenticated users on public auth routes", () => {
