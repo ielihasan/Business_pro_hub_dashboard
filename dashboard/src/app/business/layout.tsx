@@ -100,8 +100,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         router.push("/auth/v1/login");
@@ -129,6 +128,7 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
       }
 
       // ── 2. Check if user is a staff member ───────────────────────────────
+      const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (token) {
         try {

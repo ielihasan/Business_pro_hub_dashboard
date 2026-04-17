@@ -7,39 +7,32 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // When refresh token is invalid (password reset, expired session),
 // Supabase fires SIGNED_OUT — clear storage and redirect to login
 if (typeof window !== "undefined") {
-  supabase.auth.onAuthStateChange((event) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT") {
       const onAuthPage = window.location.pathname.startsWith("/auth/");
       if (!onAuthPage) {
         window.location.href = "/auth/v1/login";
       }
-    }
-  });
-
-  supabase.auth.getSession().then(({ data: { session }, error }) => {
-    // Never apply session management on the password-reset page —
-    // signing out here would wipe the PKCE code-verifier and break the flow.
-    if (window.location.pathname === "/auth/reset-password") return;
-
-    // Invalid refresh token — clear session cleanly
-    if (error?.message?.toLowerCase().includes("refresh token")) {
-      supabase.auth.signOut();
       return;
     }
 
-    if (session) {
+    // On sign-in or token refresh, enforce remember-me expiry only when no
+    // active session flag exists (i.e. the user did NOT check "Remember me"
+    // and this is a fresh tab/window where sessionStorage was not carried over).
+    if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+      if (window.location.pathname === "/auth/reset-password") return;
+
       const isRemembered = localStorage.getItem("bph-remember-me") === "true";
       const rememberUntil = parseInt(localStorage.getItem("bph-remember-until") || "0");
       const isSessionActive = sessionStorage.getItem("bph-session-active") === "true";
 
       if (isRemembered && Date.now() > rememberUntil) {
-        // 30-day period expired — sign out
         localStorage.removeItem("bph-remember-me");
         localStorage.removeItem("bph-remember-until");
         supabase.auth.signOut();
       } else if (!isRemembered && !isSessionActive) {
-        // Not remembered + sessionStorage cleared (browser restarted) — sign out
-        supabase.auth.signOut();
+        // Restore the flag so subsequent module loads don't re-trigger this branch
+        sessionStorage.setItem("bph-session-active", "true");
       }
     }
   });
