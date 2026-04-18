@@ -477,20 +477,14 @@ function QueueDetail({
                       {entry.scanned_user?.phone_number || entry.customer_phone}
                     </p>
                   )}
-                  {((entry.advance_paid != null && entry.advance_paid > 0) || (entry.payment_left != null && entry.payment_left > 0)) && (
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      {entry.advance_paid != null && entry.advance_paid > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
-                          ✓ Rs.{entry.advance_paid.toLocaleString()} paid
-                        </span>
-                      )}
-                      {entry.payment_left != null && entry.payment_left > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                          Rs.{entry.payment_left.toLocaleString()} due
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                      ✓ Rs.{(entry.advance_paid ?? 0).toLocaleString()} paid
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      Rs.{(entry.payment_left ?? 0).toLocaleString()} due
+                    </span>
+                  </div>
                 </div>
 
                 {/* Wait time */}
