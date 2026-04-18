@@ -122,6 +122,8 @@ public class QueueService {
         entry.setQuantity(quantity);
         entry.setUnitPrice(unitPrice);
         entry.setTotalPrice(totalPrice);
+        entry.setAdvancePaid(BigDecimal.ZERO);   // walk-in: no advance paid upfront
+        entry.setPaymentLeft(totalPrice);          // full amount due at counter
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         entry.setJoinedAt(now);
@@ -354,8 +356,14 @@ public class QueueService {
                 entry.setCompletedAt(OffsetDateTime.now(ZoneOffset.UTC));
             }
         }
-        if (body.containsKey("notes")) entry.setNotes((String) body.get("notes"));
-        if (body.containsKey("priority")) entry.setPriority((String) body.get("priority"));
+        if (body.containsKey("notes"))        entry.setNotes((String) body.get("notes"));
+        if (body.containsKey("priority"))     entry.setPriority((String) body.get("priority"));
+        if (body.containsKey("advance_paid")) entry.setAdvancePaid(parseBigDecimal(body.get("advance_paid"), BigDecimal.ZERO));
+        if (body.containsKey("payment_left")) entry.setPaymentLeft(parseBigDecimal(body.get("payment_left"), BigDecimal.ZERO));
+        if (body.containsKey("customer_name"))  entry.setCustomerName((String) body.get("customer_name"));
+        if (body.containsKey("customer_phone")) entry.setCustomerPhone((String) body.get("customer_phone"));
+        if (body.containsKey("customer_email")) entry.setCustomerEmail((String) body.get("customer_email"));
+        if (body.containsKey("service_type"))   entry.setServiceType((String) body.get("service_type"));
         entry.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         return queueRepo.save(entry);
     }

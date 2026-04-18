@@ -596,7 +596,7 @@ export default function QueueManagementPage() {
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
     customer_name: "", customer_phone: "", customer_email: "",
-    queue_type_id: "", notes: "", priority: "normal",
+    queue_type_id: "", notes: "", priority: "normal", quantity: 1,
   });
 
   // QR picker (step 1) + QR display (step 2)
@@ -717,7 +717,7 @@ export default function QueueManagementPage() {
   const openAddCustomer = useCallback((queueTypeId?: string) => {
     setNewCustomer({
       customer_name: "", customer_phone: "", customer_email: "",
-      queue_type_id: queueTypeId || "", notes: "", priority: "normal",
+      queue_type_id: queueTypeId || "", notes: "", priority: "normal", quantity: 1,
     });
     setAddDialogOpen(true);
   }, []);
@@ -729,6 +729,7 @@ export default function QueueManagementPage() {
     try {
       setAddingCustomer(true);
       const { data: { session } } = await supabase.auth.getSession();
+      const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
@@ -738,13 +739,14 @@ export default function QueueManagementPage() {
           customer_phone: newCustomer.customer_phone,
           customer_email: newCustomer.customer_email,
           queue_type_id: (newCustomer.queue_type_id && newCustomer.queue_type_id !== "__general__") ? newCustomer.queue_type_id : undefined,
+          queue_type_name: qt?.name,
           notes: newCustomer.notes,
           priority: newCustomer.priority,
+          quantity: newCustomer.quantity,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || "Failed to add customer to queue");
-      const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
       toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
       setAddDialogOpen(false);
       fetchQueue();
@@ -1368,12 +1370,46 @@ export default function QueueManagementPage() {
                         <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: qt.color }} />
                         {qt.name}
                         <span className="text-gray-400 text-xs">~{qt.estimated_service_time}min</span>
+                        {qt.price != null && qt.price > 0 && (
+                          <span className="text-gray-400 text-xs">· Rs.{Number(qt.price).toLocaleString()}</span>
+                        )}
                       </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Quantity + price summary */}
+            {(() => {
+              const selectedQt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
+              const unitPrice  = selectedQt?.price ? Number(selectedQt.price) : 0;
+              const total      = unitPrice * newCustomer.quantity;
+              return (
+                <div className="grid gap-2">
+                  <Label>Quantity</Label>
+                  <div className="flex items-center gap-3">
+                    <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                      onClick={() => setNewCustomer(p => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}>
+                      −
+                    </Button>
+                    <span className="w-10 text-center font-semibold text-lg tabular-nums">{newCustomer.quantity}</span>
+                    <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                      onClick={() => setNewCustomer(p => ({ ...p, quantity: Math.min(99, p.quantity + 1) }))}>
+                      +
+                    </Button>
+                    {unitPrice > 0 && (
+                      <div className="flex-1 rounded-lg border bg-gray-50 px-3 py-2 text-sm">
+                        <span className="text-gray-500">Rs.{unitPrice.toLocaleString()} × {newCustomer.quantity} = </span>
+                        <span className="font-semibold text-gray-900">Rs.{total.toLocaleString()}</span>
+                        <span className="text-amber-600 ml-2 text-xs font-medium">due at counter</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid gap-2">
               <Label>Customer Name *</Label>
               <Input placeholder="Enter customer name" value={newCustomer.customer_name}
