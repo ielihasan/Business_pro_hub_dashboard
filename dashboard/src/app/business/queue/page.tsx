@@ -107,6 +107,9 @@ interface QueueEntry {
   cancelled_at?: string;
   created_at: string;
   updated_at?: string;
+  unit_price?: number;
+  quantity?: number;
+  total_price?: number;
   advance_paid?: number;
   payment_left?: number;
 }
@@ -313,12 +316,13 @@ interface QueueDetailProps {
   onCancelClick: (entry: QueueEntry) => void;
   onEditEntry: (entry: QueueEntry) => void;
   onDeleteEntry: (entry: QueueEntry) => void;
+  onCollectPayment: (entry: QueueEntry) => void;
 }
 
 function QueueDetail({
   queueType, entries, loadingQr, isActive, statusFilter,
   onBack, onToggleActive, onGenerateQr, onAddCustomer,
-  onStatusChange, onCancelClick, onEditEntry, onDeleteEntry,
+  onStatusChange, onCancelClick, onEditEntry, onDeleteEntry, onCollectPayment,
 }: QueueDetailProps) {
   const waiting = entries.filter(e => e.status === "waiting").length;
   const serving = entries.filter(e => e.status === "serving").length;
@@ -522,6 +526,14 @@ function QueueDetail({
                       <span className="hidden sm:inline">Done</span>
                     </Button>
                   )}
+                  {(entry.payment_left ?? 0) > 0 && (entry.status === "waiting" || entry.status === "serving") && (
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                      onClick={() => onCollectPayment(entry)}>
+                      <Banknote className="h-3 w-3" />
+                      <span className="hidden sm:inline">Rs.{(entry.payment_left ?? 0).toLocaleString()}</span>
+                    </Button>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-700">
@@ -612,6 +624,11 @@ export default function QueueManagementPage() {
   // Delete entry
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingEntry, setDeletingEntry] = useState<QueueEntry | null>(null);
+
+  // Collect payment
+  const [collectDialogOpen, setCollectDialogOpen] = useState(false);
+  const [collectingEntry, setCollectingEntry] = useState<QueueEntry | null>(null);
+  const [collectingSaving, setCollectingSaving] = useState(false);
 
   // Open lane (null = list view, "general" or uuid = detail view)
   const [openLaneId, setOpenLaneId] = useState<string | null>(null);
@@ -831,6 +848,38 @@ export default function QueueManagementPage() {
     }
   };
 
+  /* ── Collect payment */
+  const handleCollectPaymentOpen = useCallback((entry: QueueEntry) => {
+    setCollectingEntry(entry);
+    setCollectDialogOpen(true);
+  }, []);
+
+  const handleCollectPaymentConfirm = async () => {
+    if (!collectingEntry) return;
+    const total = collectingEntry.total_price ?? 0;
+    try {
+      setCollectingSaving(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${collectingEntry.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ advance_paid: total, payment_left: 0 }),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to record payment"); }
+      toast.success(`Payment collected — Rs.${(collectingEntry.payment_left ?? 0).toLocaleString()} from ${collectingEntry.customer_name}`);
+      // Optimistic update
+      setQueueEntries(prev => prev.map(e =>
+        e.id === collectingEntry.id
+          ? { ...e, advance_paid: total, payment_left: 0 }
+          : e
+      ));
+      setCollectDialogOpen(false);
+      setCollectingEntry(null);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to record payment");
+    } finally { setCollectingSaving(false); }
+  };
+
   /* ── Toggle queue open/closed */
   const handleToggleQueueType = useCallback(async (queueTypeId: string | null, newValue: boolean) => {
     // General queue — local state only (no DB record)
@@ -1040,6 +1089,7 @@ export default function QueueManagementPage() {
                   onCancelClick={handleCancelClick}
                   onEditEntry={handleEditEntryOpen}
                   onDeleteEntry={handleDeleteEntryClick}
+                  onCollectPayment={handleCollectPaymentOpen}
                 />
               );
             })()
@@ -1470,6 +1520,74 @@ export default function QueueManagementPage() {
             <Button onClick={handleSaveEdit} disabled={savingEdit}>
               {savingEdit ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Edit2 className="h-4 w-4 mr-2" />}
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Collect Payment */}
+      <Dialog open={collectDialogOpen} onOpenChange={open => { setCollectDialogOpen(open); if (!open) setCollectingEntry(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-emerald-600" />Collect Payment
+            </DialogTitle>
+            <DialogDescription>
+              Confirm cash/card collection for{" "}
+              <strong>{collectingEntry?.customer_name}</strong>
+              {collectingEntry && (
+                <span className="ml-1 font-mono text-xs text-gray-400">
+                  — #{String(collectingEntry.position).padStart(3, "0")}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {collectingEntry && (() => {
+            const total   = collectingEntry.total_price   ?? 0;
+            const advance = collectingEntry.advance_paid  ?? 0;
+            const left    = collectingEntry.payment_left  ?? 0;
+            return (
+              <div className="space-y-3 py-2">
+                {/* Breakdown */}
+                <div className="rounded-xl border divide-y overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-gray-500">Total Amount</span>
+                    <span className="font-semibold text-gray-900">Rs.{total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-green-50">
+                    <span className="text-green-700 flex items-center gap-1.5">
+                      <CheckCircle className="h-3.5 w-3.5" />Advance Paid (wallet)
+                    </span>
+                    <span className="font-semibold text-green-700">− Rs.{advance.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 bg-amber-50">
+                    <span className="text-amber-800 font-semibold flex items-center gap-1.5">
+                      <Banknote className="h-4 w-4" />Collect Now
+                    </span>
+                    <span className="text-xl font-bold text-amber-800">Rs.{left.toLocaleString()}</span>
+                  </div>
+                </div>
+                {collectingEntry.unit_price != null && collectingEntry.unit_price > 0 && (
+                  <p className="text-xs text-gray-400 text-center">
+                    {collectingEntry.quantity ?? 1} × Rs.{(collectingEntry.unit_price).toLocaleString()} per unit
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCollectDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleCollectPaymentConfirm}
+              disabled={collectingSaving}
+            >
+              {collectingSaving
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Banknote className="h-4 w-4 mr-2" />}
+              Confirm Collection
             </Button>
           </DialogFooter>
         </DialogContent>
