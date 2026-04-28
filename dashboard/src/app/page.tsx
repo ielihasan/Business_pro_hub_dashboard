@@ -34,7 +34,6 @@ import {
   MonitorSmartphone,
   Banknote,
   Lock,
-  ScanLine,
   Sparkles,
 } from "lucide-react";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
@@ -123,17 +122,6 @@ const bentoFeatures = [
     objectPos: "center top",
     overlay: "from-[#636B2F]/90 via-[#636B2F]/45 to-transparent",
     colSpan: "lg:col-span-1",
-    rowSpan: "",
-  },
-  {
-    icon: ScanLine,
-    title: "Instant QR Check-In",
-    description:
-      "Generate branded QR codes in seconds. Customers scan and join queues without downloading anything.",
-    image: null,   // no photo — styled dark accent card
-    objectPos: "",
-    overlay: "",
-    colSpan: "lg:col-span-2",
     rowSpan: "",
   },
 ];
@@ -336,8 +324,8 @@ export default function LandingPage() {
       <motion.header
         className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-white/95 backdrop-blur-md shadow-md border-b border-gray-100"
-            : "bg-transparent"
+            ? "bg-[#1a1e0d]/98 backdrop-blur-md shadow-lg border-b border-white/10"
+            : "bg-[#1a1e0d]/85 backdrop-blur-sm border-b border-white/5"
         }`}
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -357,18 +345,10 @@ export default function LandingPage() {
               <Store className="h-5 w-5 text-white" />
             </div>
             <div>
-              <span
-                className={`text-xl font-bold transition-colors duration-300 ${
-                  scrolled ? "text-gray-900" : "text-white drop-shadow"
-                }`}
-              >
+              <span className="text-xl font-bold text-white">
                 Business Pro Hub
               </span>
-              <p
-                className={`text-xs hidden sm:block transition-colors duration-300 ${
-                  scrolled ? "text-gray-400" : "text-white/70"
-                }`}
-              >
+              <p className="text-xs hidden sm:block text-white/50">
                 Smart Queue Management
               </p>
             </div>
@@ -388,10 +368,8 @@ export default function LandingPage() {
                 onClick={(e) => handleSmoothScroll(e, id)}
                 className={`hidden md:block px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   activeSection === id
-                    ? "text-[#3D4127] bg-[#D4DE95]/30"
-                    : scrolled
-                    ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
+                    ? "text-[#D4DE95] bg-[#D4DE95]/10"
+                    : "text-white/70 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {label}
@@ -403,11 +381,7 @@ export default function LandingPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`font-medium text-sm ${
-                    scrolled
-                      ? "text-gray-700 hover:text-gray-900"
-                      : "text-white hover:bg-white/10"
-                  }`}
+                  className="font-medium text-sm text-white/80 hover:text-white hover:bg-white/10"
                 >
                   Sign In
                 </Button>
@@ -424,15 +398,13 @@ export default function LandingPage() {
 
             {/* Hamburger */}
             <button
-              className={`md:hidden p-2 rounded-lg transition-colors ${
-                scrolled ? "hover:bg-gray-100" : "hover:bg-white/10"
-              }`}
+              className="md:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? (
-                <X className={`h-5 w-5 ${scrolled ? "text-gray-800" : "text-white"}`} />
+                <X className="h-5 w-5 text-white" />
               ) : (
-                <Menu className={`h-5 w-5 ${scrolled ? "text-gray-800" : "text-white"}`} />
+                <Menu className="h-5 w-5 text-white" />
               )}
             </button>
           </motion.nav>
@@ -846,9 +818,8 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* ── ROW 3: Mobile-First (1-col portrait) + QR dark card (2-col) ── */}
+          {/* ── ROW 3: Mobile-First Platform (full-width) ── */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Mobile-First Platform — portrait photo */}
             <motion.div
               className="relative rounded-2xl overflow-hidden min-h-[300px] group"
               initial={{ opacity: 0, y: 30 }}
@@ -870,57 +841,6 @@ export default function LandingPage() {
                 ); })()}
                 <h3 className="text-lg font-bold text-white mb-1.5">{bentoFeatures[5].title}</h3>
                 <p className="text-white/65 text-sm leading-relaxed">{bentoFeatures[5].description}</p>
-              </div>
-            </motion.div>
-
-            {/* Instant QR Check-In — styled dark card, 2-col */}
-            <motion.div
-              className="md:col-span-1 lg:col-span-2 relative rounded-2xl overflow-hidden min-h-[300px] group bg-[#1a1e0d]"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.14 }}
-            >
-              {/* Subtle dot-grid pattern */}
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(circle, #D4DE95 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                }}
-              />
-              {/* Brand glow */}
-              <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-[#636B2F]/30 blur-3xl" />
-              <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-[#D4DE95]/10 blur-2xl" />
-
-              {/* Large decorative QR icon */}
-              <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10">
-                <ScanLine className="h-40 w-40 text-[#D4DE95]" />
-              </div>
-
-              {/* Content */}
-              <div className="relative h-full flex flex-col justify-end p-8">
-                {(() => { const Icon = bentoFeatures[6].icon; return (
-                  <div className="h-12 w-12 rounded-xl bg-[#D4DE95]/15 border border-[#D4DE95]/30 flex items-center justify-center mb-5">
-                    <Icon className="h-6 w-6 text-[#D4DE95]" />
-                  </div>
-                ); })()}
-                <h3 className="text-2xl font-bold text-white mb-3">
-                  {bentoFeatures[6].title}
-                </h3>
-                <p className="text-white/55 text-sm leading-relaxed max-w-sm">
-                  {bentoFeatures[6].description}
-                </p>
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="flex items-center gap-2 bg-[#D4DE95]/10 border border-[#D4DE95]/20 rounded-full px-4 py-2">
-                    <div className="h-2 w-2 rounded-full bg-[#D4DE95] animate-pulse" />
-                    <span className="text-[#D4DE95] text-xs font-medium">No app download needed</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-                    <span className="text-white/50 text-xs">Scan & join instantly</span>
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>
