@@ -53,17 +53,22 @@ export default function AdminDashboardPage() {
       const token = sessionData.session?.access_token;
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8181";
 
-      // ── 1. Spring Boot platform stats (bypasses Supabase RLS) ──────────
-      const [statsRes, bizResult, recentResult] = await Promise.all([
+      // ── 1. Spring Boot platform stats + Supabase fallbacks ──────────────
+      const [statsRes, pendingAppResult, usersResult, recentResult] = await Promise.all([
         fetch(`${apiUrl}/api/admin/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        // Approved businesses count — admins table is RLS-friendly for admin role
+        // Pending count from business_applications (the real source of truth)
         supabase
-          .from("admins")
-          .select("id, is_approved")
-          .eq("role", "business_owner"),
-        // Recent 5 registrations
+          .from("business_applications")
+          .select("id", { count: "exact", head: true })
+          .eq("is_approved", false)
+          .eq("is_rejected", false),
+        // Total customers = mobile app users
+        supabase
+          .from("users")
+          .select("id", { count: "exact", head: true }),
+        // Recent 5 registrations from admins
         supabase
           .from("admins")
           .select("id, business_name, business_type, full_name, email, created_at, is_approved")
@@ -72,36 +77,38 @@ export default function AdminDashboardPage() {
           .limit(5),
       ]);
 
+      const pendingFromSupabase = pendingAppResult.count ?? 0;
+      const customersFromSupabase = usersResult.count ?? 0;
+
       // ── 2. Parse Spring Boot stats ─────────────────────────────────────
       if (statsRes.ok) {
         const json = await statsRes.json();
         const d = json.data ?? json; // ApiResponse wrapper or raw object
 
-        // Pending businesses = not yet in businesses table → from admins
-        const allBiz = bizResult.data || [];
-        const pendingBusinesses = allBiz.filter((b) => !b.is_approved).length;
-        const approvedBusinesses = allBiz.filter((b) => b.is_approved).length;
+        const approvedBusinesses = Number(d.totalBusinesses ?? 0);
+        // Use pendingApplications from Spring Boot, fallback to Supabase count
+        const pendingBusinesses = Number(d.pendingApplications ?? pendingFromSupabase);
 
         setStats({
-          totalBusinesses: Number(d.totalBusinesses ?? 0),
+          totalBusinesses: approvedBusinesses + pendingBusinesses,
           pendingBusinesses,
           approvedBusinesses,
-          totalCustomers: Number(d.totalCustomers ?? 0),
+          // Use Spring Boot totalCustomers (users table), fallback to Supabase
+          totalCustomers: Number(d.totalCustomers ?? 0) || customersFromSupabase,
           activeQueues: Number(d.activeQueues ?? 0),
           totalOrders: Number(d.totalOrders ?? 0),
           pendingOrders: Number(d.pendingOrders ?? 0),
           completedOrders: Number(d.completedOrders ?? 0),
         });
       } else {
-        // Fallback — use only Supabase admins data if backend is offline
-        const allBiz = bizResult.data || [];
-        const pendingBusinesses = allBiz.filter((b) => !b.is_approved).length;
-        const approvedBusinesses = allBiz.filter((b) => b.is_approved).length;
+        // Fallback — use only Supabase data if backend is offline
+        const approvedBusinesses = (await supabase.from("businesses").select("id", { count: "exact", head: true })).count ?? 0;
         setStats((prev) => ({
           ...prev,
-          totalBusinesses: allBiz.length,
-          pendingBusinesses,
+          totalBusinesses: approvedBusinesses + pendingFromSupabase,
+          pendingBusinesses: pendingFromSupabase,
           approvedBusinesses,
+          totalCustomers: customersFromSupabase,
         }));
       }
 
@@ -359,8 +366,8 @@ export default function AdminDashboardPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Approval Rate</span>
               <span className="font-semibold">
-                {stats.totalBusinesses > 0
-                  ? Math.round((stats.approvedBusinesses / stats.totalBusinesses) * 100)
+                {(stats.approvedBusinesses + stats.pendingBusinesses) > 0
+                  ? Math.round((stats.approvedBusinesses / (stats.approvedBusinesses + stats.pendingBusinesses)) * 100)
                   : 0}%
               </span>
             </div>

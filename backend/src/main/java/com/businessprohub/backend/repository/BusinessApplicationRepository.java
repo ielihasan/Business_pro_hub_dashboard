@@ -11,4 +11,5 @@ public interface BusinessApplicationRepository extends JpaRepository<BusinessApp
     Optional<BusinessApplication> findByEmail(String email);
     Optional<BusinessApplication> findByVerificationToken(String token);
     Optional<BusinessApplication> findByUserId(String userId);
+    long countByIsApprovedFalseAndIsRejectedFalse();
 }
