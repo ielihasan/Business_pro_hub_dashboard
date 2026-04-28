@@ -56,59 +56,85 @@ const stats: StatItem[] = [
 ];
 
 const bentoFeatures = [
+  // Row 1 — all landscape images, uniform height
   {
     icon: BarChart3,
     title: "Advanced Analytics",
     description:
       "Real-time dashboards with actionable insights, trends analysis, and performance forecasting to grow smarter.",
-    accent: "bg-[#3D4127]",
-    span: "lg:col-span-1",
-    image: null,
+    image: "/media/advanced-analytics.jpg",          // 5000×3333 landscape
+    objectPos: "center center",
+    overlay: "from-black/80 via-black/40 to-transparent",
+    colSpan: "lg:col-span-1",
+    rowSpan: "",
   },
   {
     icon: Clock,
     title: "Smart Queue Engine",
     description:
       "AI-powered queue management that predicts wait times and optimises customer flow — automatically.",
-    accent: "bg-[#636B2F]",
-    span: "lg:col-span-1",
-    image: null,
+    image: "/media/smart-queue-engine.jpg",           // 8000×6000 landscape
+    objectPos: "center center",
+    overlay: "from-[#3D4127]/85 via-[#3D4127]/40 to-transparent",
+    colSpan: "lg:col-span-1",
+    rowSpan: "",
   },
   {
     icon: BellRing,
     title: "Multi-Channel Notifications",
     description:
       "Automated SMS, email, and push alerts with custom templates. Keep customers informed at every step.",
-    accent: "bg-[#4a5130]",
-    span: "lg:col-span-1",
-    image: null,
+    image: "/media/multi-channel-notifications.jpg",  // 4149×4149 square
+    objectPos: "center center",
+    overlay: "from-black/80 via-black/40 to-transparent",
+    colSpan: "lg:col-span-1",
+    rowSpan: "",
+  },
+  // Row 2 — Revenue Analytics spans 2 cols (portrait); Security fills right
+  {
+    icon: BarChart3,
+    title: "Revenue Analytics",
+    description:
+      "Close the books faster with real-time revenue dashboards, period comparisons, and downloadable reports.",
+    image: "/media/african-american-expert-closing-monthly-revenue-balance.jpg", // 3403×5104 portrait
+    objectPos: "center top",
+    overlay: "from-[#3D4127]/90 via-[#3D4127]/50 to-transparent",
+    colSpan: "lg:col-span-2",
+    rowSpan: "",
   },
   {
     icon: Shield,
     title: "Enterprise-Grade Security",
     description:
       "Bank-level encryption, SOC 2 compliance, and comprehensive data protection baked in from day one.",
-    accent: "bg-[#3D4127]",
-    span: "lg:col-span-1",
-    image: null,
+    image: "/media/enterprise-grade-security.jpg",    // 6067×3467 landscape
+    objectPos: "center center",
+    overlay: "from-black/85 via-black/45 to-transparent",
+    colSpan: "lg:col-span-1",
+    rowSpan: "",
   },
+  // Row 3 — Mobile-First (portrait) + QR (dark accent card)
   {
     icon: Smartphone,
     title: "Mobile-First Platform",
     description:
       "Native iOS & Android apps plus a fully responsive dashboard — manage your business from anywhere.",
-    accent: "bg-[#636B2F]",
-    span: "lg:col-span-1",
-    image: null,
+    image: "/media/mobile-first-platform.jpg",        // 4002×6000 portrait
+    objectPos: "center top",
+    overlay: "from-[#636B2F]/90 via-[#636B2F]/45 to-transparent",
+    colSpan: "lg:col-span-1",
+    rowSpan: "",
   },
   {
     icon: ScanLine,
     title: "Instant QR Check-In",
     description:
       "Generate branded QR codes in seconds. Customers scan and join queues without downloading anything.",
-    accent: "bg-[#4a5130]",
-    span: "lg:col-span-1",
-    image: null,
+    image: null,   // no photo — styled dark accent card
+    objectPos: "",
+    overlay: "",
+    colSpan: "lg:col-span-2",
+    rowSpan: "",
   },
 ];
 
@@ -701,14 +727,20 @@ export default function LandingPage() {
 
       {/* ── FEATURES BENTO GRID ────────────────────────────────────────── */}
       {/*
-       * Central tall card: african-american-expert-closing-monthly-revenue-balance.jpg
-       * 3403×5104 portrait — analytics expert at work
+       * Row 1 (3 × 1-col):  advanced-analytics.jpg (5000×3333)
+       *                      smart-queue-engine.jpg (8000×6000)
+       *                      multi-channel-notifications.jpg (4149×4149)
+       * Row 2 (2-col + 1):  african-american-expert… (3403×5104 portrait, 2-col)
+       *                      enterprise-grade-security.jpg (6067×3467)
+       * Row 3 (1-col + 2):  mobile-first-platform.jpg (4002×6000 portrait)
+       *                      QR Check-In — dark accent card (no photo, 2-col)
        */}
       <section
         id="features"
         className="py-24 bg-white scroll-mt-20 overflow-hidden"
       >
         <div className="container mx-auto px-6">
+          {/* Section heading */}
           <motion.div
             className="text-center mb-16"
             initial={{ y: 30, opacity: 0 }}
@@ -730,83 +762,167 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          {/* Grid: 2-col on md, 3-col on lg */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Feature cards (first 3) */}
+          {/* ── ROW 1: three equal landscape cards ── */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
             {bentoFeatures.slice(0, 3).map((f, i) => (
               <motion.div
                 key={i}
-                className="group rounded-2xl border border-gray-100 bg-white p-7 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="relative rounded-2xl overflow-hidden min-h-[280px] group"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: i * 0.08 }}
+                transition={{ duration: 0.45, delay: i * 0.09 }}
               >
-                <div
-                  className={`h-12 w-12 rounded-xl ${f.accent} flex items-center justify-center mb-5 shadow-md`}
-                >
-                  <f.icon className="h-6 w-6 text-white" />
+                {/* Photo */}
+                <img
+                  src={f.image!}
+                  alt={f.title}
+                  className={`absolute inset-0 w-full h-full object-cover object-${f.objectPos.includes("top") ? "top" : "center"} group-hover:scale-105 transition-transform duration-700`}
+                />
+                {/* Overlay */}
+                <div className={`absolute inset-0 bg-gradient-to-t ${f.overlay}`} />
+                {/* Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <div className="h-10 w-10 rounded-xl bg-white/15 border border-white/25 backdrop-blur-sm flex items-center justify-center mb-3">
+                    <f.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1.5">{f.title}</h3>
+                  <p className="text-white/65 text-sm leading-relaxed">{f.description}</p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {f.title}
-                </h3>
-                <p className="text-gray-500 leading-relaxed text-sm">
-                  {f.description}
-                </p>
               </motion.div>
             ))}
+          </div>
 
-            {/* Analytics photo card — spans full width on md, 1 col on lg */}
+          {/* ── ROW 2: Revenue Analytics (2-col) + Security (1-col) ── */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
+            {/* Revenue Analytics — portrait image, 2 cols wide */}
             <motion.div
-              className="md:col-span-2 lg:col-span-1 relative rounded-2xl overflow-hidden min-h-[320px] group"
-              initial={{ opacity: 0, scale: 0.96 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              className="md:col-span-2 relative rounded-2xl overflow-hidden min-h-[320px] group"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
             >
               <img
-                src="/media/african-american-expert-closing-monthly-revenue-balance.jpg"
-                alt="Analytics expert reviewing business revenue balance"
-                className="w-full h-full object-cover object-top absolute inset-0 group-hover:scale-105 transition-transform duration-700"
+                src={bentoFeatures[3].image!}
+                alt={bentoFeatures[3].title}
+                className="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#3D4127]/90 via-[#3D4127]/40 to-transparent" />
+              <div className={`absolute inset-0 bg-gradient-to-t ${bentoFeatures[3].overlay}`} />
               <div className="absolute bottom-0 left-0 right-0 p-7">
-                <div className="h-12 w-12 rounded-xl bg-[#D4DE95]/20 border border-[#D4DE95]/40 flex items-center justify-center mb-4">
-                  <BarChart3 className="h-6 w-6 text-[#D4DE95]" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Revenue Analytics
-                </h3>
-                <p className="text-white/70 text-sm leading-relaxed">
-                  Close the books faster with real-time revenue dashboards,
-                  period comparisons, and downloadable reports.
-                </p>
+                {(() => { const Icon = bentoFeatures[3].icon; return (
+                  <div className="h-11 w-11 rounded-xl bg-[#D4DE95]/20 border border-[#D4DE95]/35 backdrop-blur-sm flex items-center justify-center mb-4">
+                    <Icon className="h-5 w-5 text-[#D4DE95]" />
+                  </div>
+                ); })()}
+                <h3 className="text-xl font-bold text-white mb-2">{bentoFeatures[3].title}</h3>
+                <p className="text-white/65 text-sm leading-relaxed max-w-lg">{bentoFeatures[3].description}</p>
               </div>
             </motion.div>
 
-            {/* Remaining feature cards */}
-            {bentoFeatures.slice(3).map((f, i) => (
-              <motion.div
-                key={i + 3}
-                className="group rounded-2xl border border-gray-100 bg-white p-7 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: i * 0.08 }}
-              >
-                <div
-                  className={`h-12 w-12 rounded-xl ${f.accent} flex items-center justify-center mb-5 shadow-md`}
-                >
-                  <f.icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {f.title}
+            {/* Enterprise-Grade Security — 1 col */}
+            <motion.div
+              className="relative rounded-2xl overflow-hidden min-h-[320px] group"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.14 }}
+            >
+              <img
+                src={bentoFeatures[4].image!}
+                alt={bentoFeatures[4].title}
+                className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className={`absolute inset-0 bg-gradient-to-t ${bentoFeatures[4].overlay}`} />
+              <div className="absolute bottom-0 left-0 right-0 p-6">
+                {(() => { const Icon = bentoFeatures[4].icon; return (
+                  <div className="h-10 w-10 rounded-xl bg-white/15 border border-white/25 backdrop-blur-sm flex items-center justify-center mb-3">
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                ); })()}
+                <h3 className="text-lg font-bold text-white mb-1.5">{bentoFeatures[4].title}</h3>
+                <p className="text-white/65 text-sm leading-relaxed">{bentoFeatures[4].description}</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* ── ROW 3: Mobile-First (1-col portrait) + QR dark card (2-col) ── */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Mobile-First Platform — portrait photo */}
+            <motion.div
+              className="relative rounded-2xl overflow-hidden min-h-[300px] group"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+            >
+              <img
+                src={bentoFeatures[5].image!}
+                alt={bentoFeatures[5].title}
+                className="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className={`absolute inset-0 bg-gradient-to-t ${bentoFeatures[5].overlay}`} />
+              <div className="absolute bottom-0 left-0 right-0 p-6">
+                {(() => { const Icon = bentoFeatures[5].icon; return (
+                  <div className="h-10 w-10 rounded-xl bg-white/15 border border-white/25 backdrop-blur-sm flex items-center justify-center mb-3">
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                ); })()}
+                <h3 className="text-lg font-bold text-white mb-1.5">{bentoFeatures[5].title}</h3>
+                <p className="text-white/65 text-sm leading-relaxed">{bentoFeatures[5].description}</p>
+              </div>
+            </motion.div>
+
+            {/* Instant QR Check-In — styled dark card, 2-col */}
+            <motion.div
+              className="md:col-span-1 lg:col-span-2 relative rounded-2xl overflow-hidden min-h-[300px] group bg-[#1a1e0d]"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.14 }}
+            >
+              {/* Subtle dot-grid pattern */}
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle, #D4DE95 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
+                }}
+              />
+              {/* Brand glow */}
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-[#636B2F]/30 blur-3xl" />
+              <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-[#D4DE95]/10 blur-2xl" />
+
+              {/* Large decorative QR icon */}
+              <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10">
+                <ScanLine className="h-40 w-40 text-[#D4DE95]" />
+              </div>
+
+              {/* Content */}
+              <div className="relative h-full flex flex-col justify-end p-8">
+                {(() => { const Icon = bentoFeatures[6].icon; return (
+                  <div className="h-12 w-12 rounded-xl bg-[#D4DE95]/15 border border-[#D4DE95]/30 flex items-center justify-center mb-5">
+                    <Icon className="h-6 w-6 text-[#D4DE95]" />
+                  </div>
+                ); })()}
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  {bentoFeatures[6].title}
                 </h3>
-                <p className="text-gray-500 leading-relaxed text-sm">
-                  {f.description}
+                <p className="text-white/55 text-sm leading-relaxed max-w-sm">
+                  {bentoFeatures[6].description}
                 </p>
-              </motion.div>
-            ))}
+                <div className="mt-6 flex items-center gap-3">
+                  <div className="flex items-center gap-2 bg-[#D4DE95]/10 border border-[#D4DE95]/20 rounded-full px-4 py-2">
+                    <div className="h-2 w-2 rounded-full bg-[#D4DE95] animate-pulse" />
+                    <span className="text-[#D4DE95] text-xs font-medium">No app download needed</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
+                    <span className="text-white/50 text-xs">Scan & join instantly</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
