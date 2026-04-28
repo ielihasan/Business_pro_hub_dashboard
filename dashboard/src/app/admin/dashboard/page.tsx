@@ -58,12 +58,13 @@ export default function AdminDashboardPage() {
         fetch(`${apiUrl}/api/admin/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        // Pending count from business_applications (the real source of truth)
+        // Pending count — email verified, not approved, not rejected (actionable by admin)
         supabase
           .from("business_applications")
           .select("id", { count: "exact", head: true })
           .eq("is_approved", false)
-          .eq("is_rejected", false),
+          .eq("is_rejected", false)
+          .eq("email_verified", true),
         // Total customers = mobile app users
         supabase
           .from("users")

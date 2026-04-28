@@ -12,4 +12,6 @@ public interface BusinessApplicationRepository extends JpaRepository<BusinessApp
     Optional<BusinessApplication> findByVerificationToken(String token);
     Optional<BusinessApplication> findByUserId(String userId);
     long countByIsApprovedFalseAndIsRejectedFalse();
+    /** Actionable pending count — email verified, not yet approved or rejected */
+    long countByIsApprovedFalseAndIsRejectedFalseAndEmailVerifiedTrue();
 }

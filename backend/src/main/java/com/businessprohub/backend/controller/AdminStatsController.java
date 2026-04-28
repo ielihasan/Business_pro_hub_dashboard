@@ -45,8 +45,8 @@ public class AdminStatsController {
         long totalBusinesses  = businessRepo.count();
         long activeBusinesses = businessRepo.countByIsActive(true);
 
-        // Pending applications (business_applications where not approved and not rejected)
-        long pendingApplications = applicationRepo.countByIsApprovedFalseAndIsRejectedFalse();
+        // Pending applications — email verified, not approved, not rejected (actionable by admin)
+        long pendingApplications = applicationRepo.countByIsApprovedFalseAndIsRejectedFalseAndEmailVerifiedTrue();
 
         // Total customers = mobile app users (users table), not walk-in customer records
         long totalCustomers = appUserRepo.count();
