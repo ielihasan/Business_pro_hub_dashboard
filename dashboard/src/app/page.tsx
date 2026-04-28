@@ -324,8 +324,8 @@ export default function LandingPage() {
       <motion.header
         className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-[#1a1e0d]/98 backdrop-blur-md shadow-lg border-b border-white/10"
-            : "bg-[#1a1e0d]/85 backdrop-blur-sm border-b border-white/5"
+            ? "bg-[#1a1e0d]/70 backdrop-blur-md shadow-lg border-b border-white/10"
+            : "bg-[#1a1e0d]/40 backdrop-blur-sm border-b border-white/5"
         }`}
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
