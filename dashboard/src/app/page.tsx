@@ -463,9 +463,14 @@ export default function LandingPage() {
             alt="Modern business district skyline"
             className="w-full h-full object-cover object-center"
           />
-          {/* Multi-layer overlay: darkens base, adds brand tint at bottom */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/50 to-[#1a1e0d]/80" />
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#3D4127]/30 via-transparent to-transparent" />
+          {/* Layer 1 — top-to-bottom dark vignette */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-[#1a1e0d]/90" />
+          {/* Layer 2 — bottom-to-top brand-olive lift */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1a1e0d]/80 via-transparent to-transparent" />
+          {/* Layer 3 — left brand-tint sweep */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#3D4127]/45 via-[#3D4127]/10 to-transparent" />
+          {/* Layer 4 — right-side cool dark edge */}
+          <div className="absolute inset-0 bg-gradient-to-tl from-black/40 via-transparent to-transparent" />
         </div>
 
         {/* Content */}
