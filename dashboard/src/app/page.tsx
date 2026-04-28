@@ -818,10 +818,10 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* ── ROW 3: Mobile-First Platform (full-width) ── */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* ── ROW 3: Mobile-First Platform — full row ── */}
+          <div className="grid grid-cols-1 gap-5">
             <motion.div
-              className="relative rounded-2xl overflow-hidden min-h-[300px] group"
+              className="relative rounded-2xl overflow-hidden min-h-[360px] group"
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
