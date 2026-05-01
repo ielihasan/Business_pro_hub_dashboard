@@ -438,8 +438,8 @@ export default function LandingPage() {
         {/* Background image */}
         <div className="absolute inset-0">
           <img
-            src="/media/modern-business-building-scenery-touching-sky.jpg"
-            alt="Modern business district skyline"
+            src="/media/people-waiting-train-platform.jpg"
+            alt="People waiting on a train platform"
             className="w-full h-full object-cover object-center"
           />
           {/* Layer 1 — top-to-bottom dark vignette */}
