@@ -712,6 +712,25 @@ export default function QueueManagementPage() {
     }
   }, [business?.id, fetchQueue, fetchQueueTypes]);
 
+  /* ── Real-time subscription: refresh immediately on any queue change */
+  useEffect(() => {
+    if (!business?.id) return;
+    const channel = supabase
+      .channel(`queue-realtime:${business.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'queues', filter: `business_id=eq.${business.id}` },
+        () => fetchQueue()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'queues', filter: `business_id=eq.${business.id}` },
+        () => fetchQueue()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [business?.id, fetchQueue]);
+
 
   /* ── Add customer */
   const openAddCustomer = useCallback((queueTypeId?: string) => {
