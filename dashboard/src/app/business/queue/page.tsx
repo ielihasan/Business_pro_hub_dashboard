@@ -169,6 +169,17 @@ function getWaitTime(createdAt: string) {
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
+function getServedDuration(entry: QueueEntry): string {
+  const start = entry.started_at ?? entry.joined_at;
+  const end   = entry.completed_at ?? entry.cancelled_at;
+  if (!start || !end) return "—";
+  const min = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+  if (min < 1) return "<1 min";
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+
+const STATUS_ORDER: Record<string, number> = { waiting: 0, serving: 1, completed: 2, cancelled: 3 };
+
 function getStatusBadge(status: string) {
   switch (status) {
     case "waiting":
@@ -329,9 +340,15 @@ function QueueDetail({
   const color   = isActive ? (queueType?.color || "#6B7280") : "#9CA3AF";
   const name    = queueType?.name || "General Queue";
 
-  const visibleEntries = statusFilter === "all"
+  const visibleEntries = (statusFilter === "all"
     ? entries
-    : entries.filter(e => e.status === statusFilter);
+    : entries.filter(e => e.status === statusFilter)
+  ).slice().sort((a, b) => {
+    const so = (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+    if (so !== 0) return so;
+    // Within the same status group keep original position order
+    return (a.position ?? 0) - (b.position ?? 0);
+  });
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
@@ -438,16 +455,32 @@ function QueueDetail({
               <div
                 key={entry.id}
                 className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50/80 transition-colors ${
-                  entry.status === "serving" ? "bg-blue-50/30" : ""
+                  entry.status === "serving" ? "bg-blue-50/30" :
+                  entry.status === "completed" || entry.status === "cancelled" ? "opacity-60" : ""
                 }`}
               >
-                {/* Position + time */}
-                <div className="w-10 text-center shrink-0">
-                  <div className="font-mono font-bold text-sm leading-tight" style={{ color }}>
-                    {String(entry.position).padStart(3, "0")}
+                {/* Position (active) or Served at/time (completed/cancelled) */}
+                {entry.status === "completed" || entry.status === "cancelled" ? (
+                  <div className="w-14 text-center shrink-0">
+                    <div className="text-[10px] font-semibold text-gray-500 leading-tight uppercase tracking-wide">
+                      Served at
+                    </div>
+                    <div className="text-[11px] font-mono text-gray-700 leading-tight">
+                      {entry.completed_at ? formatTime(entry.completed_at) : entry.cancelled_at ? formatTime(entry.cancelled_at) : "—"}
+                    </div>
+                    <div className="text-[10px] text-gray-400 leading-tight flex items-center justify-center gap-0.5 mt-0.5">
+                      <Timer className="h-2.5 w-2.5" />
+                      {getServedDuration(entry)}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-gray-400 leading-tight">{formatTime(entry.created_at)}</div>
-                </div>
+                ) : (
+                  <div className="w-10 text-center shrink-0">
+                    <div className="font-mono font-bold text-sm leading-tight" style={{ color }}>
+                      {String(entry.position).padStart(3, "0")}
+                    </div>
+                    <div className="text-[10px] text-gray-400 leading-tight">{formatTime(entry.created_at)}</div>
+                  </div>
+                )}
 
                 {/* Avatar */}
                 {entry.scanned_user?.avatar_url ? (
