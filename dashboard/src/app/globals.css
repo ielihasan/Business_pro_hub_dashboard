@@ -165,6 +165,24 @@ These serve as the fallback; there is no separate default.css file. */
   transition: none !important;
 }
 
+/* Sonner toast — keep the close button visible on hover */
+[data-sonner-toast] [data-close-button] {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+  color: #111827 !important;
+}
+
+[data-sonner-toast] [data-close-button] svg {
+  color: inherit;
+}
+
 /* Fade in up animation for stats */
 @keyframes fade-in-up {
   0% {
