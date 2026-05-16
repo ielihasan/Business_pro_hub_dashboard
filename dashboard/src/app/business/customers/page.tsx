@@ -118,6 +118,7 @@ export default function CustomersPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [serviceNames, setServiceNames] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -142,7 +143,10 @@ export default function CustomersPage() {
   }, []);
 
   useEffect(() => {
-    if (businessId) fetchCustomers();
+    if (businessId) {
+      fetchCustomers();
+      fetchServiceNames();
+    }
   }, [businessId, sortBy, dateFrom, dateTo, page]);
 
   const getBusinessId = async () => {
@@ -158,6 +162,24 @@ export default function CustomersPage() {
       console.error("Error getting business ID:", error);
       setApiError("Failed to load business data");
       setLoading(false);
+    }
+  };
+
+  const fetchServiceNames = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queue-types?business_id=${businessId}`,
+        { headers: { "Authorization": `Bearer ${session?.access_token}` } }
+      );
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      const types: { id: string; name: string }[] = json.data || json || [];
+      const map: Record<string, string> = {};
+      for (const t of types) map[t.id] = t.name;
+      setServiceNames(map);
+    } catch {
+      // non-critical — service names are just display labels
     }
   };
 
@@ -259,6 +281,9 @@ export default function CustomersPage() {
       customer.email?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
+  const resolveServiceName = (idOrName: string) =>
+    serviceNames[idOrName] || idOrName;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -691,7 +716,7 @@ export default function CustomersPage() {
                           <div className="flex flex-wrap gap-1">
                             {customer.services_used.slice(0, 2).map((service, i) => (
                               <Badge key={i} variant="outline" className="text-xs">
-                                {service}
+                                {resolveServiceName(service)}
                               </Badge>
                             ))}
                             {customer.services_used.length > 2 && (
@@ -875,7 +900,7 @@ export default function CustomersPage() {
                 <div className="flex flex-wrap gap-2">
                   {selectedCustomer.services_used.map((service, i) => (
                     <Badge key={i} variant="outline">
-                      {service}
+                      {resolveServiceName(service)}
                     </Badge>
                   ))}
                 </div>
@@ -891,7 +916,7 @@ export default function CustomersPage() {
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
                       <div>
-                        <p className="font-medium text-sm">{visit.service || "Queue Visit"}</p>
+                        <p className="font-medium text-sm">{visit.service ? resolveServiceName(visit.service) : "Queue Visit"}</p>
                         <p className="text-xs text-gray-500">
                           {formatDateTime(visit.date)}
                         </p>
