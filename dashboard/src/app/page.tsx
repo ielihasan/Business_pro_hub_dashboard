@@ -5,6 +5,7 @@
  * All 10 assets are used strategically throughout the page.
  */
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef, useState } from "react";
@@ -437,10 +438,13 @@ export default function LandingPage() {
       <section className="relative min-h-screen flex flex-col justify-center overflow-hidden -mt-[65px]">
         {/* Background image */}
         <div className="absolute inset-0">
-          <img
+          <Image
             src="/media/people-waiting-train-platform.jpg"
             alt="People waiting on a train platform"
-            className="w-full h-full object-cover object-center"
+            fill
+            priority
+            className="object-cover object-center"
+            sizes="100vw"
           />
           {/* Layer 1 — top-to-bottom dark vignette */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-[#1a1e0d]/90" />
@@ -659,11 +663,13 @@ export default function LandingPage() {
             >
               {/* Decorative bg blob */}
               <div className="absolute -inset-4 bg-[#D4DE95]/20 rounded-3xl -z-10 rotate-2" />
-              <div className="rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-                <img
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
+                <Image
                   src="/media/work-desk-with-computer-cup-with-pens-pencils-against-white-wall.jpg"
                   alt="Clean modern work desk setup"
-                  className="w-full h-full object-cover object-center"
+                  fill
+                  className="object-cover object-center"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                 />
               </div>
               {/* Floating badge */}
@@ -778,10 +784,12 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
               >
-                <img
+                <Image
                   src={ind.image}
                   alt={ind.name}
-                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
+                  fill
+                  className="object-cover object-center group-hover:scale-110 transition-transform duration-700"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 />
                 {/* Gradient overlay */}
                 <div
@@ -811,10 +819,12 @@ export default function LandingPage() {
        */}
       <section className="relative py-20 overflow-hidden">
         <div className="absolute inset-0">
-          <img
+          <Image
             src="/media/bulb-with-black-background.jpg"
             alt="Innovation light bulb"
-            className="w-full h-full object-cover object-center"
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-black/70" />
         </div>
@@ -852,11 +862,13 @@ export default function LandingPage() {
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="absolute -inset-3 rounded-3xl bg-[#D4DE95]/5 blur-xl" />
-              <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 aspect-video">
-                <img
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 aspect-video">
+                <Image
                   src="/media/open-laptop-with-glowing-screen-notepad-table-night.jpg"
                   alt="Laptop glowing at night — manage from anywhere"
-                  className="w-full h-full object-cover object-center"
+                  fill
+                  className="object-cover object-center"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                 />
               </div>
               {/* Floating stat */}
@@ -1213,10 +1225,12 @@ export default function LandingPage() {
        */}
       <section className="relative py-28 overflow-hidden">
         <div className="absolute inset-0">
-          <img
+          <Image
             src="/media/laptop-computer-mouse-cup-coffee-cookies-black-background.jpg"
             alt="Laptop on dark background — get started"
-            className="w-full h-full object-cover object-center"
+            fill
+            className="object-cover object-center"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-black/75" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#3D4127]/20 via-transparent to-transparent" />
