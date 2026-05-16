@@ -11,6 +11,7 @@ import com.businessprohub.backend.repository.BusinessRepository;
 import com.businessprohub.backend.repository.QueuePricingRepository;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.ServiceEntityRepository;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,17 +32,20 @@ public class QueueService {
     private final AppUserRepository appUserRepo;
     private final ServiceEntityRepository serviceRepo;
     private final QueuePricingRepository pricingRepo;
+    private final EntityManager entityManager;
 
     public QueueService(QueueRepository queueRepo,
                         BusinessRepository businessRepo,
                         AppUserRepository appUserRepo,
                         ServiceEntityRepository serviceRepo,
-                        QueuePricingRepository pricingRepo) {
+                        QueuePricingRepository pricingRepo,
+                        EntityManager entityManager) {
         this.queueRepo = queueRepo;
         this.businessRepo = businessRepo;
         this.appUserRepo = appUserRepo;
         this.serviceRepo = serviceRepo;
         this.pricingRepo = pricingRepo;
+        this.entityManager = entityManager;
     }
 
     /** GET /api/queue?business_id=&status=&date= */
@@ -410,6 +414,15 @@ public class QueueService {
     }
 
     private int nextPosition(String businessId, String queueTypeId, OffsetDateTime dayStart) {
+        // Acquire a per-business transaction-scoped advisory lock so that two
+        // concurrent transactions cannot both read the same MAX(position) and
+        // assign duplicate position numbers.
+        long lockKey = businessId.replace("-", "").substring(0, 16)
+                .chars().asLongStream().reduce(0L, (a, b) -> a * 31 + b);
+        entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(:key)")
+                .setParameter("key", lockKey)
+                .getSingleResult();
+
         if (queueTypeId != null && !queueTypeId.isBlank()) {
             return queueRepo.findMaxPositionForQueueType(businessId, queueTypeId, dayStart)
                     .map(m -> m + 1).orElse(1);
