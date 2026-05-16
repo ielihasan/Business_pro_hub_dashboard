@@ -194,11 +194,15 @@ export default function CustomersPage() {
         first_visit: (c.first_visit as string) || (c.last_visit as string) || new Date().toISOString(),
         last_visit: (c.last_visit as string) || new Date().toISOString(),
         services_used: (c.services_used as string[]) || [],
-        visit_history: ((c.visit_history as Record<string, unknown>[]) || []).map((v) => ({
-          date: v.date as string,
-          service: (v.service as string) || "Queue Visit",
-          status: (v.status as string) || "completed",
-        })),
+        visit_history: ((c.visit_history as Record<string, unknown>[]) || []).map((v) => {
+          const rawStatus = (v.status as string) || "completed";
+          const mappedStatus = rawStatus === "in_progress" || rawStatus === "called" ? "serving" : rawStatus;
+          return {
+            date: v.date as string,
+            service: (v.service as string) || "Queue Visit",
+            status: mappedStatus,
+          };
+        }),
       }));
       setCustomers(list);
       setTotalCount(inner.total || 0);

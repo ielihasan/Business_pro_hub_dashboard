@@ -26,10 +26,13 @@ public class CustomerController {
         this.customerRepo = customerRepo;
     }
 
-    // GET /api/customers?business_id=&page=1&page_size=20 — aggregated from queues
+    // GET /api/customers?business_id=&sort_by=last_visit&date_from=&date_to=&page=1&page_size=20
     @GetMapping
     public ResponseEntity<ApiResponse<?>> list(
             @RequestParam("business_id") String businessId,
+            @RequestParam(value = "sort_by", defaultValue = "last_visit") String sortBy,
+            @RequestParam(value = "date_from", required = false) String dateFrom,
+            @RequestParam(value = "date_to", required = false) String dateTo,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(value = "page_size", defaultValue = "20") int pageSize) {
 
@@ -124,6 +127,37 @@ public class CustomerController {
 
             all.add(c);
         }
+
+        // Apply date range filter on last_visit
+        if (dateFrom != null && !dateFrom.isBlank()) {
+            OffsetDateTime from = java.time.LocalDate.parse(dateFrom).atStartOfDay().atOffset(ZoneOffset.UTC);
+            all.removeIf(c -> {
+                OffsetDateTime lv = (OffsetDateTime) c.get("last_visit");
+                return lv == null || lv.isBefore(from);
+            });
+        }
+        if (dateTo != null && !dateTo.isBlank()) {
+            OffsetDateTime to = java.time.LocalDate.parse(dateTo).plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+            all.removeIf(c -> {
+                OffsetDateTime lv = (OffsetDateTime) c.get("last_visit");
+                return lv == null || lv.isAfter(to);
+            });
+        }
+
+        // Sort
+        Comparator<Map<String, Object>> comparator = switch (sortBy) {
+            case "first_visit" -> Comparator.comparing(
+                    c -> (OffsetDateTime) c.get("first_visit"),
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+            case "visits" -> Comparator.comparingInt((Map<String, Object> c) -> (int) c.get("visit_count")).reversed();
+            case "name" -> Comparator.comparing(
+                    c -> ((String) c.get("customer_name") != null ? (String) c.get("customer_name") : ""),
+                    String.CASE_INSENSITIVE_ORDER);
+            default -> Comparator.comparing( // last_visit — most recent first
+                    c -> (OffsetDateTime) c.get("last_visit"),
+                    Comparator.nullsLast(Comparator.reverseOrder()));
+        };
+        all.sort(comparator);
 
         int total = all.size();
         int repeatCount = (int) all.stream()

@@ -2,12 +2,14 @@ package com.businessprohub.backend.service;
 
 import com.businessprohub.backend.entity.AppUser;
 import com.businessprohub.backend.entity.Business;
+import com.businessprohub.backend.entity.Customer;
 import com.businessprohub.backend.entity.Queue;
 import com.businessprohub.backend.entity.QueuePricing;
 import com.businessprohub.backend.exception.BadRequestException;
 import com.businessprohub.backend.exception.ResourceNotFoundException;
 import com.businessprohub.backend.repository.AppUserRepository;
 import com.businessprohub.backend.repository.BusinessRepository;
+import com.businessprohub.backend.repository.CustomerRepository;
 import com.businessprohub.backend.repository.QueuePricingRepository;
 import com.businessprohub.backend.repository.QueueRepository;
 import com.businessprohub.backend.repository.ServiceEntityRepository;
@@ -33,19 +35,22 @@ public class QueueService {
     private final ServiceEntityRepository serviceRepo;
     private final QueuePricingRepository pricingRepo;
     private final EntityManager entityManager;
+    private final CustomerRepository customerRepo;
 
     public QueueService(QueueRepository queueRepo,
                         BusinessRepository businessRepo,
                         AppUserRepository appUserRepo,
                         ServiceEntityRepository serviceRepo,
                         QueuePricingRepository pricingRepo,
-                        EntityManager entityManager) {
+                        EntityManager entityManager,
+                        CustomerRepository customerRepo) {
         this.queueRepo = queueRepo;
         this.businessRepo = businessRepo;
         this.appUserRepo = appUserRepo;
         this.serviceRepo = serviceRepo;
         this.pricingRepo = pricingRepo;
         this.entityManager = entityManager;
+        this.customerRepo = customerRepo;
     }
 
     /** GET /api/queue?business_id=&status=&date= */
@@ -359,6 +364,7 @@ public class QueueService {
             }
             if ("completed".equals(dbStatus) && entry.getCompletedAt() == null) {
                 entry.setCompletedAt(OffsetDateTime.now(ZoneOffset.UTC));
+                upsertCustomer(entry);
             }
         }
         if (body.containsKey("notes"))        entry.setNotes((String) body.get("notes"));
@@ -374,6 +380,21 @@ public class QueueService {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private void upsertCustomer(Queue entry) {
+        if (entry.getBusinessId() == null) return;
+        String phone = entry.getCustomerPhone();
+        if (phone == null || phone.isBlank()) return;
+        customerRepo.findByBusinessIdAndPhone(entry.getBusinessId(), phone).orElseGet(() -> {
+            Customer c = new Customer();
+            c.setBusinessId(entry.getBusinessId());
+            c.setName(entry.getCustomerName());
+            c.setPhone(phone);
+            c.setEmail(entry.getCustomerEmail());
+            c.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+            return customerRepo.save(c);
+        });
+    }
 
     /**
      * AI Wait Time Predictor — calculates real average service duration (minutes).
