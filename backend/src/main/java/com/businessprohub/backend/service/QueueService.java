@@ -338,6 +338,7 @@ public class QueueService {
     }
 
     /** PATCH /api/queue/{id} — update status */
+    @Transactional
     public Queue updateEntry(String id, Map<String, Object> body) {
         Queue entry = queueRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue entry not found"));

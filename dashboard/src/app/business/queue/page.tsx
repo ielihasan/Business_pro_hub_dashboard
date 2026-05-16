@@ -75,7 +75,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-client";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, extractApiError } from "@/lib/utils";
 import { resolveBusinessId } from "@/lib/resolve-business-id";
 import QRCodeLib from "qrcode";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -748,10 +748,11 @@ export default function QueueManagementPage() {
     try {
       setAddingCustomer(true);
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired — please refresh the page and log in again."); return; }
       const qt = queueTypes.find(q => q.id === newCustomer.queue_type_id);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
         body: JSON.stringify({
           business_id: business.id,
           customer_name: newCustomer.customer_name,
@@ -765,7 +766,7 @@ export default function QueueManagementPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.message || "Failed to add customer to queue");
+      if (!res.ok) throw new Error(extractApiError(data, res.status, "Failed to add customer to queue"));
       toast.success(`Added to${qt ? ` ${qt.name}` : ""} queue — #${data.data.position}`);
       setAddDialogOpen(false);
       fetchQueue();
@@ -780,12 +781,13 @@ export default function QueueManagementPage() {
   ) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired — please refresh the page and log in again."); return; }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${entry.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to update status"); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(extractApiError(d, res.status, "Failed to update status")); }
       toast.success(`Status → ${newStatus}`);
       // optimistic update
       setQueueEntries(prev => prev.map(e => e.id === entry.id ? { ...e, status: newStatus } : e));
@@ -828,12 +830,13 @@ export default function QueueManagementPage() {
           : null,
       };
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired — please refresh the page and log in again."); return; }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${editingEntry.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to update queue entry"); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(extractApiError(d, res.status, "Failed to update queue entry")); }
       toast.success("Queue entry updated!");
       setEditDialogOpen(false);
       setEditingEntry(null);
@@ -853,11 +856,12 @@ export default function QueueManagementPage() {
     if (!deletingEntry) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired — please refresh the page and log in again."); return; }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${deletingEntry.id}`, {
         method: "DELETE",
-        headers: { "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Authorization": `Bearer ${session.access_token}` },
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to remove from queue"); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(extractApiError(d, res.status, "Failed to remove from queue")); }
       toast.success(`Removed ${deletingEntry.customer_name} from queue`);
       // optimistic remove
       setQueueEntries(prev => prev.filter(e => e.id !== deletingEntry.id));
@@ -881,12 +885,13 @@ export default function QueueManagementPage() {
     try {
       setCollectingSaving(true);
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Session expired — please refresh the page and log in again."); return; }
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/queue/${collectingEntry.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
         body: JSON.stringify({ advance_paid: total, payment_left: 0 }),
       });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to record payment"); }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(extractApiError(d, res.status, "Failed to record payment")); }
       toast.success(`Payment collected — Rs.${(collectingEntry.payment_left ?? 0).toLocaleString()} from ${collectingEntry.customer_name}`);
       // Optimistic update
       setQueueEntries(prev => prev.map(e =>
@@ -930,7 +935,7 @@ export default function QueueManagementPage() {
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || json.message || "Failed to update queue status");
+      if (!res.ok) throw new Error(extractApiError(json, res.status, "Failed to update queue status"));
       toast.success(`${qt.name} queue ${newValue ? "opened" : "closed"}`);
     } catch (err: unknown) {
       // Revert optimistic update on failure

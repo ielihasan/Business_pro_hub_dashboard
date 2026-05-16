@@ -26,6 +26,21 @@ export function getErrorMessage(error: unknown): string {
   return "An unexpected error occurred";
 }
 
+/**
+ * Extract a human-readable error string from an API response body.
+ * Handles our ApiResponse format {"error":"..."}, Spring Security RFC-9457
+ * format {"title":"...","detail":"..."}, and the legacy {"message":"..."} shape.
+ */
+export function extractApiError(
+  body: Record<string, unknown>,
+  status: number,
+  fallback: string,
+): string {
+  const msg = body.error || body.message || body.title || body.detail;
+  if (msg && typeof msg === "string" && msg.trim()) return msg.trim();
+  return `${fallback} (HTTP ${status})`;
+}
+
 export function formatCurrency(
   amount: number,
   opts?: {
